@@ -1,0 +1,13 @@
+import {
+  "moonbit2csharp/frontend/vnext/text" @text,
+  "moonbit2csharp/frontend/vnext/common" @common,
+  "moonbit2csharp/frontend/vnext/ast" @ast,
+  "moonbit2csharp/frontend/vnext/syntax" @syntax,
+  "moonbit2csharp/frontend/vnext/sema" @sema,
+  "moonbit2csharp/frontend/vnext/json" @json,
+  "moonbit2csharp/frontend/vnext/package" @package,
+  "moonbit2csharp/frontend/vnext/binding" @binding,
+  "moonbit2csharp/frontend/vnext/ir" @ir,
+  "moonbit2csharp/frontend/vnext/semantic_core" @semantic,
+  "moonbitlang/core/env",
+}

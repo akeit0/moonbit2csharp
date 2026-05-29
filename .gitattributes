@@ -1,0 +1,4 @@
+*.g.cs text eol=lf
+csharp/MoonBit2CSharp.GeneratedCore/*.csproj text eol=lf
+csharp/MoonBit2CSharp.GeneratedFrontend/*.csproj text eol=lf
+csharp/MoonBit2CSharp.GeneratedSyntax/*.csproj text eol=lf

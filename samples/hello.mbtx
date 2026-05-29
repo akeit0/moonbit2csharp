@@ -1,0 +1,9 @@
+import {
+  "moonbitlang/core/builtin"
+}
+
+options("is-main": true)
+
+fn main() -> Unit {
+  println("hello from mbtx")
+}

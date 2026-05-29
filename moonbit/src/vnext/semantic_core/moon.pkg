@@ -1,0 +1,6 @@
+import {
+  "moonbit2csharp/frontend/vnext/common",
+  "moonbit2csharp/frontend/vnext/binding",
+  "moonbit2csharp/frontend/vnext/ir",
+  "moonbitlang/core/set",
+}

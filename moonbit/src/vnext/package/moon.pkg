@@ -1,0 +1,6 @@
+import {
+  "moonbit2csharp/frontend/vnext/common" @common,
+  "moonbit2csharp/frontend/vnext/text" @text,
+  "moonbit2csharp/frontend/vnext/syntax" @syntax,
+  "moonbit2csharp/frontend/vnext/binding" @binding,
+}

@@ -1,0 +1,14 @@
+{
+  "name": "local/moonbit-csharp-sample",
+  "deps": {
+    "moonbit-community/starter": "0.2.0",
+    "mizchi/markdown": "0.4.9"
+  },
+  "source": ".",
+  "preferred-target": "wasm-gc",
+  "supported-targets": [
+    "native",
+    "wasm-gc",
+    "js"
+  ]
+}

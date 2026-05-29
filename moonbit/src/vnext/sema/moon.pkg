@@ -1,0 +1,7 @@
+import {
+  "moonbit2csharp/frontend/vnext/common",
+  "moonbit2csharp/frontend/vnext/ast",
+  "moonbit2csharp/frontend/vnext/binding",
+  "moonbit2csharp/frontend/vnext/ir",
+  "moonbit2csharp/frontend/vnext/semantic_core" @semantic,
+}

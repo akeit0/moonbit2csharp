@@ -1,0 +1,16 @@
+.dnrelay/
+artifacts/
+bin/
+obj/
+_build/
+samples/moon-js/
+samples/**/*.generated.cs
+samples/**/*.generated.ir.json
+samples/**/*.ir.json
+samples/sample.cs
+
+*.lscache
+
+
+# APM dependencies
+apm_modules/

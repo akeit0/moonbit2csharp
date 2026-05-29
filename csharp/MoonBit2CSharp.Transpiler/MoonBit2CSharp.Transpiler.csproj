@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <LangVersion>preview</LangVersion>
+    </PropertyGroup>
+    <ItemGroup>
+        <ProjectReference Include="..\MoonBit2CSharp.Backend\MoonBit2CSharp.Backend.csproj" />
+        <ProjectReference Include="..\MoonBit2CSharp.VNext.Backend\MoonBit2CSharp.VNext.Backend.csproj" />
+        <!-- <ProjectReference Include="..\MoonBit2CSharp.GeneratedFrontend\MoonBit2CSharp.GeneratedFrontend.csproj" />
+        <ProjectReference Include="..\MoonBit2CSharp.GeneratedSyntax\MoonBit2CSharp.GeneratedSyntax.csproj" /> -->
+    </ItemGroup>
+    <ItemGroup>
+        <EmbeddedResource Include="CoreBuiltinImplementationCatalog.json" />
+    </ItemGroup>
+</Project>

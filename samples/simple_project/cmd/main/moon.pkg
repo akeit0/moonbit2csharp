@@ -1,0 +1,7 @@
+// import {
+//   "akeit0/simple_project" @lib,
+// }
+
+options(
+  "is-main": true,
+)

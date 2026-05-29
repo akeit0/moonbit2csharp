@@ -1,0 +1,12 @@
+import {
+  "moonbitlang/core/builtin",
+  "moonbitlang/core/json",
+  "moonbitlang/core/set",
+  "moonbitlang/core/env",
+  //   "moonbit-community/starter/rabbit",
+  "mizchi/markdown",
+}
+
+options(
+  "is-main": true,
+)

@@ -1,0 +1,9 @@
+<Solution>
+    <Project Path="MoonBit.Runtime/MoonBit.Runtime.csproj" />
+    <Project Path="MoonBit2CSharp.Backend/MoonBit2CSharp.Backend.csproj" />
+    <Project Path="MoonBit2CSharp.VNext.Backend/MoonBit2CSharp.VNext.Backend.csproj" />
+    <Project Path="MoonBit2CSharp.Transpiler/MoonBit2CSharp.Transpiler.csproj" />
+    <Project Path="MoonBit2CSharp.Emit/MoonBit2CSharp.Emit.csproj" />
+    <Project Path="MoonBit2CSharp.Cli/MoonBit2CSharp.Cli.csproj" />
+    <Project Path="MoonBit2CSharp.Tests/MoonBit2CSharp.Tests.csproj" />
+</Solution>

@@ -1,0 +1,358 @@
+using System.Diagnostics;
+using MoonBit2CSharp.Transpiler;
+
+try
+{
+    return args switch
+    {
+        ["run", ..] => RunGeneratedProject(args),
+        ["build", ..] => BuildGeneratedProject(args),
+        ["--project", _, ..] => RunProject(args),
+        //_ => RunSingle(args),
+        _ => PrintUsage(),
+    };
+}
+catch (Exception ex)
+    when (ex is ArgumentException or FileNotFoundException or InvalidOperationException)
+{
+    Console.Error.WriteLine(ex.Message);
+    return 2;
+}
+
+// static int RunSingle(string[] args)
+// {
+//     var singleArgs = args.Where(arg => arg is not "--pascal-case").ToArray();
+//     if (singleArgs.Length is < 1 or > 2)
+//     {
+//         PrintUsage();
+//         return 2;
+//     }
+
+//     var inputPath = Path.GetFullPath(singleArgs[0]);
+//     var outputPath =
+//         singleArgs.Length == 2
+//             ? Path.GetFullPath(singleArgs[1])
+//             : Path.ChangeExtension(inputPath, ".generated.cs");
+//     var upperPascalCaseNames = args.Contains("--pascal-case", StringComparer.Ordinal);
+//     MoonBitSourceTranspiler.WriteFile(inputPath, outputPath, upperPascalCaseNames);
+
+//     Console.WriteLine(outputPath);
+//     return 0;
+// }
+
+static int RunGeneratedProject(string[] args)
+{
+    var result = PrepareGeneratedProject(args, "run", true, out var appArgs);
+    return RunDotnetProject(result.ProjectPath, appArgs);
+}
+
+static int BuildGeneratedProject(string[] args)
+{
+    var result = PrepareGeneratedProject(args, "build", false, out _);
+    Console.Error.WriteLine(
+        result.CacheHit
+            ? $"generated: {result.OutputDirectory} (cache hit)"
+            : $"generated: {result.OutputDirectory}"
+    );
+    return BuildDotnetProject(result.ProjectPath);
+}
+
+static MoonBitRunProjectResult PrepareGeneratedProject(
+    string[] args,
+    string commandName,
+    bool allowAppArgs,
+    out string[] appArgs
+)
+{
+    var separator = Array.IndexOf(args, "--");
+    if (separator >= 0 && !allowAppArgs)
+        throw new ArgumentException($"{commandName} does not accept application arguments");
+
+    var commandArgs = separator < 0 ? args[1..] : args[1..separator];
+    appArgs = separator < 0 ? [] : args[(separator + 1)..];
+    var outputDir = "";
+    var projectName = "";
+    var singleFileName = "";
+    var moonModPath = "";
+    var runtimeProjectPath = MoonBitSourceTranspiler.DefaultRuntimeProjectPath;
+    var referenceRuntime = false;
+    var includeMainPackages = false;
+    var upperPascalCaseNames = false;
+    var generatedNamespace = "Generated.MoonBit";
+    var runtimeNamespace = "MoonBit2CSharp.Runtime";
+    var cacheDirectory = "";
+    var cacheEnabled = true;
+    var additionalUsings = new List<string>();
+    var additionalProjectReferences = new List<string>();
+    var inputPaths = new List<string>();
+
+    for (var i = 0; i < commandArgs.Length; i++)
+        switch (commandArgs[i])
+        {
+            case "--out":
+            case "-o":
+                outputDir = Path.GetFullPath(RequireValue(commandArgs, ref i, commandArgs[i]));
+                break;
+            case "--csproj":
+                projectName = RequireValue(commandArgs, ref i, "--csproj");
+                break;
+            case "--single-file":
+                singleFileName = RequireValue(commandArgs, ref i, "--single-file");
+                break;
+            case "--moon-mod":
+                moonModPath = Path.GetFullPath(RequireValue(commandArgs, ref i, "--moon-mod"));
+                break;
+            case "--runtime-project":
+                runtimeProjectPath = Path.GetFullPath(
+                    RequireValue(commandArgs, ref i, "--runtime-project")
+                );
+                referenceRuntime = true;
+                break;
+            case "--no-reference-runtime":
+                referenceRuntime = false;
+                break;
+            case "--include-main-packages":
+                includeMainPackages = true;
+                break;
+            case "--pascal-case":
+                upperPascalCaseNames = true;
+                break;
+            case "--namespace":
+                generatedNamespace = RequireValue(commandArgs, ref i, "--namespace");
+                break;
+            case "--runtime-namespace":
+                runtimeNamespace = RequireValue(commandArgs, ref i, "--runtime-namespace");
+                break;
+            case "--cache-dir":
+                cacheDirectory = Path.GetFullPath(RequireValue(commandArgs, ref i, "--cache-dir"));
+                break;
+            case "--no-cache":
+                cacheEnabled = false;
+                break;
+            case "--using":
+                additionalUsings.Add(RequireValue(commandArgs, ref i, "--using"));
+                break;
+            case "--project-reference":
+                additionalProjectReferences.Add(
+                    Path.GetFullPath(RequireValue(commandArgs, ref i, "--project-reference"))
+                );
+                break;
+            default:
+                if (commandArgs[i].StartsWith("-", StringComparison.Ordinal))
+                    throw new ArgumentException($"unknown {commandName} option: {commandArgs[i]}");
+
+                inputPaths.Add(commandArgs[i]);
+                break;
+        }
+
+    if (inputPaths.Count == 0)
+        inputPaths.Add(Directory.GetCurrentDirectory());
+
+    return MoonBitRunProject.Prepare(
+        new(inputPaths.Select(Path.GetFullPath).ToArray())
+        {
+            OutputDirectory = outputDir == "" ? null : outputDir,
+            ProjectName = projectName == "" ? null : projectName,
+            SingleFileName = singleFileName,
+            MoonModPath = moonModPath == "" ? null : moonModPath,
+            RuntimeProjectPath = runtimeProjectPath,
+            ReferenceRuntime = referenceRuntime,
+            IncludeMainPackages = includeMainPackages,
+            UpperPascalCaseNames = upperPascalCaseNames,
+            GeneratedNamespace = generatedNamespace,
+            RuntimeNamespace = runtimeNamespace,
+            AdditionalUsings = additionalUsings,
+            AdditionalProjectReferences = additionalProjectReferences,
+            CacheDirectory = cacheDirectory,
+            CacheEnabled = cacheEnabled,
+        }
+    );
+}
+
+static int RunProject(string[] args)
+{
+    var outputDir = Path.GetFullPath(args[1]);
+    var singleFileName = "";
+    var projectName = "";
+    var writeProjectFile = true;
+    var referenceRuntime = false;
+    var executable = false;
+    var includeMainPackages = false;
+    var upperPascalCaseNames = false;
+    var generatedNamespace = "Generated.MoonBit";
+    var runtimeNamespace = "MoonBit2CSharp.Runtime";
+    var cacheDirectory = "";
+    var cacheEnabled = true;
+    var additionalUsings = new List<string>();
+    var additionalProjectReferences = new List<string>();
+    var moonModPath = "";
+    var runtimeProjectPath = MoonBitSourceTranspiler.DefaultRuntimeProjectPath;
+    var inputPaths = new List<string>();
+
+    for (var i = 2; i < args.Length; i++)
+        switch (args[i])
+        {
+            case "--single-file":
+                singleFileName = RequireValue(args, ref i, "--single-file");
+                break;
+            case "--csproj":
+                projectName = RequireValue(args, ref i, "--csproj");
+                break;
+            case "--no-csproj":
+                writeProjectFile = false;
+                break;
+            case "--moon-mod":
+                moonModPath = Path.GetFullPath(RequireValue(args, ref i, "--moon-mod"));
+                break;
+            case "--reference-runtime":
+                referenceRuntime = true;
+                break;
+            case "--exe":
+                executable = true;
+                break;
+            case "--include-main-packages":
+                includeMainPackages = true;
+                break;
+            case "--pascal-case":
+                upperPascalCaseNames = true;
+                break;
+            case "--namespace":
+                generatedNamespace = RequireValue(args, ref i, "--namespace");
+                break;
+            case "--runtime-namespace":
+                runtimeNamespace = RequireValue(args, ref i, "--runtime-namespace");
+                break;
+            case "--cache-dir":
+                cacheDirectory = Path.GetFullPath(RequireValue(args, ref i, "--cache-dir"));
+                break;
+            case "--no-cache":
+                cacheEnabled = false;
+                break;
+            case "--using":
+                additionalUsings.Add(RequireValue(args, ref i, "--using"));
+                break;
+            case "--project-reference":
+                additionalProjectReferences.Add(
+                    Path.GetFullPath(RequireValue(args, ref i, "--project-reference"))
+                );
+                break;
+            case "--runtime-project":
+                runtimeProjectPath = Path.GetFullPath(
+                    RequireValue(args, ref i, "--runtime-project")
+                );
+                referenceRuntime = true;
+                break;
+            default:
+                inputPaths.Add(args[i]);
+                break;
+        }
+
+    if (inputPaths.Count == 0)
+    {
+        Console.Error.WriteLine(
+            "project mode requires at least one .mbt, .mbtx, .ir.json, directory, or moon.mod.json input"
+        );
+        return 2;
+    }
+
+    foreach (var input in inputPaths)
+    {
+        if (moonModPath != "")
+            continue;
+
+        if (Path.GetFileName(input).Equals("moon.mod.json", StringComparison.OrdinalIgnoreCase))
+        {
+            moonModPath = Path.GetFullPath(input);
+            continue;
+        }
+
+        var discoveredMoonMod = MoonBitSourceTranspiler.FindMoonMod(input);
+        if (discoveredMoonMod is not null)
+            moonModPath = discoveredMoonMod;
+    }
+
+    var result = MoonBitSourceTranspiler.WriteProject(
+        new(outputDir, inputPaths.Select(Path.GetFullPath).ToList())
+        {
+            SingleFileName = singleFileName,
+            ProjectName = projectName,
+            WriteProjectFile = writeProjectFile,
+            MoonModPath = moonModPath,
+            RuntimeProjectPath = runtimeProjectPath,
+            ReferenceRuntime = referenceRuntime,
+            Executable = executable,
+            IncludeMainPackages = includeMainPackages,
+            UpperPascalCaseNames = upperPascalCaseNames,
+            GeneratedNamespace = generatedNamespace,
+            RuntimeNamespace = runtimeNamespace,
+            AdditionalUsings = additionalUsings,
+            AdditionalProjectReferences = additionalProjectReferences,
+            CacheDirectory = cacheDirectory,
+            CacheEnabled = cacheEnabled,
+        }
+    );
+
+    foreach (var file in result.WrittenFiles)
+        Console.WriteLine(file);
+
+    return 0;
+}
+
+static string RequireValue(string[] args, ref int index, string option)
+{
+    if (index + 1 >= args.Length)
+        throw new ArgumentException($"{option} requires a value");
+
+    return args[++index];
+}
+
+static int RunDotnetProject(string projectPath, IReadOnlyList<string> appArgs)
+{
+    var arguments = new List<string>
+    {
+        "run",
+        "--project",
+        Path.GetFullPath(projectPath),
+        "--",
+        "moonbit2csharp-run",
+    };
+    arguments.AddRange(appArgs);
+
+    return RunDotnetCommand(projectPath, arguments);
+}
+
+static int BuildDotnetProject(string projectPath)
+{
+    return RunDotnetCommand(projectPath, ["build", Path.GetFullPath(projectPath)]);
+}
+
+static int RunDotnetCommand(string projectPath, IReadOnlyList<string> arguments)
+{
+    var startInfo = new ProcessStartInfo("dotnet")
+    {
+        UseShellExecute = false,
+        WorkingDirectory = Path.GetDirectoryName(Path.GetFullPath(projectPath))!,
+    };
+    foreach (var argument in arguments)
+        startInfo.ArgumentList.Add(argument);
+
+    using var process =
+        Process.Start(startInfo) ?? throw new InvalidOperationException("failed to start dotnet");
+    process.WaitForExit();
+    return process.ExitCode;
+}
+
+static int PrintUsage()
+{
+    Console.Error.WriteLine(
+        "usage: MoonBit2CSharp.Cli [--pascal-case] <input.mbt|input.mbtx> [output.cs]"
+    );
+    Console.Error.WriteLine("   or: MoonBit2CSharp.Cli build [input.mbt|directory|moon.mod.json]");
+    Console.Error.WriteLine(
+        "   or: MoonBit2CSharp.Cli run [input.mbt|directory|moon.mod.json] [-- app args...]"
+    );
+    Console.Error.WriteLine(
+        "   or: MoonBit2CSharp.Cli --project <output-dir> [--single-file <name.cs>] [--csproj <name>|--no-csproj] [--moon-mod <moon.mod.json>] [--exe] [--reference-runtime] [--runtime-project <path>] [--project-reference <path>] [--namespace <namespace>] [--runtime-namespace <namespace>] [--using <namespace>] [--cache-dir <dir>|--no-cache] [--include-main-packages] [--pascal-case] <inputs...>"
+    );
+    return 1;
+}

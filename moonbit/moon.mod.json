@@ -1,0 +1,10 @@
+{
+  "name": "moonbit2csharp/frontend",
+  "deps": {
+    "moonbitlang/parser": "0.2.5",
+    "moonbitlang/x": "0.4.40"
+  },
+  "source": "src",
+  "preferred-target": "native",
+  "supported-targets": "+native+js+wasm-gc"
+}

@@ -1,0 +1,30 @@
+# GeneratedCore is built from the official core declaration root plus
+# MoonBit2CSharp implementation overrides that are currently supported.
+builtin-root moonbitlang/core
+env moonbitlang/core/builtin/stringview.mbt
+env moonbitlang/core/builtin/bytesview.mbt
+env moonbitlang/core/builtin/byte.mbt
+env moonbitlang/core/builtin/intrinsics.mbt
+env moonbit/builtin/overrides/core_autoloc_csharp.mbt
+env moonbit/builtin/overrides/core_uint64_intrinsics_csharp.mbt
+emit moonbitlang/core/builtin/traits.mbt
+emit moonbitlang/core/builtin/string_like.mbt
+emit moonbit/builtin/overrides/core_autoloc_csharp.mbt
+emit moonbit/builtin/overrides/core_uint64_intrinsics_csharp.mbt
+emit moonbit/builtin/overrides/core_intrinsics_csharp.mbt
+emit moonbit/builtin/overrides/core_builtin_string_methods_csharp.mbt
+emit moonbit/builtin/overrides/core_builtin_to_string_csharp.mbt
+emit moonbit/builtin/overrides/core_option_csharp.mbt
+emit moonbit/builtin/overrides/core_error_types.mbt
+emit moonbitlang/core/builtin/hasher.mbt
+emit moonbit/builtin/overrides/core_linked_hash_map_csharp.mbt
+emit moonbit/builtin/overrides/core_arraycore_csharp.mbt
+emit moonbit/builtin/overrides/core_arrayview_csharp.mbt
+emit moonbit/builtin/overrides/core_double.mbt
+emit moonbit/builtin/overrides/core_float_round_csharp.mbt
+emit moonbit/builtin/overrides/core_builtin_double_round_csharp.mbt
+emit moonbit/builtin/overrides/core_env_env_csharp.mbt
+emit moonbit/builtin/overrides/core_iterable.mbt
+emit moonbit/builtin/overrides/core_stringview_csharp.mbt
+emit moonbit/builtin/overrides/core_bytesview_csharp.mbt
+emit moonbit/builtin/overrides/core_stringbuilder_csharp.mbt
