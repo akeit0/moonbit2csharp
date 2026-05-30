@@ -1,0 +1,3 @@
+[submodule "moonbitlang/core"]
+	path = moonbitlang/core
+	url = https://github.com/moonbitlang/core
