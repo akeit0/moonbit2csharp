@@ -937,6 +937,13 @@ public static class MoonBitSourceTranspiler
             "builtin",
             "pkg:moonbitlang/core/builtin",
             "moonbitlang/core/builtin",
+            Path.Combine(root, "moonbit", "builtin", "overrides", "core_intrinsics_csharp.mbt")
+        );
+        AddDeclarationSource(
+            result,
+            "builtin",
+            "pkg:moonbitlang/core/builtin",
+            "moonbitlang/core/builtin",
             Path.Combine(root, "moonbit", "src", "vnext_core_csharp", "core_numeric_ops.mbt")
         );
         AddDeclarationSource(
