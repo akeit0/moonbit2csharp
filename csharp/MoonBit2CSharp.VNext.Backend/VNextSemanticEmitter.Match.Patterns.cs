@@ -552,6 +552,7 @@ public sealed partial class VNextSemanticEmitter
             if (
                 kind
                 is "IntLiteral"
+                    or "CharLiteral"
                     or "StringLiteral"
                     or "BoolLiteral"
                     or "Range"

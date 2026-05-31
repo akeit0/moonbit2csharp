@@ -16,16 +16,7 @@ public sealed partial class VNextSemanticEmitter
         var arms = expr.GetProperty("arms").EnumerateArray().ToArray();
         RejectArrayRestBindingsThatNeedExpressionMaterialization(arms);
         if (!CanEmitSwitchExpression(targetType, arms))
-        {
-            if (CanEmitPayloadEnumTagSwitch(targetType, arms))
-                throw new NotSupportedException(
-                    "vnext payload enum Match requires statement lowering"
-                );
-
-            throw new NotSupportedException(
-                "vnext Match currently supports enum-case and wildcard arms"
-            );
-        }
+            return EmitMatchImmediatelyInvokedFunction(expr);
 
         return ParseExpression(
             target
@@ -40,6 +31,25 @@ public sealed partial class VNextSemanticEmitter
                     )
                 )
                 + " }"
+        );
+    }
+
+    private ExpressionSyntax EmitMatchImmediatelyInvokedFunction(JsonElement expr)
+    {
+        var returnType = EmitType(expr.GetProperty("type")).NormalizeWhitespace().ToFullString();
+        var statements = new List<StatementSyntax>();
+        EmitMatchAsReturn(expr, statements);
+        return ParseExpression(
+            "new System.Func<"
+                + returnType
+                + ">(() => { "
+                + string.Join(
+                    " ",
+                    statements.Select(statement =>
+                        statement.NormalizeWhitespace().ToFullString()
+                    )
+                )
+                + " })()"
         );
     }
 
