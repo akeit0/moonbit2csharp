@@ -3833,65 +3833,65 @@ public sealed partial class VNextSemanticEmitterTests
 
     private static string BytesPrintlnSupportCode() =>
         """
-        namespace Generated.MoonBit.Runtime
-        {
-            public readonly record struct Unit
+            namespace Generated.MoonBit.Runtime
             {
-                public static readonly Unit Value = new();
+                public readonly record struct Unit
+                {
+                    public static readonly Unit Value = new();
+                }
+
+                public readonly record struct MoonBitUnit
+                {
+                    public static readonly MoonBitUnit Value = new();
+                }
+
+                public readonly record struct BytesView(byte[] Data, int Start, int Length);
+
+                public interface IShowImpl<T, TImpl>
+                    where TImpl : IShowImpl<T, TImpl>
+                {
+                    static abstract string to_string(T self);
+                }
+
+                public static class Intrinsics
+                {
+                    public static Unit PrintlnString(string value) => Unit.Value;
+                }
+
+                public static class ConsoleUtility
+                {
+                    public static Unit println<T, TShow>(T value)
+                        where TShow : IShowImpl<T, TShow> => Unit.Value;
+                }
             }
 
-            public readonly record struct MoonBitUnit
+            namespace Generated.MoonBit.Packages.moonbitlang.core.builtin
             {
-                public static readonly MoonBitUnit Value = new();
+                using Generated.MoonBit.Runtime;
+
+                public interface IShowImpl<T, TImpl>
+                    where TImpl : IShowImpl<T, TImpl>
+                {
+                    static abstract string to_string(T self);
+                }
+
+                public static class ShowTrait
+                {
+                    public static string to_string<T, TImpl>(T self)
+                        where TImpl : IShowImpl<T, TImpl> => TImpl.to_string(self);
+                }
+
+                public sealed class BytesShowImpl : IShowImpl<byte[], BytesShowImpl>
+                {
+                    public static string to_string(byte[] self) => "";
+                }
+
+                public sealed class BytesViewShowImpl : IShowImpl<BytesView, BytesViewShowImpl>
+                {
+                    public static string to_string(BytesView self) => "";
+                }
             }
-
-            public readonly record struct BytesView(byte[] Data, int Start, int Length);
-
-            public interface IShowImpl<T, TImpl>
-                where TImpl : IShowImpl<T, TImpl>
-            {
-                static abstract string to_string(T self);
-            }
-
-            public static class Intrinsics
-            {
-                public static Unit PrintlnString(string value) => Unit.Value;
-            }
-
-            public static class ConsoleUtility
-            {
-                public static Unit println<T, TShow>(T value)
-                    where TShow : IShowImpl<T, TShow> => Unit.Value;
-            }
-        }
-
-        namespace Generated.MoonBit.Packages.moonbitlang.core.builtin
-        {
-            using Generated.MoonBit.Runtime;
-
-            public interface IShowImpl<T, TImpl>
-                where TImpl : IShowImpl<T, TImpl>
-            {
-                static abstract string to_string(T self);
-            }
-
-            public static class ShowTrait
-            {
-                public static string to_string<T, TImpl>(T self)
-                    where TImpl : IShowImpl<T, TImpl> => TImpl.to_string(self);
-            }
-
-            public sealed class BytesShowImpl : IShowImpl<byte[], BytesShowImpl>
-            {
-                public static string to_string(byte[] self) => "";
-            }
-
-            public sealed class BytesViewShowImpl : IShowImpl<BytesView, BytesViewShowImpl>
-            {
-                public static string to_string(BytesView self) => "";
-            }
-        }
-        """;
+            """;
 
     [Fact]
     public void IgnoreIntrinsicEvaluatesArgumentAndYieldsUnit()

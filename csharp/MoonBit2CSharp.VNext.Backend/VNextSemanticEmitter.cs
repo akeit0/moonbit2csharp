@@ -1041,7 +1041,8 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
         var declaration = StructDeclaration(name)
             .AddModifiers(modifiers)
             .AddMembers(
-                fields.Select(EmitStructProperty)
+                fields
+                    .Select(EmitStructProperty)
                     .Cast<MemberDeclarationSyntax>()
                     .Append(EmitConstructor(name, fields))
                     .ToArray()
@@ -5078,10 +5079,7 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
 
     private IEnumerable<string> DerivedTraitTypeIdsFromType(JsonElement type, string traitName)
     {
-        if (
-            type.ValueKind != JsonValueKind.Object
-            || !type.TryGetProperty("kind", out var kind)
-        )
+        if (type.ValueKind != JsonValueKind.Object || !type.TryGetProperty("kind", out var kind))
             yield break;
 
         if (kind.GetString() == "Declared")
@@ -6007,8 +6005,9 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
         return type.GetProperty("kind").GetString() switch
         {
             "Apply" => CoreBuiltinConstructorNameOrNull(type.GetProperty("constructor")),
-            "Declared" when type.TryGetProperty("args", out _) =>
-                CoreBuiltinSymbolNameOrNull(type.GetProperty("symbol")),
+            "Declared" when type.TryGetProperty("args", out _) => CoreBuiltinSymbolNameOrNull(
+                type.GetProperty("symbol")
+            ),
             _ => null,
         };
     }
@@ -6421,9 +6420,7 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
             );
         }
 
-        return ParseExpression(
-            $"MoonBitError.FromObject({emittedText}, {Literal(displayName)})"
-        );
+        return ParseExpression($"MoonBitError.FromObject({emittedText}, {Literal(displayName)})");
     }
 
     private string MoonBitErrorDisplayName(JsonElement value)
@@ -6851,7 +6848,8 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
         }
     }
 
-    private sealed class RuntimeIdentifierQualifier(VNextEmitterOptions options) : CSharpSyntaxRewriter
+    private sealed class RuntimeIdentifierQualifier(VNextEmitterOptions options)
+        : CSharpSyntaxRewriter
     {
         private static readonly IReadOnlyDictionary<string, string> RuntimeIdentifierTargets =
             new Dictionary<string, string>(StringComparer.Ordinal)
@@ -6890,16 +6888,18 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
                 ["MoonBitEq"] = "BuiltinEq",
                 ["MoonBitError"] = "Error",
             };
-        private static readonly IReadOnlyDictionary<string, string> QualifiedRuntimeIdentifierTargets =
-            RuntimeIdentifierTargets
-                .Concat(
-                    new[]
-                    {
-                        new KeyValuePair<string, string>("IShowImpl", "IShowImpl"),
-                        new KeyValuePair<string, string>("Logger", "Logger"),
-                    }
-                )
-                .ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal);
+        private static readonly IReadOnlyDictionary<
+            string,
+            string
+        > QualifiedRuntimeIdentifierTargets = RuntimeIdentifierTargets
+            .Concat(
+                new[]
+                {
+                    new KeyValuePair<string, string>("IShowImpl", "IShowImpl"),
+                    new KeyValuePair<string, string>("Logger", "Logger"),
+                }
+            )
+            .ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal);
 
         public override SyntaxNode? VisitMemberAccessExpression(MemberAccessExpressionSyntax node)
         {
@@ -6907,16 +6907,14 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
                 node.Expression is IdentifierNameSyntax { Identifier.ValueText: "Array" }
                 && node.Name.Identifier.ValueText == "Empty"
             )
-                return node
-                    .WithExpression(ParseName("global::System.Array"))
+                return node.WithExpression(ParseName("global::System.Array"))
                     .WithName((SimpleNameSyntax)Visit(node.Name)!);
 
             if (
                 RuntimeIdentifierTargets.TryGetValue(
                     LastMemberAccessIdentifier(node.Expression),
                     out var target
-                )
-                && IsRuntimeMemberAccessNamespace(node.Expression)
+                ) && IsRuntimeMemberAccessNamespace(node.Expression)
             )
                 return node.WithExpression(RuntimeQualifiedName(target));
 
@@ -6957,9 +6955,7 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
 
             var visitedTypeArguments = TypeArgumentList(
                 SeparatedList(
-                    node.TypeArgumentList.Arguments.Select(argument =>
-                        (TypeSyntax)Visit(argument)!
-                    )
+                    node.TypeArgumentList.Arguments.Select(argument => (TypeSyntax)Visit(argument)!)
                 )
             );
             return QualifiedName(

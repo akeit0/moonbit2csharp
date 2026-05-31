@@ -232,8 +232,20 @@ public sealed class VNextUsedTraitImplEmitterTests
             """
         );
 
-        Assert.Contains("global::Generated.MoonBit.Packages.dep.model.Choice.Tag.Some", code, StringComparison.Ordinal);
-        Assert.Contains("global::Generated.MoonBit.Packages.dep.model.Choice.SomeVariant", code, StringComparison.Ordinal);
-        Assert.DoesNotContain("Generated.MoonBit.Packages.app.main.Choice", code, StringComparison.Ordinal);
+        Assert.Contains(
+            "global::Generated.MoonBit.Packages.dep.model.Choice.Tag.Some",
+            code,
+            StringComparison.Ordinal
+        );
+        Assert.Contains(
+            "global::Generated.MoonBit.Packages.dep.model.Choice.SomeVariant",
+            code,
+            StringComparison.Ordinal
+        );
+        Assert.DoesNotContain(
+            "Generated.MoonBit.Packages.app.main.Choice",
+            code,
+            StringComparison.Ordinal
+        );
     }
 }

@@ -261,10 +261,11 @@ public sealed partial class VNextSemanticEmitter
 
     private static bool CanEmitAsExpressionStatement(ExpressionSyntax expression)
     {
-        return expression is AssignmentExpressionSyntax
-            or InvocationExpressionSyntax
-            or ObjectCreationExpressionSyntax
-            or AwaitExpressionSyntax
+        return expression
+                is AssignmentExpressionSyntax
+                    or InvocationExpressionSyntax
+                    or ObjectCreationExpressionSyntax
+                    or AwaitExpressionSyntax
             || expression.IsKind(SyntaxKind.PostIncrementExpression)
             || expression.IsKind(SyntaxKind.PostDecrementExpression)
             || expression.IsKind(SyntaxKind.PreIncrementExpression)

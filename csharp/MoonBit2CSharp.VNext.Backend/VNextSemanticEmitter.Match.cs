@@ -19,10 +19,7 @@ public sealed partial class VNextSemanticEmitter
             return EmitMatchImmediatelyInvokedFunction(expr);
 
         return ParseExpression(
-            target
-                + " switch { "
-                + string.Join(", ", SwitchExpressionArms(targetType, arms))
-                + " }"
+            target + " switch { " + string.Join(", ", SwitchExpressionArms(targetType, arms)) + " }"
         );
     }
 
@@ -50,7 +47,8 @@ public sealed partial class VNextSemanticEmitter
             return false;
 
         return finalArm.GetProperty("pattern").GetProperty("kind").GetString()
-            is "Wildcard" or "Binding";
+            is "Wildcard"
+                or "Binding";
     }
 
     private ExpressionSyntax EmitMatchImmediatelyInvokedFunction(JsonElement expr)
@@ -64,9 +62,7 @@ public sealed partial class VNextSemanticEmitter
                 + ">(() => { "
                 + string.Join(
                     " ",
-                    statements.Select(statement =>
-                        statement.NormalizeWhitespace().ToFullString()
-                    )
+                    statements.Select(statement => statement.NormalizeWhitespace().ToFullString())
                 )
                 + " })()"
         );
@@ -223,7 +219,14 @@ public sealed partial class VNextSemanticEmitter
         statements.Add(ParseStatement($"var {matchName} = {target};"));
         if (!CanEmitSwitchExpression(targetType, arms))
         {
-            EmitConditionMatchAsAssignment(matchName, targetType, arms, destination, doneLabel, statements);
+            EmitConditionMatchAsAssignment(
+                matchName,
+                targetType,
+                arms,
+                destination,
+                doneLabel,
+                statements
+            );
             return;
         }
 
