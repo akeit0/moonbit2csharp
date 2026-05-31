@@ -170,192 +170,6 @@ public static class ShowSupport
         TShowImpl.Output(value, new Logger(logger, StringBuilderAsLogger.Instance));
         return logger.ToString();
     }
-
-    private static Unit WriteSpan<T, TShowImpl>(Logger logger, System.ReadOnlySpan<T> values, string prefix = "[", string suffix = "]", string sep = ", ", bool trailing = false)
-        where TShowImpl : IShowImpl<T, TShowImpl>
-    {
-        logger.WriteString(prefix);
-        for (var i = 0; i < values.Length; i++)
-        {
-            if (i > 0)
-            {
-                logger.WriteString(sep);
-            }
-
-            TShowImpl.Output(values[i], logger);
-            if (trailing)
-            {
-                logger.WriteString(sep);
-            }
-        }
-
-        logger.WriteString(suffix);
-        return Unit.Value;
-    }
-
-    public readonly struct Int16ShowImpl : IShowImpl<short, Int16ShowImpl>
-    {
-        public static string ToString(short value) => value.ToString(System.Globalization.CultureInfo.InvariantCulture);
-    }
-
-    public readonly struct IntShowImpl : IShowImpl<int, IntShowImpl>
-    {
-        public static string ToString(int value) => value.ToString(System.Globalization.CultureInfo.InvariantCulture);
-    }
-
-    public readonly struct Int64ShowImpl : IShowImpl<long, Int64ShowImpl>
-    {
-        public static string ToString(long value) => value.ToString(System.Globalization.CultureInfo.InvariantCulture);
-    }
-
-    public readonly struct ByteShowImpl : IShowImpl<byte, ByteShowImpl>
-    {
-        public static string ToString(byte value) => ShowByte(value);
-    }
-
-    public readonly struct UIntShowImpl : IShowImpl<uint, UIntShowImpl>
-    {
-        public static string ToString(uint value) => value.ToString(System.Globalization.CultureInfo.InvariantCulture);
-    }
-
-    public readonly struct UInt16ShowImpl : IShowImpl<ushort, UInt16ShowImpl>
-    {
-        public static string ToString(ushort value) => value.ToString(System.Globalization.CultureInfo.InvariantCulture);
-    }
-
-    public readonly struct UInt64ShowImpl : IShowImpl<ulong, UInt64ShowImpl>
-    {
-        public static string ToString(ulong value) => value.ToString(System.Globalization.CultureInfo.InvariantCulture);
-    }
-
-    public readonly struct FloatShowImpl : IShowImpl<float, FloatShowImpl>
-    {
-        public static string ToString(float value) => value.ToString(System.Globalization.CultureInfo.InvariantCulture);
-    }
-
-    public readonly struct DoubleShowImpl : IShowImpl<double, DoubleShowImpl>
-    {
-        public static string ToString(double value) => value.ToString(System.Globalization.CultureInfo.InvariantCulture);
-    }
-
-    public readonly struct BoolShowImpl : IShowImpl<bool, BoolShowImpl>
-    {
-        public static string ToString(bool value) => value ? "true" : "false";
-    }
-
-    public readonly struct StringShowImpl : IShowImpl<string, StringShowImpl>
-    {
-        public static Unit Output(string value, Logger logger) => logger.WriteString(QuoteString(value));
-        public static string ToString(string value) => value;
-
-    }
-
-    public readonly struct CharShowImpl : IShowImpl<int, CharShowImpl>
-    {
-        public static string ToString(int value) => char.ConvertFromUtf32(value);
-    }
-
-    public readonly struct ErrorShowImpl : IShowImpl<Error, ErrorShowImpl>
-    {
-        public static Unit Output(Error value, Logger logger)
-        {
-            return value.Output(logger);
-        }
-
-        public static string ToString(Error value) => value.ToString();
-    }
-
-    private static string ShowByte(byte value)
-    {
-        const string digits = "0123456789ABCDEF";
-        return "b'\\x" + digits[value >> 4] + digits[value & 0xF] + "'";
-    }
-
-    public readonly struct ShowObjectShowImpl : IShowImpl<ShowObject, ShowObjectShowImpl>
-    {
-        public static string ToString(ShowObject value) => value.Impl.ToString(value.Self);
-        public static Unit Output(ShowObject value, Logger logger) => value.Impl.Output(value.Self, logger);
-    }
-
-    public readonly struct StringViewShowImpl : IShowImpl<StringView, StringViewShowImpl>
-    {
-        public static Unit Output(StringView value, Logger logger) => logger.WriteString(QuoteString(value.ToString()));
-        public static string ToString(StringView value) => value.ToString();
-    }
-
-    public sealed class OptionShowImpl<T, TShowImpl> : IShowImpl<Option<T>, OptionShowImpl<T, TShowImpl>>
-        where TShowImpl : IShowImpl<T, TShowImpl>
-    {
-        public static Unit Output(Option<T> value, Logger logger)
-        {
-            if (value.IsNone)
-            {
-                logger.WriteString("None");
-                return Unit.Value;
-            }
-
-            logger.WriteString("Some(");
-            TShowImpl.Output(value.Value, logger);
-            logger.WriteString(")");
-            return Unit.Value;
-        }
-
-    }
-
-    public sealed class ResultShowImpl<TOk, TOkShowImpl, TError, TErrorShowImpl> : IShowImpl<Result<TOk, TError>, ResultShowImpl<TOk, TOkShowImpl, TError, TErrorShowImpl>>
-        where TOkShowImpl : IShowImpl<TOk, TOkShowImpl>
-        where TErrorShowImpl : IShowImpl<TError, TErrorShowImpl>
-    {
-        public static Unit Output(Result<TOk, TError> value, Logger logger)
-        {
-            if (value.IsOk)
-            {
-                logger.WriteString("Ok(");
-                TOkShowImpl.Output(value.Value!, logger);
-                logger.WriteString(")");
-                return Unit.Value;
-            }
-
-            logger.WriteString("Err(");
-            TErrorShowImpl.Output(value.Error!, logger);
-            logger.WriteString(")");
-            return Unit.Value;
-        }
-
-    }
-
-    public sealed class ArrayShowImpl<T, TShowImpl> : IShowImpl<Array<T>, ArrayShowImpl<T, TShowImpl>>
-        where TShowImpl : IShowImpl<T, TShowImpl>
-    {
-        public static Unit Output(Array<T> value, Logger logger) =>
-            WriteSpan<T, TShowImpl>(logger, value.AsSpan());
-
-    }
-
-    public sealed class FixedArrayShowImpl<T, TShowImpl> : IShowImpl<T[], FixedArrayShowImpl<T, TShowImpl>>
-        where TShowImpl : IShowImpl<T, TShowImpl>
-    {
-        public static Unit Output(T[] value, Logger logger) =>
-            WriteSpan<T, TShowImpl>(logger, value.AsSpan());
-
-    }
-
-    public sealed class ArrayViewShowImpl<T, TShowImpl> : IShowImpl<ArrayView<T>, ArrayViewShowImpl<T, TShowImpl>>
-        where TShowImpl : IShowImpl<T, TShowImpl>
-    {
-        public static Unit Output(ArrayView<T> value, Logger logger) =>
-            WriteSpan<T, TShowImpl>(logger, value.AsSpan());
-
-    }
-
-    public sealed class MutArrayViewShowImpl<T, TShowImpl> : IShowImpl<MutArrayView<T>, MutArrayViewShowImpl<T, TShowImpl>>
-        where TShowImpl : IShowImpl<T, TShowImpl>
-    {
-        public static Unit Output(MutArrayView<T> value, Logger logger) =>
-            WriteSpan<T, TShowImpl>(logger, value.AsSpan());
-
-    }
-
 }
 
 public static class ConsoleUtility
@@ -806,9 +620,6 @@ public sealed class Array<T>
     public static Array<T> operator +(Array<T> left, ArrayView<T> right) =>
         ArrayUtility.Concat(left, right);
 
-    public static Array<T> operator +(Array<T> left, Iter<T> right) =>
-        ArrayUtility.Concat(left, right);
-
 }
 
 public static class ArrayUtility
@@ -832,9 +643,6 @@ public static class ArrayUtility
         right.AsSpan().CopyTo(result.buf.AsSpan(left.Length));
         return result;
     }
-
-    public static Array<T> Concat<T>(Array<T> left, Iter<T> right) =>
-        Concat(left, right.ToArray());
 
     public static T At<T>(Array<T> array, int index)
     {
@@ -1056,8 +864,6 @@ public readonly struct ArrayView<T>
 
     public static implicit operator ArrayView<T>(Array<T> array) => new(array);
     public static implicit operator ArrayView<T>(T[] array) => new(array);
-    public static implicit operator ArrayView<T>(MutArrayView<T> view) =>
-        Make(view.Buffer, view.StartOffset, view.Length);
 
     public static ArrayView<T> Make(T[] buffer, int start, int length)
     {
@@ -1254,7 +1060,6 @@ public static class StringExtensions
     public static Option<StringView> BeforeMoonBit(this string value, string marker) => value.View().Before(marker);
     public static Option<StringView> AfterMoonBit(this string value, string marker) => value.View().After(marker);
     public static Option<(StringView, StringView)> SplitOnceMoonBit(this string value, string marker) => value.View().SplitOnce(marker);
-    public static Iter<StringView> SplitMoonBit(this string value, StringView separator) => value.View().Split(separator);
 }
 
 public readonly record struct StringView(string Data, int Start, int End)
@@ -1331,45 +1136,5 @@ public readonly record struct StringView(string Data, int Start, int End)
         return index < 0 ? Option<(StringView, StringView)>.None() : Option<(StringView, StringView)>.Some((new StringView(Data, Start, index), new StringView(Data, index + marker.Length, End)));
     }
 
-    public Iter<StringView> Split(StringView separator)
-    {
-        var source = this;
-        var remaining = source;
-        var index = 0;
-        if (separator.Length == 0)
-        {
-            return new Iter<StringView>(() =>
-            {
-                if (index >= source.Length)
-                {
-                    return Option<StringView>.None();
-                }
-
-                var item = source.Sub(index, index + 1);
-                index += 1;
-                return Option<StringView>.Some(item);
-            });
-        }
-
-        return new Iter<StringView>(() =>
-        {
-            if (remaining.Start > remaining.End)
-            {
-                return Option<StringView>.None();
-            }
-
-            var found = remaining.AsSpan().IndexOf(separator.AsSpan(), System.StringComparison.Ordinal);
-            if (found < 0)
-            {
-                var last = remaining;
-                remaining = new StringView(source.Data, source.End + 1, source.End);
-                return Option<StringView>.Some(last);
-            }
-
-            var item = remaining.Sub(0, found);
-            remaining = remaining.Sub(found + separator.Length);
-            return Option<StringView>.Some(item);
-        });
-    }
 }
 

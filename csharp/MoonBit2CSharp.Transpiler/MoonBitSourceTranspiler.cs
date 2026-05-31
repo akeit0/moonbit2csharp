@@ -307,7 +307,7 @@ public static class MoonBitSourceTranspiler
                 [new(mainFiles[0], irJson)],
                 0,
                 request.SingleFileName,
-                request.ReferenceRuntime,
+                false,
                 request.WriteProjectFile,
                 projectName,
                 moonModPath ?? "",
@@ -316,17 +316,15 @@ public static class MoonBitSourceTranspiler
             );
             CleanUnplannedGeneratedOutputs(outputDir, outputPaths.Paths);
             var singleFilePath = outputPaths.Paths[0];
-            WriteAllTextIfChanged(singleFilePath, VNextBackend.Emit(irJson, options));
+            var generatedCode = VNextBackend.Emit(irJson, options);
+            WriteAllTextIfChanged(singleFilePath, generatedCode);
             writtenFiles.Add(singleFilePath);
-            if (!request.ReferenceRuntime)
-            {
-                var supportPath = Path.Combine(outputDir, "moonbit_runtime.g.cs");
-                WriteAllTextIfChanged(
-                    supportPath,
-                    VNextRuntimeSupportSource(request.GeneratedNamespace)
-                );
-                writtenFiles.Add(supportPath);
-            }
+            var supportPath = Path.Combine(outputDir, "moonbit_runtime.g.cs");
+            WriteAllTextIfChanged(
+                supportPath,
+                VNextRuntimeSupportSource(request.GeneratedNamespace, [generatedCode])
+            );
+            writtenFiles.Add(supportPath);
 
             if (request.WriteProjectFile && !string.IsNullOrWhiteSpace(outputPaths.ProjectName))
             {
@@ -336,7 +334,7 @@ public static class MoonBitSourceTranspiler
                     CSharpProjectFiles.BuildProjectFile(
                         outputDir,
                         Path.GetFullPath(runtimeProjectPath),
-                        request.ReferenceRuntime,
+                        false,
                         request.Executable,
                         request.AdditionalProjectReferences,
                         formattingOptions: new(
@@ -354,12 +352,8 @@ public static class MoonBitSourceTranspiler
 
         var generatedFiles = VNextBackend.EmitFiles(irJson, options);
         var plannedPaths = new List<string>();
-        string? runtimePath = null;
-        if (!request.ReferenceRuntime)
-        {
-            runtimePath = Path.Combine(outputDir, "moonbit_runtime.g.cs");
-            plannedPaths.Add(runtimePath);
-        }
+        var runtimePath = Path.Combine(outputDir, "moonbit_runtime.g.cs");
+        plannedPaths.Add(runtimePath);
 
         plannedPaths.AddRange(
             generatedFiles.Select(file => Path.Combine(outputDir, file.RelativePath))
@@ -373,14 +367,14 @@ public static class MoonBitSourceTranspiler
 
         CleanUnplannedGeneratedOutputs(outputDir, plannedPaths);
 
-        if (runtimePath is not null)
-        {
-            WriteAllTextIfChanged(
-                runtimePath,
-                VNextRuntimeSupportSource(request.GeneratedNamespace)
-            );
-            writtenFiles.Add(runtimePath);
-        }
+        WriteAllTextIfChanged(
+            runtimePath,
+            VNextRuntimeSupportSource(
+                request.GeneratedNamespace,
+                generatedFiles.Select(file => file.Code)
+            )
+        );
+        writtenFiles.Add(runtimePath);
 
         foreach (var generatedFile in generatedFiles)
         {
@@ -397,7 +391,7 @@ public static class MoonBitSourceTranspiler
                 CSharpProjectFiles.BuildProjectFile(
                     outputDir,
                     Path.GetFullPath(runtimeProjectPath),
-                    request.ReferenceRuntime,
+                    false,
                     request.Executable,
                     request.AdditionalProjectReferences,
                     formattingOptions: new(
@@ -413,7 +407,10 @@ public static class MoonBitSourceTranspiler
         return new(writtenFiles);
     }
 
-    private static string VNextRuntimeSupportSource(string generatedNamespace)
+    private static string VNextRuntimeSupportSource(
+        string generatedNamespace,
+        IEnumerable<string> generatedCode
+    )
     {
         var template = File.ReadAllText(
             Path.Combine(
@@ -423,11 +420,7 @@ public static class MoonBitSourceTranspiler
                 "VNextRuntimeSupportTemplate.cs.txt"
             )
         );
-        return template.Replace(
-            "__MOONBIT_RUNTIME_NAMESPACE__",
-            generatedNamespace + ".Runtime",
-            StringComparison.Ordinal
-        );
+        return VNextRuntimeSupportRenderer.Render(template, generatedNamespace, generatedCode);
     }
 
     private static IReadOnlyList<string> ResolveVNextImportedPackageRoots(
