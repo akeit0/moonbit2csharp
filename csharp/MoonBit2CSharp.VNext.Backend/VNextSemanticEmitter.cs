@@ -583,7 +583,8 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
         var equality = EmitDerivedEquality(
                 TypeRefFromDefinition(typeDefinition),
                 ParseExpression("self"),
-                ParseExpression("arg0")
+                ParseExpression("arg0"),
+                new System.Collections.Generic.HashSet<string>()
             )
             .NormalizeWhitespace()
             .ToFullString();
@@ -4157,7 +4158,8 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
             var equality = EmitDerivedEquality(
                 expr.GetProperty("left").GetProperty("type"),
                 left,
-                right
+                right,
+                new System.Collections.Generic.HashSet<string>()
             );
             return (expr.GetProperty("op").GetString() ?? "") == "!="
                 ? ParenthesizedExpression(
@@ -4420,7 +4422,8 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
     private ExpressionSyntax EmitDerivedEquality(
         JsonElement type,
         ExpressionSyntax left,
-        ExpressionSyntax right
+        ExpressionSyntax right,
+        System.Collections.Generic.HashSet<string> activeTypes
     )
     {
         if (type.GetProperty("kind").GetString() == "Builtin")
@@ -4436,13 +4439,28 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
             )
         )
         {
+            var symbolId = type.GetProperty("symbol").GetProperty("id").GetString() ?? "";
+            if (!activeTypes.Add(symbolId))
+            {
+                var implName = TraitEvidenceTypeArgument(type, "Eq");
+                return ParseExpression(
+                    $"{implName}.equal({left.NormalizeWhitespace()}, {right.NormalizeWhitespace()})"
+                );
+            }
             var kind = definition.TryGetProperty("kind", out var kindProperty)
                 ? kindProperty.GetString()
                 : "Struct";
+            ExpressionSyntax equality;
             if (kind == "Struct")
-                return EmitDerivedStructEquality(definition, left, right);
-            if (kind == "Enum")
-                return EmitDerivedEnumEquality(definition, left, right);
+                equality = EmitDerivedStructEquality(definition, left, right, activeTypes);
+            else if (kind == "Enum")
+                equality = EmitDerivedEnumEquality(definition, left, right, activeTypes);
+            else
+                equality = ParseExpression(
+                    $"System.Collections.Generic.EqualityComparer<{EmitType(type).NormalizeWhitespace()}>.Default.Equals({left.NormalizeWhitespace()}, {right.NormalizeWhitespace()})"
+                );
+            activeTypes.Remove(symbolId);
+            return equality;
         }
 
         return ParseExpression(
@@ -4453,7 +4471,8 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
     private ExpressionSyntax EmitDerivedStructEquality(
         JsonElement definition,
         ExpressionSyntax left,
-        ExpressionSyntax right
+        ExpressionSyntax right,
+        System.Collections.Generic.HashSet<string> activeTypes
     )
     {
         var fields = definition.GetProperty("fields").EnumerateArray().ToArray();
@@ -4466,7 +4485,8 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
             return EmitDerivedEquality(
                     field.GetProperty("type"),
                     ParseExpression($"({left.NormalizeWhitespace()}).{member}"),
-                    ParseExpression($"({right.NormalizeWhitespace()}).{member}")
+                    ParseExpression($"({right.NormalizeWhitespace()}).{member}"),
+                    activeTypes
                 )
                 .NormalizeWhitespace()
                 .ToFullString();
@@ -4477,7 +4497,8 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
     private ExpressionSyntax EmitDerivedEnumEquality(
         JsonElement definition,
         ExpressionSyntax left,
-        ExpressionSyntax right
+        ExpressionSyntax right,
+        System.Collections.Generic.HashSet<string> activeTypes
     )
     {
         var typeName = TypeDefinitionName(definition.GetProperty("symbol"));
@@ -4506,7 +4527,8 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
                             ),
                             ParseExpression(
                                 $"(({variantType}){rightText}).Item{index.ToString(CultureInfo.InvariantCulture)}"
-                            )
+                            ),
+                            activeTypes
                         )
                         .NormalizeWhitespace()
                         .ToFullString()
