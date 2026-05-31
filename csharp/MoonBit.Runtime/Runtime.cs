@@ -908,8 +908,21 @@ public static class MoonBitArray
         return result;
     }
 
-    public static MoonBitArray<T> Concat<T>(MoonBitArray<T> left, MoonBitIter<T> right) =>
-        Concat(left, right.ToArray());
+    public static MoonBitArray<T> Concat<T>(MoonBitArray<T> left, MoonBitIter<T> right)
+    {
+        var items = new List<T>(left.Length);
+        items.AddRange(left.AsSpan().ToArray());
+        while (true)
+        {
+            var next = right.Next();
+            if (next.IsNone)
+                break;
+
+            items.Add(next.Value);
+        }
+
+        return FromArray(items.ToArray());
+    }
 
     public static T At<T>(MoonBitArray<T> array, int index)
     {

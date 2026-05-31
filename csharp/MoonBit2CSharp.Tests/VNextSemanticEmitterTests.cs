@@ -3784,6 +3784,120 @@ public sealed partial class VNextSemanticEmitterTests
         Assert.DoesNotContain("Demo.to_string2", code, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void EmitsBytesPrintlnWithGeneratedShowEvidence()
+    {
+        var bytesType = """{ "kind": "Builtin", "name": "Bytes" }""";
+        var bytesViewType = """{ "kind": "Builtin", "name": "BytesView" }""";
+        var unitType = """{ "kind": "Builtin", "name": "Unit" }""";
+        var bytesParam =
+            """{ "kind": "Name", "symbolId": "fn:Demo:show_bytes:param:bytes", "name": "bytes", "type": { "kind": "Builtin", "name": "Bytes" } }""";
+        var viewParam =
+            """{ "kind": "Name", "symbolId": "fn:Demo:show_bytes:param:view", "name": "view", "type": { "kind": "Builtin", "name": "BytesView" } }""";
+        var json = ModuleJson(
+            $$"""
+            {
+              "kind": "Function",
+              "symbolId": "fn:Demo:show_bytes",
+              "name": "show_bytes",
+              "params": [
+                { "symbolId": "fn:Demo:show_bytes:param:bytes", "name": "bytes", "type": {{bytesType}} },
+                { "symbolId": "fn:Demo:show_bytes:param:view", "name": "view", "type": {{bytesViewType}} }
+              ],
+              "returnType": {{unitType}},
+              "body": {
+                "kind": "Sequence",
+                "first": {
+                  "kind": "Call",
+                  "functionId": "fn:pkg:moonbitlang/core/builtin:moonbitlang/core/builtin:println",
+                  "args": [{{bytesParam}}],
+                  "typeArgs": [{{bytesType}}],
+                  "type": {{unitType}}
+                },
+                "body": {
+                  "kind": "Call",
+                  "functionId": "fn:pkg:moonbitlang/core/builtin:moonbitlang/core/builtin:println",
+                  "args": [{{viewParam}}],
+                  "typeArgs": [{{bytesViewType}}],
+                  "type": {{unitType}}
+                },
+                "type": {{unitType}}
+              }
+            }
+            """
+        );
+
+        var code = VNextBackend.Emit(json);
+
+        Assert.Contains("ShowTrait.to_string<byte[]", code, StringComparison.Ordinal);
+        Assert.Contains("BytesShowImpl", code, StringComparison.Ordinal);
+        Assert.Contains("BytesViewShowImpl", code, StringComparison.Ordinal);
+        Assert.DoesNotContain("ConsoleUtility.println", code, StringComparison.Ordinal);
+        Compile(BytesPrintlnSupportCode(), code);
+    }
+
+    private static string BytesPrintlnSupportCode() =>
+        """
+        namespace Generated.MoonBit.Runtime
+        {
+            public readonly record struct Unit
+            {
+                public static readonly Unit Value = new();
+            }
+
+            public readonly record struct MoonBitUnit
+            {
+                public static readonly MoonBitUnit Value = new();
+            }
+
+            public readonly record struct BytesView(byte[] Data, int Start, int Length);
+
+            public interface IShowImpl<T, TImpl>
+                where TImpl : IShowImpl<T, TImpl>
+            {
+                static abstract string to_string(T self);
+            }
+
+            public static class Intrinsics
+            {
+                public static Unit PrintlnString(string value) => Unit.Value;
+            }
+
+            public static class ConsoleUtility
+            {
+                public static Unit println<T, TShow>(T value)
+                    where TShow : IShowImpl<T, TShow> => Unit.Value;
+            }
+        }
+
+        namespace Generated.MoonBit.Packages.moonbitlang.core.builtin
+        {
+            using Generated.MoonBit.Runtime;
+
+            public interface IShowImpl<T, TImpl>
+                where TImpl : IShowImpl<T, TImpl>
+            {
+                static abstract string to_string(T self);
+            }
+
+            public static class ShowTrait
+            {
+                public static string to_string<T, TImpl>(T self)
+                    where TImpl : IShowImpl<T, TImpl> => TImpl.to_string(self);
+            }
+
+            public sealed class BytesShowImpl : IShowImpl<byte[], BytesShowImpl>
+            {
+                public static string to_string(byte[] self) => "";
+            }
+
+            public sealed class BytesViewShowImpl : IShowImpl<BytesView, BytesViewShowImpl>
+            {
+                public static string to_string(BytesView self) => "";
+            }
+        }
+        """;
+
     private static string ModuleJson(string functions)
     {
         return $$"""
@@ -3802,10 +3916,12 @@ public sealed partial class VNextSemanticEmitterTests
             """;
     }
 
-    private static Assembly Compile(string source)
+    private static Assembly Compile(params string[] sources)
     {
         var parseOptions = CSharpParseOptions.Default.WithLanguageVersion(LanguageVersion.Preview);
-        var syntaxTree = CSharpSyntaxTree.ParseText(source, parseOptions);
+        var syntaxTrees = sources
+            .Select(source => CSharpSyntaxTree.ParseText(source, parseOptions))
+            .ToArray();
         var trustedPlatformAssemblies = (
             (string?)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES")
         )!
@@ -3820,7 +3936,7 @@ public sealed partial class VNextSemanticEmitterTests
             .DistinctBy(reference => reference.Display);
         var compilation = CSharpCompilation.Create(
             "GeneratedMoonBitVNextTests",
-            [syntaxTree],
+            syntaxTrees,
             references,
             new(OutputKind.DynamicallyLinkedLibrary)
         );

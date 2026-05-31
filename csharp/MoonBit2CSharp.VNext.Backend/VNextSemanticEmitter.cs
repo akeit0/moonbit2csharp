@@ -4632,6 +4632,9 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
         if (IsDerivedDefaultFunctionId(functionId))
             return EmitDerivedDefaultValue(expr.GetProperty("type"));
 
+        if (TryEmitBuiltinPrintln(expr, functionId, emittedArgs, out var printlnExpr))
+            return printlnExpr;
+
         return InvocationExpression(
             FunctionMemberAccess(
                 functionId,
@@ -4641,6 +4644,34 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
             ),
             ArgumentList(SeparatedList(args))
         );
+    }
+
+    private bool TryEmitBuiltinPrintln(
+        JsonElement expr,
+        string functionId,
+        IReadOnlyList<ExpressionSyntax> emittedArgs,
+        out ExpressionSyntax result
+    )
+    {
+        result = default!;
+        if (
+            functionId != "fn:pkg:moonbitlang/core/builtin:moonbitlang/core/builtin:println"
+            || emittedArgs.Count != 1
+            || !expr.TryGetProperty("typeArgs", out var typeArgsElement)
+        )
+            return false;
+
+        var typeArgs = typeArgsElement.EnumerateArray().ToArray();
+        if (typeArgs.Length != 1)
+            return false;
+
+        var valueType = EmitType(typeArgs[0]).NormalizeWhitespace().ToFullString();
+        var showType = TraitEvidenceTypeArgument(typeArgs[0], "Show");
+        var value = emittedArgs[0].NormalizeWhitespace().ToFullString();
+        result = ParseExpression(
+            $"MoonBitIntrinsics.PrintlnString({CoreBuiltinTypeName("ShowTrait")}.to_string<{valueType}, {showType}>({value}))"
+        );
+        return true;
     }
 
     private static bool IsDerivedDefaultFunctionId(string functionId)
@@ -6261,16 +6292,6 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
         IReadOnlyList<JsonElement> typeArgs
     )
     {
-        if (
-            functionId == "fn:pkg:moonbitlang/core/builtin:moonbitlang/core/builtin:println"
-            && typeArgs.Count == 1
-        )
-        {
-            var valueType = EmitType(typeArgs[0]).NormalizeWhitespace().ToFullString();
-            var showType = TraitEvidenceTypeArgument(typeArgs[0], "Show");
-            return ParseExpression($"MoonBitConsole.println<{valueType}, {showType}>");
-        }
-
         var methodName = FunctionMethodName(functionId);
         var emittedTypeArgs = typeArgs
             .Select(arg => EmitType(arg).NormalizeWhitespace().ToFullString())
