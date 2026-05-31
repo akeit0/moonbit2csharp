@@ -3552,8 +3552,8 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
             """
             public sealed class IntEqImpl : IEqImpl<int, IntEqImpl>
             {
-                public static bool Equal(int self, int arg0) => self == arg0;
-                public static bool NotEqual(int self, int arg0) => self != arg0;
+                public static bool equal(int self, int arg0) => self == arg0;
+                public static bool not_equal(int self, int arg0) => self != arg0;
             }
             """
         )!;
@@ -3561,8 +3561,8 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
             """
             public sealed class StringEqImpl : IEqImpl<string, StringEqImpl>
             {
-                public static bool Equal(string self, string arg0) => self == arg0;
-                public static bool NotEqual(string self, string arg0) => self != arg0;
+                public static bool equal(string self, string arg0) => self == arg0;
+                public static bool not_equal(string self, string arg0) => self != arg0;
             }
             """
         )!;
@@ -3570,8 +3570,8 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
             """
             public sealed class CharEqImpl : IEqImpl<int, CharEqImpl>
             {
-                public static bool Equal(int self, int arg0) => self == arg0;
-                public static bool NotEqual(int self, int arg0) => self != arg0;
+                public static bool equal(int self, int arg0) => self == arg0;
+                public static bool not_equal(int self, int arg0) => self != arg0;
             }
             """
         )!;
