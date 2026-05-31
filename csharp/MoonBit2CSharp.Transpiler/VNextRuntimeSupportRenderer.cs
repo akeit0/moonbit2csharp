@@ -56,7 +56,7 @@ internal static class VNextRuntimeSupportRenderer
         ["ShowImplObject"] = ["IShowImpl", "Unit", "Logger"],
         ["ShowSupport"] = ["Unit", "Logger", "StringBuilder", "StringBuilderAsLogger", "IShowImpl"],
         ["ConsoleUtility"] = ["Unit", "IShowImpl"],
-        ["OptionEq"] = ["Option"],
+        ["OptionEq"] = ["Option", "Eq"],
         ["OptionEqImpl"] = ["Option", "OptionEq", "IEqImpl"],
         ["Eq"] = ["IEqImpl"],
         ["EqImplObject"] = ["IEqImpl"],
