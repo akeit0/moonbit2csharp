@@ -10,11 +10,12 @@ pub(all) struct TypeSubstitution {
 ///|
 pub(all) struct TypingContext {
   substitutions : Array[TypeSubstitution]
+  substitution_map : Map[String, TypeRef]
 } derive(Eq, Debug)
 
 ///|
 pub fn typing_context() -> TypingContext {
-  { substitutions: [] }
+  { substitutions: [], substitution_map: Map([]) }
 }
 
 ///|
@@ -375,6 +376,7 @@ fn bind_inference_variable(
         return false
       }
       context.substitutions.push({ variable, type_ })
+      context.substitution_map[variable] = type_
       true
     }
   }
@@ -427,10 +429,5 @@ fn occurs_in_effect(variable : String, effect : EffectRef) -> Bool {
 
 ///|
 fn find_substitution(context : TypingContext, variable : String) -> TypeRef? {
-  for substitution in context.substitutions {
-    if substitution.variable == variable {
-      return Some(substitution.type_)
-    }
-  }
-  None
+  context.substitution_map.get(variable)
 }

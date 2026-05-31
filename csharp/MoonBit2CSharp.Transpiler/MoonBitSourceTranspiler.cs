@@ -545,14 +545,7 @@ public static class MoonBitSourceTranspiler
         }
 
         if (TranspilerProfiler.Enabled && !string.IsNullOrWhiteSpace(stderrTask.Result))
-            foreach (
-                var line in stderrTask.Result.Split(
-                    ['\r', '\n'],
-                    StringSplitOptions.RemoveEmptyEntries
-                )
-            )
-                if (line.StartsWith("vnext-profile:", StringComparison.Ordinal))
-                    TranspilerProfiler.Log("vnext moon " + line);
+            LogVNextMoonProfile(stderrTask.Result);
 
         if (
             Environment.GetEnvironmentVariable("MOONBIT2CSHARP_VNEXT_IR_DUMP") is
@@ -561,6 +554,73 @@ public static class MoonBitSourceTranspiler
             File.WriteAllText(Path.GetFullPath(dumpPath), stdoutTask.Result);
 
         return stdoutTask.Result;
+    }
+
+    private static void LogVNextMoonProfile(string stderr)
+    {
+        foreach (var line in stderr.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries))
+        {
+            if (!line.StartsWith("vnext-profile:", StringComparison.Ordinal))
+                continue;
+
+            var json = line["vnext-profile:".Length..].Trim();
+            try
+            {
+                using var document = JsonDocument.Parse(json);
+                var events = document
+                    .RootElement.GetProperty("events")
+                    .EnumerateArray()
+                    .Select(item =>
+                    {
+                        var name = item.GetProperty("name").GetString() ?? "";
+                        var elapsedMs = item.GetProperty("elapsedMs").GetUInt64();
+                        var count = item.TryGetProperty("count", out var countElement)
+                            ? countElement.GetInt32()
+                            : -1;
+                        return (Name: name, ElapsedMs: elapsedMs, Count: count);
+                    })
+                    .ToArray();
+                var total = events.FirstOrDefault(item => item.Name == "total");
+                if (total.Name is not null)
+                    TranspilerProfiler.Log(
+                        "vnext moon total: "
+                            + (total.ElapsedMs / 1000.0).ToString(
+                                "n3",
+                                CultureInfo.InvariantCulture
+                            )
+                            + "s"
+                    );
+
+                foreach (
+                    var group in events
+                        .GroupBy(item => ProfileGroupName(item.Name))
+                        .OrderByDescending(group => group.Sum(item => (long)item.ElapsedMs))
+                        .Take(8)
+                )
+                {
+                    var elapsedMs = group.Sum(item => (long)item.ElapsedMs);
+                    TranspilerProfiler.Log(
+                        "vnext moon phase "
+                            + group.Key
+                            + ": "
+                            + (elapsedMs / 1000.0).ToString("n3", CultureInfo.InvariantCulture)
+                            + "s across "
+                            + group.Count().ToString(CultureInfo.InvariantCulture)
+                            + " event(s)"
+                    );
+                }
+            }
+            catch (Exception ex) when (ex is JsonException or InvalidOperationException)
+            {
+                TranspilerProfiler.Log("vnext moon " + line);
+            }
+        }
+    }
+
+    private static string ProfileGroupName(string eventName)
+    {
+        var colon = eventName.IndexOf(':', StringComparison.Ordinal);
+        return colon < 0 ? eventName : eventName[..colon];
     }
 
     private static IReadOnlyList<string> SortVNextImportedRootsByDependencies(

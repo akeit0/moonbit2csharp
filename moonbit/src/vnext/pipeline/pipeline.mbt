@@ -365,20 +365,22 @@ fn complete_reachable_declaration_source_functions(
     reachable.items.length(),
   )
   let processed_reachable : Set[String] = Set([])
+  let emitted_function_ids = emitted_function_id_set(emitted_functions)
+  let emitted_global_ids = emitted_global_id_set(emitted_globals)
   let mut changed = true
   while changed {
     changed = false
     for session in sessions {
       let select_start = profile_start(profiler)
       let selected = selected_reachable_function_ids(
-        reachable.items,
-        emitted_functions,
+        reachable,
+        emitted_function_ids,
         processed_reachable,
         session.binding_session,
       )
       let selected_globals = selected_reachable_global_ids(
-        reachable_globals.items,
-        emitted_globals,
+        reachable_globals,
+        emitted_global_ids,
         session.binding_session,
       )
       profile_event_with_count(
@@ -412,7 +414,8 @@ fn complete_reachable_declaration_source_functions(
                 diagnostics.push(diagnostic)
               }
               for function in bound.functions {
-                if !has_function(emitted_functions, function.symbol_id) {
+                if !emitted_function_ids.contains(function.symbol_id) {
+                  emitted_function_ids.add(function.symbol_id)
                   emitted_functions.push(function)
                   collect_function_called_function_ids(
                     function, reachability_index, reachable,
@@ -452,7 +455,8 @@ fn complete_reachable_declaration_source_functions(
             diagnostics.push(diagnostic)
           }
           for global in bound.globals {
-            if !has_global(emitted_globals, global.symbol_id) {
+            if !emitted_global_ids.contains(global.symbol_id) {
+              emitted_global_ids.add(global.symbol_id)
               emitted_globals.push(global)
               collect_expr_called_function_ids(
                 global.value,
@@ -501,22 +505,24 @@ priv struct ReachableGlobalRef {
 priv struct ReachableFunctionWorklist {
   items : Array[ReachableFunctionRef]
   seen : Set[String]
+  by_package : Map[String, Array[String]]
 }
 
 ///|
 priv struct ReachableGlobalWorklist {
   items : Array[ReachableGlobalRef]
   seen : Set[String]
+  by_package : Map[String, Array[String]]
 }
 
 ///|
 fn reachable_function_worklist() -> ReachableFunctionWorklist {
-  { items: [], seen: Set([]) }
+  { items: [], seen: Set([]), by_package: Map([]) }
 }
 
 ///|
 fn reachable_global_worklist() -> ReachableGlobalWorklist {
-  { items: [], seen: Set([]) }
+  { items: [], seen: Set([]), by_package: Map([]) }
 }
 
 ///|
@@ -834,20 +840,63 @@ fn implementation_sources(
 
 ///|
 fn selected_reachable_function_ids(
-  reachable : Array[ReachableFunctionRef],
-  emitted_functions : Array[@ir.BoundFunction],
+  reachable : ReachableFunctionWorklist,
+  emitted_function_ids : Set[String],
   processed_reachable : Set[String],
   session : @sema.PackageBindingSession,
 ) -> Array[String] {
   let selected : Array[String] = []
-  for function_ref in reachable {
-    if function_ref.package_id == session.package_id &&
-      !has_function(emitted_functions, function_ref.function_id) &&
-      !processed_reachable.contains(function_ref.function_id) {
-      push_string_unique(selected, function_ref.function_id)
-    }
+  match reachable.by_package.get(session.package_id) {
+    Some(function_ids) =>
+      for function_id in function_ids {
+        if !emitted_function_ids.contains(function_id) &&
+          !processed_reachable.contains(function_id) {
+          selected.push(function_id)
+        }
+      }
+    None => ()
   }
   selected
+}
+
+///|
+fn emitted_function_id_set(functions : Array[@ir.BoundFunction]) -> Set[String] {
+  let result : Set[String] = Set([])
+  for function in functions {
+    result.add(function.symbol_id)
+  }
+  result
+}
+
+///|
+fn emitted_global_id_set(globals : Array[@ir.BoundGlobal]) -> Set[String] {
+  let result : Set[String] = Set([])
+  for global in globals {
+    result.add(global.symbol_id)
+  }
+  result
+}
+
+///|
+fn push_reachable_function_by_package(
+  result : ReachableFunctionWorklist,
+  function_ref : ReachableFunctionRef,
+) -> Unit {
+  match result.by_package.get(function_ref.package_id) {
+    Some(function_ids) => function_ids.push(function_ref.function_id)
+    None => result.by_package[function_ref.package_id] = [function_ref.function_id]
+  }
+}
+
+///|
+fn push_reachable_global_by_package(
+  result : ReachableGlobalWorklist,
+  global_ref : ReachableGlobalRef,
+) -> Unit {
+  match result.by_package.get(global_ref.package_id) {
+    Some(global_ids) => global_ids.push(global_ref.symbol_id)
+    None => result.by_package[global_ref.package_id] = [global_ref.symbol_id]
+  }
 }
 
 ///|
@@ -874,6 +923,7 @@ fn push_reachable_function_unique(
     Some(function_ref) => {
       result.seen.add(function_id)
       result.items.push(function_ref)
+      push_reachable_function_by_package(result, function_ref)
     }
     None => ()
   }
@@ -903,6 +953,7 @@ fn push_reachable_global_unique(
     Some(global_ref) => {
       result.seen.add(symbol_id)
       result.items.push(global_ref)
+      push_reachable_global_by_package(result, global_ref)
     }
     None => ()
   }
@@ -910,31 +961,23 @@ fn push_reachable_global_unique(
 
 ///|
 fn selected_reachable_global_ids(
-  reachable : Array[ReachableGlobalRef],
-  emitted_globals : Array[@ir.BoundGlobal],
+  reachable : ReachableGlobalWorklist,
+  emitted_global_ids : Set[String],
   session : @sema.PackageBindingSession,
 ) -> Array[String] {
   let selected : Array[String] = []
-  for global_ref in reachable {
-    if global_ref.package_id == session.package_id &&
-      !has_global(emitted_globals, global_ref.symbol_id) {
-      push_string_unique(selected, global_ref.symbol_id)
-    }
+  match reachable.by_package.get(session.package_id) {
+    Some(global_ids) =>
+      for global_id in global_ids {
+        if !emitted_global_ids.contains(global_id) {
+          selected.push(global_id)
+        }
+      }
+    None => ()
   }
   selected
 }
 
-///|
-fn has_global(globals : Array[@ir.BoundGlobal], symbol_id : String) -> Bool {
-  for global in globals {
-    if global.symbol_id == symbol_id {
-      return true
-    }
-  }
-  false
-}
-
-///|
 fn collect_module_called_function_ids(
   module_ : @ir.BoundModule,
   index : ReachabilityIndex,
@@ -1829,16 +1872,6 @@ fn push_function_unique(
     }
   }
   items.push(item)
-}
-
-///|
-fn has_function(items : Array[@ir.BoundFunction], symbol_id : String) -> Bool {
-  for existing in items {
-    if existing.symbol_id == symbol_id {
-      return true
-    }
-  }
-  false
 }
 
 ///|
