@@ -37,9 +37,14 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
     private readonly Dictionary<string, JsonElement> typeDefinitions = new(StringComparer.Ordinal);
     private readonly Dictionary<string, string> typeNames = new(StringComparer.Ordinal);
     private readonly HashSet<string> usedDerivedTraitImplKeys = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, (string FieldName, byte[] Bytes)> bytesLiteralCaches = new(
+        StringComparer.Ordinal
+    );
+
     private string currentFunctionErrorType = "object";
     private bool currentFunctionRaises;
     private JsonElement currentFunctionReturnType;
+    private string currentMemberContainerName = "";
     private string currentPackageName = "";
     private string? currentTraitDefaultInlineTraitName;
     private bool emitCoreBuiltinHasherFallback = true;
@@ -99,6 +104,7 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
         traitSymbolIdsByName.Clear();
         functionNames.Clear();
         functionContainers.Clear();
+        bytesLiteralCaches.Clear();
         staticTraitImplAdapterTypes.Clear();
         functionEffects.Clear();
         functionsBySymbolId.Clear();
@@ -238,19 +244,24 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
                         classDeclaration,
                         classFunctions
                     );
-                    return classDeclaration.AddMembers(
-                        emittedGlobals
-                            .Where(global =>
-                                GlobalContainerName(global, moduleName) == className
-                                && PackageNameFromSymbolId(
-                                    global.GetProperty("symbolId").GetString() ?? ""
-                                ) == packageName
-                            )
-                            .Select(EmitGlobal)
-                            .Concat(classFunctions.Select(EmitFunction))
-                            .Concat(EmitStaticTraitImplDefaultMembers(classFunctions))
-                            .ToArray()
-                    );
+                    var classMembers = new List<MemberDeclarationSyntax>();
+                    var previousMemberContainerName = currentMemberContainerName;
+                    currentMemberContainerName = className;
+                    foreach (
+                        var global in emittedGlobals.Where(global =>
+                            GlobalContainerName(global, moduleName) == className
+                            && PackageNameFromSymbolId(
+                                global.GetProperty("symbolId").GetString() ?? ""
+                            ) == packageName
+                        )
+                    )
+                        classMembers.Add(EmitGlobal(global));
+                    foreach (var function in classFunctions)
+                        classMembers.Add(EmitFunction(function));
+                    classMembers.AddRange(EmitStaticTraitImplDefaultMembers(classFunctions));
+                    classMembers.AddRange(EmitBytesLiteralCacheMembers(packageName, className));
+                    currentMemberContainerName = previousMemberContainerName;
+                    return classDeclaration.AddMembers(classMembers.ToArray());
                 })
                 .ToArray();
             var members = usedTraits
@@ -1461,6 +1472,7 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
                 SyntaxKind.StringLiteralExpression,
                 Literal(expr.GetProperty("value").GetString() ?? "")
             ),
+            "BytesLiteral" => EmitBytesLiteral(expr.GetProperty("value").GetString() ?? ""),
             "BoolLiteral" => LiteralExpression(
                 expr.GetProperty("value").GetBoolean()
                     ? SyntaxKind.TrueLiteralExpression
@@ -3464,9 +3476,9 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
                 {
                     public object Self { get; }
                     public string DisplayName { get; }
-                    public IShowImpl? Impl { get; }
+                    public global::MoonBit.Runtime.IShowImpl? Impl { get; }
 
-                    private Error(object self, string displayName, IShowImpl? impl)
+                    private Error(object self, string displayName, global::MoonBit.Runtime.IShowImpl? impl)
                     {
                         Self = self;
                         DisplayName = displayName;
@@ -3476,11 +3488,11 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
                     public static Error FromObject(object value, string displayName) =>
                         new(value, displayName, null);
 
-                    public static Error FromObject(object value, string displayName, IShowImpl impl) =>
+                    public static Error FromObject(object value, string displayName, global::MoonBit.Runtime.IShowImpl impl) =>
                         new(value, displayName, impl);
 
                     public override string ToString() =>
-                        Impl is null ? DisplayName : Impl.to_string(Self);
+                        Impl is null ? DisplayName : Impl.ToString(Self);
                 }
                 """
             )!;
@@ -3540,8 +3552,8 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
             """
             public sealed class IntEqImpl : IEqImpl<int, IntEqImpl>
             {
-                public static bool equal(int self, int arg0) => self == arg0;
-                public static bool not_equal(int self, int arg0) => self != arg0;
+                public static bool Equal(int self, int arg0) => self == arg0;
+                public static bool NotEqual(int self, int arg0) => self != arg0;
             }
             """
         )!;
@@ -3549,8 +3561,8 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
             """
             public sealed class StringEqImpl : IEqImpl<string, StringEqImpl>
             {
-                public static bool equal(string self, string arg0) => self == arg0;
-                public static bool not_equal(string self, string arg0) => self != arg0;
+                public static bool Equal(string self, string arg0) => self == arg0;
+                public static bool NotEqual(string self, string arg0) => self != arg0;
             }
             """
         )!;
@@ -3558,8 +3570,8 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
             """
             public sealed class CharEqImpl : IEqImpl<int, CharEqImpl>
             {
-                public static bool equal(int self, int arg0) => self == arg0;
-                public static bool not_equal(int self, int arg0) => self != arg0;
+                public static bool Equal(int self, int arg0) => self == arg0;
+                public static bool NotEqual(int self, int arg0) => self != arg0;
             }
             """
         )!;
@@ -3603,37 +3615,66 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
             )!;
             yield return ParseMemberDeclaration(
                 """
-                public sealed class StringShowImpl : IShowImpl<string, StringShowImpl>
+                public sealed class StringShowImpl : global::MoonBit.Runtime.IShowImpl<string, StringShowImpl>
                 {
-                    public static MoonBitUnit output(string self, LoggerObject arg0) => arg0.Impl.write_string(arg0.Self, self);
-                    public static string to_string(string self) => self;
+                    public static MoonBitUnit Output(string self, global::MoonBit.Runtime.Logger arg0) => arg0.WriteString(self);
+                    public static string ToString(string self) => self;
                 }
                 """
             )!;
             yield return ParseMemberDeclaration(
                 """
-                public sealed class StringViewShowImpl : IShowImpl<MoonBitStringView, StringViewShowImpl>
+                public sealed class StringViewShowImpl : global::MoonBit.Runtime.IShowImpl<MoonBitStringView, StringViewShowImpl>
                 {
-                    public static MoonBitUnit output(MoonBitStringView self, LoggerObject arg0) => arg0.Impl.write_string(arg0.Self, self.ToString());
-                    public static string to_string(MoonBitStringView self) => self.ToString();
+                    public static MoonBitUnit Output(MoonBitStringView self, global::MoonBit.Runtime.Logger arg0) => arg0.WriteString(self.ToString());
+                    public static string ToString(MoonBitStringView self) => self.ToString();
                 }
                 """
             )!;
             yield return ParseMemberDeclaration(
                 """
-                public sealed class CharShowImpl : IShowImpl<int, CharShowImpl>
+                public sealed class CharShowImpl : global::MoonBit.Runtime.IShowImpl<int, CharShowImpl>
                 {
-                    public static MoonBitUnit output(int self, LoggerObject arg0) => arg0.Impl.write_char(arg0.Self, self);
-                    public static string to_string(int self) => char.ConvertFromUtf32(self);
+                    public static MoonBitUnit Output(int self, global::MoonBit.Runtime.Logger arg0) => arg0.WriteChar(self);
+                    public static string ToString(int self) => char.ConvertFromUtf32(self);
                 }
                 """
             )!;
             yield return ParseMemberDeclaration(
                 """
-                public sealed class IntShowImpl : IShowImpl<int, IntShowImpl>
+                public sealed class IntShowImpl : global::MoonBit.Runtime.IShowImpl<int, IntShowImpl>
                 {
-                    public static MoonBitUnit output(int self, LoggerObject arg0) => arg0.Impl.write_string(arg0.Self, self.ToString(System.Globalization.CultureInfo.InvariantCulture));
-                    public static string to_string(int self) => self.ToString(System.Globalization.CultureInfo.InvariantCulture);
+                    public static MoonBitUnit Output(int self, global::MoonBit.Runtime.Logger arg0) => arg0.WriteString(self.ToString(System.Globalization.CultureInfo.InvariantCulture));
+                    public static string ToString(int self) => self.ToString(System.Globalization.CultureInfo.InvariantCulture);
+                }
+                """
+            )!;
+            yield return ParseMemberDeclaration(
+                """
+                public sealed class BytesShowImpl : global::MoonBit.Runtime.IShowImpl<byte[], BytesShowImpl>
+                {
+                    public static MoonBitUnit Output(byte[] self, global::MoonBit.Runtime.Logger arg0) => arg0.WriteString(ToString(self));
+
+                    public static string ToString(byte[] self)
+                    {
+                        var builder = new System.Text.StringBuilder();
+                        builder.Append("b\"");
+                        foreach (var b in self)
+                        {
+                            if (b >= 0x20 && b <= 0x7e && b != (byte)'"' && b != (byte)'\\')
+                            {
+                                builder.Append((char)b);
+                            }
+                            else
+                            {
+                                builder.Append("\\x");
+                                builder.Append(b.ToString("x2", System.Globalization.CultureInfo.InvariantCulture));
+                            }
+                        }
+
+                        builder.Append('"');
+                        return builder.ToString();
+                    }
                 }
                 """
             )!;
@@ -3822,6 +3863,8 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
                 "global::Generated.MoonBit.Packages.moonbitlang.core.builtin.CharShowImpl",
             ("Int", "Show") =>
                 "global::Generated.MoonBit.Packages.moonbitlang.core.builtin.IntShowImpl",
+            ("Bytes", "Show") =>
+                "global::Generated.MoonBit.Packages.moonbitlang.core.builtin.BytesShowImpl",
             ("Int", "Debug") =>
                 "global::Generated.MoonBit.Packages.moonbitlang.core.debug.IntDebugImpl",
             ("String", "Debug") =>
@@ -5133,6 +5176,157 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
             : "";
     }
 
+    private ExpressionSyntax EmitBytesLiteral(string value)
+    {
+        var bytes = MoonBitBytesLiteralBytes(value);
+        var cacheKey = currentPackageName + "|" + currentMemberContainerName + "|" + value;
+        if (!bytesLiteralCaches.TryGetValue(cacheKey, out var cache))
+        {
+            var fieldName =
+                "__bytes_literal_"
+                + bytesLiteralCaches.Count.ToString(CultureInfo.InvariantCulture);
+            cache = (fieldName, bytes);
+            bytesLiteralCaches[cacheKey] = cache;
+        }
+
+        return IdentifierName(cache.FieldName);
+    }
+
+    private IEnumerable<MemberDeclarationSyntax> EmitBytesLiteralCacheMembers(
+        string packageName,
+        string containerName
+    )
+    {
+        var prefix = packageName + "|" + containerName + "|";
+        foreach (
+            var cache in bytesLiteralCaches.Where(entry =>
+                entry.Key.StartsWith(prefix, StringComparison.Ordinal)
+            )
+        )
+        {
+            yield return FieldDeclaration(
+                    VariableDeclaration(
+                            ArrayType(PredefinedType(Token(SyntaxKind.ByteKeyword)))
+                                .WithRankSpecifiers(
+                                    SingletonList(
+                                        ArrayRankSpecifier(
+                                            SingletonSeparatedList<ExpressionSyntax>(
+                                                OmittedArraySizeExpression()
+                                            )
+                                        )
+                                    )
+                                )
+                        )
+                        .WithVariables(
+                            SingletonSeparatedList(
+                                VariableDeclarator(cache.Value.FieldName)
+                                    .WithInitializer(
+                                        EqualsValueClause(EmitByteArrayCreation(cache.Value.Bytes))
+                                    )
+                            )
+                        )
+                )
+                .AddModifiers(
+                    Token(SyntaxKind.PrivateKeyword),
+                    Token(SyntaxKind.StaticKeyword),
+                    Token(SyntaxKind.ReadOnlyKeyword)
+                )
+                .WithSemicolonToken(Token(SyntaxKind.SemicolonToken));
+        }
+    }
+
+    private static ExpressionSyntax EmitByteArrayCreation(byte[] bytes)
+    {
+        var elements = new System.Collections.Generic.List<ExpressionSyntax>();
+        foreach (var b in bytes)
+        {
+            elements.Add(LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal((int)b)));
+        }
+
+        return ArrayCreationExpression(
+                ArrayType(PredefinedType(Token(SyntaxKind.ByteKeyword)))
+                    .WithRankSpecifiers(
+                        SingletonList(
+                            ArrayRankSpecifier(
+                                SingletonSeparatedList<ExpressionSyntax>(
+                                    OmittedArraySizeExpression()
+                                )
+                            )
+                        )
+                    )
+            )
+            .WithInitializer(
+                InitializerExpression(
+                    SyntaxKind.ArrayInitializerExpression,
+                    SeparatedList(elements)
+                )
+            );
+    }
+
+    private static byte[] MoonBitBytesLiteralBytes(string value)
+    {
+        var bytes = new System.Collections.Generic.List<byte>();
+        for (var i = 0; i < value.Length; i++)
+        {
+            var ch = value[i];
+            if (ch == '\\' && i + 1 < value.Length)
+            {
+                var escaped = value[++i];
+                switch (escaped)
+                {
+                    case 'n':
+                        bytes.Add((byte)'\n');
+                        continue;
+                    case 'r':
+                        bytes.Add((byte)'\r');
+                        continue;
+                    case 't':
+                        bytes.Add((byte)'\t');
+                        continue;
+                    case '0':
+                        bytes.Add(0);
+                        continue;
+                    case '\\':
+                        bytes.Add((byte)'\\');
+                        continue;
+                    case '"':
+                        bytes.Add((byte)'"');
+                        continue;
+                    case '\'':
+                        bytes.Add((byte)'\'');
+                        continue;
+                    case 'x' when i + 2 < value.Length:
+                        var hi = HexNibble(value[i + 1]);
+                        var lo = HexNibble(value[i + 2]);
+                        if (hi >= 0 && lo >= 0)
+                        {
+                            bytes.Add((byte)((hi << 4) | lo));
+                            i += 2;
+                            continue;
+                        }
+
+                        break;
+                }
+
+                bytes.AddRange(Encoding.UTF8.GetBytes(escaped.ToString()));
+                continue;
+            }
+
+            bytes.AddRange(Encoding.UTF8.GetBytes(ch.ToString()));
+        }
+
+        return bytes.ToArray();
+    }
+
+    private static int HexNibble(char ch) =>
+        ch switch
+        {
+            >= '0' and <= '9' => ch - '0',
+            >= 'a' and <= 'f' => ch - 'a' + 10,
+            >= 'A' and <= 'F' => ch - 'A' + 10,
+            _ => -1,
+        };
+
     private static int CharLiteralCodePoint(string value)
     {
         if (value.Length == 0)
@@ -5723,6 +5917,16 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
         IReadOnlyList<JsonElement> typeArgs
     )
     {
+        if (
+            functionId == "fn:pkg:moonbitlang/core/builtin:moonbitlang/core/builtin:println"
+            && typeArgs.Count == 1
+        )
+        {
+            var valueType = EmitType(typeArgs[0]).NormalizeWhitespace().ToFullString();
+            var showType = TraitEvidenceTypeArgument(typeArgs[0], "Show");
+            return ParseExpression($"MoonBitConsole.println<{valueType}, {showType}>");
+        }
+
         var methodName = FunctionMethodName(functionId);
         var emittedTypeArgs = typeArgs
             .Select(arg => EmitType(arg).NormalizeWhitespace().ToFullString())

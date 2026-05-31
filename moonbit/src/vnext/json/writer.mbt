@@ -324,6 +324,13 @@ fn write_expr(out : StringBuilder, expr : @ir.BoundExpr) -> Unit {
       write_type(out, type_)
       out.write_string("}")
     }
+    @ir.BoundExpr::BytesLiteral(value, type_, _) => {
+      out.write_string("{\"kind\":\"BytesLiteral\",\"value\":")
+      write_string(out, value)
+      out.write_string(",\"type\":")
+      write_type(out, type_)
+      out.write_string("}")
+    }
     @ir.BoundExpr::BoolLiteral(value, type_, _) => {
       out.write_string("{\"kind\":\"BoolLiteral\",\"value\":")
       out.write_string(if value { "true" } else { "false" })

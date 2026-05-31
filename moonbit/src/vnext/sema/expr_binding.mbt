@@ -101,6 +101,14 @@ fn bind_expr(
         expected,
         span,
       )
+    Expr::BytesLiteral(value, span) =>
+      apply_conversion(
+        typing,
+        context,
+        BoundExpr::BytesLiteral(value, @binding.TypeRef::Builtin("Bytes"), span),
+        expected,
+        span,
+      )
     Expr::InterpolatedString(parts, span) =>
       apply_conversion(
         typing,

@@ -1208,6 +1208,9 @@ fn binary_precedence(kind : TokenKind) -> Int {
 ///|
 fn Parser::parse_string_literal_expr(self : Parser) -> @ast.Expr {
   let first = self.bump()
+  if first.text.has_prefix("b\"") {
+    return @ast.Expr::BytesLiteral(unquote(first.text), first.span)
+  }
   if first.text.has_prefix("$|") {
     return parsed_string_literal(first.text[2:].to_owned(), first.span)
   }

@@ -306,6 +306,7 @@ fn infer_global_header_type(value : @ast.Expr) -> TypeRef {
     @ast.Expr::IntLiteral(_, _) => @binding.int_type()
     @ast.Expr::FloatLiteral(_, _) => @binding.double_type()
     @ast.Expr::StringLiteral(_, _) => @binding.string_type()
+    @ast.Expr::BytesLiteral(_, _) => @binding.TypeRef::Builtin("Bytes")
     @ast.Expr::BoolLiteral(_, _) => @binding.bool_type()
     @ast.Expr::CharLiteral(_, _) => @binding.char_type()
     @ast.Expr::UnitLiteral(_) => @binding.unit_type()

@@ -61,6 +61,8 @@ fn validate_expr(module_ : BoundModule, expr : BoundExpr) -> Unit {
       validate_type(module_, type_, span)
     BoundExpr::StringLiteral(_, type_, span) =>
       validate_type(module_, type_, span)
+    BoundExpr::BytesLiteral(_, type_, span) =>
+      validate_type(module_, type_, span)
     BoundExpr::BoolLiteral(_, type_, span) =>
       validate_type(module_, type_, span)
     BoundExpr::UnitLiteral(type_, span) => validate_type(module_, type_, span)

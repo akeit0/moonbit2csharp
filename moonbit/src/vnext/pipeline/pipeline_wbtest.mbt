@@ -132,12 +132,14 @@ fn test_core_source() -> String {
     #|pub impl Show for StringView with to_string(self) = "%stringview_to_string"
     #|pub impl Show for String with to_string(self) = "%identity_string"
     #|pub impl Show for Char with to_string(self) = "%char_to_string"
+    #|pub impl Show for Bytes with to_string(self) = "%bytes_to_string"
     #|pub fn[T : Show] StringBuilder::write_object(self : StringBuilder, value : T) -> Unit {
     #|  self.write_string(value.to_string())
     #|}
-    #|pub extern "csharp" fn println(value : String) -> Unit =
-    #|  #|Console.WriteLine(value);
-    #|  #|return MoonBitUnit.Value;
+    #|fn println_mono(value : String) -> Unit = "%println"
+    #|pub fn[T : Show] println(input : T) -> Unit {
+    #|  println_mono(input.to_string())
+    #|}
     #|pub extern "csharp" fn StringBuilder::new() -> StringBuilder =
     #|  #|return new MoonBitStringBuilder();
     #|pub extern "csharp" fn StringBuilder::write_char(self : StringBuilder, value : Char) -> Unit =
@@ -626,6 +628,21 @@ test "vnext resolves prelude println as explicit extern csharp function" {
       "\"functionId\":\"fn:pkg:moonbitlang/core/builtin:moonbitlang/core/builtin:println\"",
     ),
   )
+  assert_true(json.contains("\"diagnostics\":[]"))
+}
+
+///|
+test "vnext resolves generic println for bytes through Show evidence" {
+  let source = "fn main()->Unit { println(b\"hello?\") }\n"
+  let json = compile_test_source_to_json(source, "bytes_println.mbt", "Demo")
+  assert_true(json.contains("\"kind\":\"BytesLiteral\""))
+  assert_true(
+    json.contains(
+      "\"functionId\":\"fn:pkg:moonbitlang/core/builtin:moonbitlang/core/builtin:println\"",
+    ),
+  )
+  assert_true(json.contains("\"typeArgs\":[{\"kind\":\"Builtin\",\"name\":\"Bytes\"}]"))
+  assert_true(json.contains("\"traitEvidence\":[]"))
   assert_true(json.contains("\"diagnostics\":[]"))
 }
 
@@ -1809,6 +1826,16 @@ test "vnext resolves array index get and set" {
   let source = "fn pick(xs:FixedArray[Int])->Int { xs[1] }\nfn set(xs:FixedArray[Int])->Unit { xs[0] = 3 }\n"
   let json = compile_test_source_to_json(source, "demo.mbt", "Demo")
   assert_true(json.contains("\"kind\":\"IndexGet\""))
+  assert_true(json.contains("\"kind\":\"IndexAssign\""))
+  assert_true(json.contains("\"diagnostics\":[]"))
+}
+
+test "vnext resolves bytes literal receiver and index assignment" {
+  let source = "fn main { let b = b\"hello?\"; let array = b.unsafe_to_bytesArray(); array[5] = 1.to_byte() }\nfn Bytes::unsafe_to_bytesArray(bytes : Bytes) -> FixedArray[Byte] = \"%identity\"\nfn Int::to_byte(self : Int) -> Byte = \"%i32_to_byte\"\n"
+  let json = compile_test_source_to_json(source, "bytes_literal.mbt", "Demo")
+  assert_true(json.contains("\"kind\":\"BytesLiteral\""))
+  assert_true(json.contains("\"kind\":\"Builtin\",\"name\":\"Bytes\""))
+  assert_true(json.contains("\"functionId\":\"fn:pkg:Demo:Demo:Bytes::unsafe_to_bytesArray\""))
   assert_true(json.contains("\"kind\":\"IndexAssign\""))
   assert_true(json.contains("\"diagnostics\":[]"))
 }
