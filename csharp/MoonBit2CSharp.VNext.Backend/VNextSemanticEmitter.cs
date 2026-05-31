@@ -4914,6 +4914,16 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
             )
                 AddUsedDerivedTraitImplKey(selfType, traitName);
 
+            if (
+                value.TryGetProperty("selectedIntrinsic", out var selectedIntrinsic)
+                && selectedIntrinsic.ValueKind == JsonValueKind.String
+                && IsOptionEqualityIntrinsic(selectedIntrinsic.GetString() ?? "")
+                && value.TryGetProperty("left", out var optionLeft)
+                && optionLeft.ValueKind == JsonValueKind.Object
+                && optionLeft.TryGetProperty("type", out var optionType)
+            )
+                AddUsedDerivedTraitImplKey(optionType, "Eq");
+
             foreach (var property in value.EnumerateObject())
                 CollectExpressionDerivedTraitImplKeys(property.Value);
             return;
@@ -4927,21 +4937,35 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
     private void AddUsedDerivedTraitImplKey(JsonElement selfType, string traitName)
     {
         if (
-            selfType.ValueKind == JsonValueKind.Object
-            && selfType.TryGetProperty("kind", out var kind)
-            && kind.GetString() == "Declared"
-            && selfType.TryGetProperty("symbol", out var selfSymbol)
-            && selfSymbol.TryGetProperty("id", out var selfId)
-            && selfId.ValueKind == JsonValueKind.String
+            selfType.ValueKind != JsonValueKind.Object
+            || !selfType.TryGetProperty("kind", out var kind)
         )
+            return;
+
+        if (kind.GetString() == "Declared")
         {
+            if (
+                !selfType.TryGetProperty("symbol", out var selfSymbol)
+                || !selfSymbol.TryGetProperty("id", out var selfId)
+                || selfId.ValueKind != JsonValueKind.String
+            )
+                return;
+
             var typeId = selfId.GetString() ?? "";
             if (
                 typeDefinitions.TryGetValue(typeId, out var definition)
                 && TypeDefinitionDerives(definition, traitName)
             )
                 usedDerivedTraitImplKeys.Add(UsedDerivedTraitImplKey(typeId, traitName));
+
+            return;
         }
+
+        if (kind.GetString() != "Apply" || !selfType.TryGetProperty("args", out var args))
+            return;
+
+        foreach (var arg in args.EnumerateArray())
+            AddUsedDerivedTraitImplKey(arg, traitName);
     }
 
     private static bool TryDerivedTraitName(string functionId, out string traitName)
@@ -5044,16 +5068,31 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
     private IEnumerable<string> DerivedTraitTypeIdsFromType(JsonElement type, string traitName)
     {
         if (
-            type.ValueKind == JsonValueKind.Object
-            && type.TryGetProperty("kind", out var kind)
-            && kind.GetString() == "Declared"
-            && type.TryGetProperty("symbol", out var symbol)
-            && symbol.TryGetProperty("id", out var id)
-            && id.ValueKind == JsonValueKind.String
-            && typeDefinitions.TryGetValue(id.GetString() ?? "", out var definition)
-            && TypeDefinitionDerives(definition, traitName)
+            type.ValueKind != JsonValueKind.Object
+            || !type.TryGetProperty("kind", out var kind)
         )
-            yield return id.GetString() ?? "";
+            yield break;
+
+        if (kind.GetString() == "Declared")
+        {
+            if (
+                type.TryGetProperty("symbol", out var symbol)
+                && symbol.TryGetProperty("id", out var id)
+                && id.ValueKind == JsonValueKind.String
+                && typeDefinitions.TryGetValue(id.GetString() ?? "", out var definition)
+                && TypeDefinitionDerives(definition, traitName)
+            )
+                yield return id.GetString() ?? "";
+
+            yield break;
+        }
+
+        if (kind.GetString() != "Apply" || !type.TryGetProperty("args", out var args))
+            yield break;
+
+        foreach (var arg in args.EnumerateArray())
+        foreach (var nestedTypeId in DerivedTraitTypeIdsFromType(arg, traitName))
+            yield return nestedTypeId;
     }
 
     private static void AddSymbolId(JsonElement symbol, HashSet<string> result)

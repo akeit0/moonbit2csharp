@@ -642,12 +642,7 @@ public sealed partial class VNextSemanticEmitterTests
                 }
               ],
               "traits": [],
-              "usedTraitImpls": [
-                {
-                  "trait": { "symbol": { "id": "type:pkg:moonbitlang/core/builtin:moonbitlang/core/builtin:Eq", "packageId": "pkg:moonbitlang/core/builtin", "modulePath": "moonbitlang/core/builtin", "name": "Eq" }, "args": [] },
-                  "selfType": {{markerType}}
-                }
-              ],
+              "usedTraitImpls": [],
               "functions": [
                 {
                   "kind": "Function",
@@ -693,6 +688,7 @@ public sealed partial class VNextSemanticEmitterTests
 
         var code = VNextBackend.Emit(json);
         Assert.Contains("impl_Eq_Option_X_.equal<", code, StringComparison.Ordinal);
+        Assert.Contains("public sealed class MarkerEqImpl", code, StringComparison.Ordinal);
         Assert.Contains("MarkerEqImpl", code, StringComparison.Ordinal);
         Assert.DoesNotContain("DefaultEqImpl", code, StringComparison.Ordinal);
     }
