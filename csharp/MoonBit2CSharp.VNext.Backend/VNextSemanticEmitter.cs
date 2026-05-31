@@ -352,7 +352,6 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
                 ("MoonBitArray", "Array"),
                 ("MoonBitArrayView", "ArrayView"),
                 ("MoonBitBytesView", "BytesView"),
-                ("MoonBitCompare", "CompareSupport"),
                 ("MoonBitConsole", "ConsoleUtility"),
                 ("MoonBitFixedArray", "FixedArray"),
                 ("MoonBitIntrinsics", "Intrinsics"),
@@ -6204,7 +6203,6 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
         return name switch
         {
             "MoonBitIntrinsics" => RuntimeTypeName("MoonBitIntrinsics"),
-            "Compare" => RuntimeTypeName("MoonBitCompare"),
             "OptionEq" => RuntimeTypeName("MoonBitOptionEq"),
             "OptionEqImpl" => RuntimeTypeName("MoonBitOptionEqImpl"),
             _ => throw new NotSupportedException("unknown vnext support type: " + name),

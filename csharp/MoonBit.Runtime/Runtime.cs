@@ -586,19 +586,6 @@ public static partial class MoonBitIntrinsics
     }
 }
 
-public static class MoonBitCompare
-{
-    public static int Compare<T>(T left, T right)
-    {
-        if (left is string leftString && right is string rightString)
-        {
-            return string.Compare(leftString, rightString, StringComparison.Ordinal);
-        }
-
-        return Comparer<T>.Default.Compare(left, right);
-    }
-}
-
 public static class MoonBitOptionEq
 {
     public static bool equal<T, TEqImpl>(MoonBitOption<T> self, MoonBitOption<T> other)
@@ -1048,24 +1035,6 @@ public static class MoonBitArray
         }
 
         System.Array.Resize(ref array.buf, next);
-    }
-}
-
-public static class MoonBitIterArrayExtensions
-{
-    public static MoonBitArray<T> ToArray<T>(this MoonBitIter<T> iter)
-    {
-        var result = new MoonBitArray<T>();
-        while (true)
-        {
-            var item = iter.Next();
-            if (item.IsNone)
-            {
-                return result;
-            }
-
-            MoonBitArray.Push(result, item.Value);
-        }
     }
 }
 
