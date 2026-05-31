@@ -175,10 +175,7 @@ fn Lexer::scan_quoted_literal_from(
 fn Lexer::scan_hash_line(self : Lexer) -> Unit {
   if self.pos + 1 < self.source.length() && self.source[self.pos + 1] == '|' {
     self.scan_hash_pipe_string_literal()
-  } else if self.starts_with("#alias(") ||
-    self.starts_with("#cfg(") ||
-    self.starts_with("#intrinsic(") ||
-    self.starts_with("#valtype") {
+  } else if self.attribute_ahead() {
     self.scan_attribute_line()
   } else {
     while !self.at_end() && self.peek() != '\n' {
@@ -188,15 +185,11 @@ fn Lexer::scan_hash_line(self : Lexer) -> Unit {
 }
 
 ///|
-fn Lexer::starts_with(self : Lexer, text : String) -> Bool {
-  if self.pos + text.length() > self.source.length() {
-    false
-  } else {
-    self.source[self.pos:self.pos + text.length()].to_owned() == text
-  }
+fn Lexer::attribute_ahead(self : Lexer) -> Bool {
+  self.pos + 1 < self.source.length() &&
+  is_ident_start(self.source[self.pos + 1])
 }
 
-///|
 fn Lexer::scan_attribute_line(self : Lexer) -> Unit {
   let start = self.pos
   let start_col = self.col

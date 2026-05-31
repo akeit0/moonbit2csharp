@@ -4294,7 +4294,7 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
         var elementTypeName = EmitType(elementType).NormalizeWhitespace().ToFullString();
         var elementEqEvidenceName = EqEvidenceName(elementType);
         var equality = ParseExpression(
-            $"{SupportTypeName("OptionEq")}.equal<{elementTypeName}, {elementEqEvidenceName}>({left.NormalizeWhitespace()}, {right.NormalizeWhitespace()})"
+            $"{CoreBuiltinTypeName("impl_Eq_Option_X_")}.equal<{elementTypeName}, {elementEqEvidenceName}>({left.NormalizeWhitespace()}, {right.NormalizeWhitespace()})"
         );
         return (expr.GetProperty("op").GetString() ?? "") == "!="
             ? ParenthesizedExpression(
@@ -4441,7 +4441,7 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
         System.Collections.Generic.HashSet<string> activeTypes
     )
     {
-        var typeName = TypeDefinitionName(definition.GetProperty("symbol"));
+        var typeName = QualifiedTypeDefinitionName(definition.GetProperty("symbol"));
         var variants = definition.GetProperty("variants").EnumerateArray().ToArray();
         if (variants.All(variant => variant.GetProperty("payloads").GetArrayLength() == 0))
             return ParenthesizedExpression(
@@ -4510,7 +4510,7 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
         ExpressionSyntax right
     )
     {
-        var typeName = TypeDefinitionName(definition.GetProperty("symbol"));
+        var typeName = QualifiedTypeDefinitionName(definition.GetProperty("symbol"));
         var variants = definition.GetProperty("variants").EnumerateArray().ToArray();
         if (variants.All(variant => variant.GetProperty("payloads").GetArrayLength() == 0))
             return ParseExpression(
@@ -5438,8 +5438,8 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
 
         if (type.GetProperty("kind").GetString() == "Declared" && DeclaredTypeDerives(type, "Eq"))
         {
-            var typeName = EmitType(type).NormalizeWhitespace().ToFullString();
-            return $"global::{options.GeneratedNamespace}.Runtime.BuiltinEq.DefaultEqImpl<{typeName}>";
+            var symbol = type.GetProperty("symbol");
+            return DerivedEqImplTypeName(QualifiedTypeDefinitionName(symbol));
         }
 
         return BuiltinTypeName(type) switch
@@ -6046,7 +6046,11 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
 
         foreach (var (name, ids) in patternDefinitionsByName)
         {
-            if (!parameterNames.Contains(name) && !localDefinitionsByName.ContainsKey(name))
+            if (
+                ids.Count <= 1
+                && !parameterNames.Contains(name)
+                && !localDefinitionsByName.ContainsKey(name)
+            )
                 continue;
             foreach (var id in ids)
                 localSymbolIdsRequiringSuffix.Add(id);

@@ -106,15 +106,14 @@ fn Parser::parse_module(self : Parser) -> ParseResult {
               ignore(self.parse_trait())
             }
           TokenKind::Impl =>
-            if !enabled {
+            if self.impl_decl_is_default_method() {
+              self.skip_interface_impl_decl()
+            } else if !enabled {
               if self.impl_decl_is_default_method() {
                 self.skip_interface_impl_decl()
               } else {
                 ignore(self.parse_impl())
               }
-            } else if self.declarations_only &&
-              self.impl_decl_is_default_method() {
-              self.skip_interface_impl_decl()
             } else {
               impls.push(self.parse_impl())
             }
@@ -557,12 +556,13 @@ fn Parser::parse_impl(self : Parser) -> @ast.ImplDecl {
   }
   ignore(self.bump())
   let methods : Array[@ast.ImplMethodDecl] = []
+  self.skip_attribute_separators()
   if self.current().kind is (TokenKind::Identifier | TokenKind::Fn) {
     methods.push(self.parse_impl_method())
   } else {
     ignore(self.expect(TokenKind::LBrace))
     while !self.at_struct_body_end() {
-      self.skip_separators()
+      self.skip_attribute_separators()
       if self.at_struct_body_end() {
         break
       }
@@ -604,7 +604,7 @@ fn Parser::parse_trait(self : Parser) -> @ast.TraitDecl {
   ignore(self.expect(TokenKind::LBrace))
   let methods : Array[@ast.TraitMethodDecl] = []
   while !self.at_struct_body_end() {
-    self.skip_separators()
+    self.skip_attribute_separators()
     if self.at_struct_body_end() {
       break
     }
@@ -1558,6 +1558,15 @@ fn Parser::skip_separators(self : Parser) -> Unit {
   while self.current().kind == TokenKind::Newline ||
         self.current().kind == TokenKind::Semicolon {
     ignore(self.bump())
+  }
+}
+
+///|
+fn Parser::skip_attribute_separators(self : Parser) -> Unit {
+  self.skip_separators()
+  while self.current().kind == TokenKind::Attribute {
+    self.record_attribute()
+    self.skip_separators()
   }
 }
 

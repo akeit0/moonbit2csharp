@@ -102,3 +102,16 @@ test "vnext lexer keeps radix and separator integer literals whole" {
   assert_true(result.tokens[4].kind == TokenKind::FloatLiteral)
   assert_eq(result.tokens[4].text, "1.25")
 }
+
+///|
+test "vnext lexer treats hash identifier lines as generic attributes" {
+  let source = "#coverage.skip\n#unknown(value)\n#|raw string\n# comment\n"
+  let result = lex(@text.source_file("attributes.mbt", source))
+  assert_eq(result.diagnostics.length(), 0)
+  assert_true(result.tokens[0].kind == TokenKind::Attribute)
+  assert_eq(result.tokens[0].text, "#coverage.skip")
+  assert_true(result.tokens[2].kind == TokenKind::Attribute)
+  assert_eq(result.tokens[2].text, "#unknown(value)")
+  assert_true(result.tokens[4].kind == TokenKind::StringLiteral)
+  assert_true(result.tokens[result.tokens.length() - 1].kind == TokenKind::Eof)
+}

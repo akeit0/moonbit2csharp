@@ -134,4 +134,106 @@ public sealed class VNextUsedTraitImplEmitterTests
         Assert.DoesNotContain("InnerDebugImpl", code, StringComparison.Ordinal);
         Assert.DoesNotContain("moonbitlang.core.debug", code, StringComparison.Ordinal);
     }
+
+    [Fact]
+    public void DerivedEnumEqualityQualifiesExternalPackageEnumHelpers()
+    {
+        var code = VNextBackend.Emit(
+            """
+            {
+              "schema": "moonbit2csharp.vnext.semantic-ir/0.1",
+              "module": { "name": "app/main" },
+              "symbols": [],
+              "types": [
+                {
+                  "kind": "Enum",
+                  "symbol": { "id": "type:pkg:dep/model:dep/model:Choice", "packageId": "pkg:dep/model", "modulePath": "dep/model", "name": "Choice" },
+                  "typeParams": [],
+                  "variants": [
+                    {
+                      "name": "Some",
+                      "payloads": [
+                        { "name": null, "type": { "kind": "Builtin", "name": "Int" } }
+                      ]
+                    },
+                    { "name": "None", "payloads": [] }
+                  ],
+                  "derives": ["Eq"]
+                }
+              ],
+              "traits": [],
+              "usedTraitImpls": [
+                {
+                  "trait": { "symbol": { "id": "type:pkg:moonbitlang/core/builtin:moonbitlang/core/builtin:Eq", "packageId": "pkg:moonbitlang/core/builtin", "modulePath": "moonbitlang/core/builtin", "name": "Eq" }, "args": [] },
+                  "selfType": {
+                    "kind": "Declared",
+                    "symbol": { "id": "type:pkg:dep/model:dep/model:Choice", "packageId": "pkg:dep/model", "modulePath": "dep/model", "name": "Choice" },
+                    "args": []
+                  }
+                }
+              ],
+              "functions": [
+                {
+                  "kind": "Function",
+                  "symbolId": "fn:pkg:app/main:app/main:eq_choice",
+                  "name": "eq_choice",
+                  "params": [
+                    {
+                      "symbolId": "fn:pkg:app/main:app/main:eq_choice:param:left",
+                      "name": "left",
+                      "type": {
+                        "kind": "Declared",
+                        "symbol": { "id": "type:pkg:dep/model:dep/model:Choice", "packageId": "pkg:dep/model", "modulePath": "dep/model", "name": "Choice" },
+                        "args": []
+                      }
+                    },
+                    {
+                      "symbolId": "fn:pkg:app/main:app/main:eq_choice:param:right",
+                      "name": "right",
+                      "type": {
+                        "kind": "Declared",
+                        "symbol": { "id": "type:pkg:dep/model:dep/model:Choice", "packageId": "pkg:dep/model", "modulePath": "dep/model", "name": "Choice" },
+                        "args": []
+                      }
+                    }
+                  ],
+                  "returnType": { "kind": "Builtin", "name": "Bool" },
+                  "body": {
+                    "kind": "Binary",
+                    "op": "==",
+                    "left": {
+                      "kind": "Name",
+                      "symbolId": "fn:pkg:app/main:app/main:eq_choice:param:left",
+                      "name": "left",
+                      "type": {
+                        "kind": "Declared",
+                        "symbol": { "id": "type:pkg:dep/model:dep/model:Choice", "packageId": "pkg:dep/model", "modulePath": "dep/model", "name": "Choice" },
+                        "args": []
+                      }
+                    },
+                    "right": {
+                      "kind": "Name",
+                      "symbolId": "fn:pkg:app/main:app/main:eq_choice:param:right",
+                      "name": "right",
+                      "type": {
+                        "kind": "Declared",
+                        "symbol": { "id": "type:pkg:dep/model:dep/model:Choice", "packageId": "pkg:dep/model", "modulePath": "dep/model", "name": "Choice" },
+                        "args": []
+                      }
+                    },
+                    "selectedFunctionId": "derived:trait:type:pkg:moonbitlang/core/builtin:moonbitlang/core/builtin:Eq:Choice:equal",
+                    "type": { "kind": "Builtin", "name": "Bool" }
+                  }
+                }
+              ],
+              "globals": [],
+              "diagnostics": []
+            }
+            """
+        );
+
+        Assert.Contains("global::Generated.MoonBit.Packages.dep.model.Choice.Tag.Some", code, StringComparison.Ordinal);
+        Assert.Contains("global::Generated.MoonBit.Packages.dep.model.Choice.SomeVariant", code, StringComparison.Ordinal);
+        Assert.DoesNotContain("Generated.MoonBit.Packages.app.main.Choice", code, StringComparison.Ordinal);
+    }
 }

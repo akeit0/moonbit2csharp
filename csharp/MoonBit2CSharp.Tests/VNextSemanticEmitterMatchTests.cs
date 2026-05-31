@@ -1590,4 +1590,73 @@ public sealed partial class VNextSemanticEmitterTests
         Assert.Equal(1, module.GetMethod("f")!.Invoke(null, [7, true]));
         Assert.Equal(0, module.GetMethod("f")!.Invoke(null, [7, false]));
     }
+
+    [Fact]
+    public void SuffixesDuplicatePatternBindingsAcrossNestedScopes()
+    {
+        var intType = """{ "kind": "Builtin", "name": "Int" }""";
+        var optionIntType =
+            $$"""{ "kind": "Apply", "constructor": { "kind": "Builtin", "name": "Option" }, "args": [{{intType}}] }""";
+        var xParam =
+            $$"""{ "kind": "Name", "symbolId": "param:fn:Demo:f:x", "name": "x", "type": {{optionIntType}} }""";
+        var json = ModuleJson(
+            $$"""
+            {
+              "kind": "Function",
+              "symbolId": "fn:Demo:f",
+              "name": "f",
+              "typeParams": [],
+              "params": [
+                { "symbolId": "param:fn:Demo:f:x", "name": "x", "type": {{optionIntType}} }
+              ],
+              "returnType": {{intType}},
+              "body": {
+                "kind": "Match",
+                "target": {{xParam}},
+                "arms": [
+                  {
+                    "pattern": {
+                      "kind": "OptionSome",
+                      "payload": {
+                        "kind": "Binding",
+                        "symbol": { "id": "local:fn:Demo:f:outer:symbol", "kind": "Local", "name": "symbol", "type": {{intType}} }
+                      }
+                    },
+                    "body": {
+                      "kind": "Match",
+                      "target": {{xParam}},
+                      "arms": [
+                        {
+                          "pattern": {
+                            "kind": "OptionSome",
+                            "payload": {
+                              "kind": "Binding",
+                              "symbol": { "id": "local:fn:Demo:f:inner:symbol", "kind": "Local", "name": "symbol", "type": {{intType}} }
+                            }
+                          },
+                          "body": { "kind": "Name", "symbolId": "local:fn:Demo:f:inner:symbol", "name": "symbol", "type": {{intType}} }
+                        },
+                        {
+                          "pattern": { "kind": "Wildcard" },
+                          "body": { "kind": "Name", "symbolId": "local:fn:Demo:f:outer:symbol", "name": "symbol", "type": {{intType}} }
+                        }
+                      ],
+                      "type": {{intType}}
+                    }
+                  },
+                  {
+                    "pattern": { "kind": "Wildcard" },
+                    "body": { "kind": "IntLiteral", "value": "0", "type": {{intType}} }
+                  }
+                ],
+                "type": {{intType}}
+              }
+            }
+            """
+        );
+
+        var code = VNextBackend.Emit(json);
+        Assert.Contains("symbol__", code, StringComparison.Ordinal);
+        Assert.DoesNotContain("var symbol =", code, StringComparison.Ordinal);
+    }
 }

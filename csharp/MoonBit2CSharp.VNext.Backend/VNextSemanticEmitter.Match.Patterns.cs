@@ -385,9 +385,7 @@ public sealed partial class VNextSemanticEmitter
             )
                 return;
 
-            var typeName = ToPublicIdentifier(
-                typeDefinition.GetProperty("symbol").GetProperty("name").GetString() ?? ""
-            );
+            var typeName = QualifiedTypeDefinitionName(typeDefinition.GetProperty("symbol"));
             var variantName = EnumVariantMemberName(
                 typeName,
                 pattern.GetProperty("name").GetString() ?? ""

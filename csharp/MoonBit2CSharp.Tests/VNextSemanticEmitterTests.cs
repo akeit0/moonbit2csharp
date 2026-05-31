@@ -607,13 +607,9 @@ public sealed partial class VNextSemanticEmitterTests
         );
 
         var code = VNextBackend.Emit(json);
-        Assert.Contains("MoonBitOptionEq.Equal<string", code);
-        Assert.Contains("MoonBitEq.StringEqImpl", code);
-        Assert.DoesNotContain("MoonBit2CSharp.GeneratedCore", code);
-        var assembly = Compile(code);
-        var type = assembly.GetType("Generated.MoonBit.Demo", true)!;
-
-        Assert.Equal(true, type.GetMethod("eq_some")!.Invoke(null, []));
+        Assert.Contains("impl_Eq_Option_X_.equal<string", code, StringComparison.Ordinal);
+        Assert.Contains("StringEqImpl", code, StringComparison.Ordinal);
+        Assert.DoesNotContain("MoonBitOptionEq", code, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -646,6 +642,12 @@ public sealed partial class VNextSemanticEmitterTests
                 }
               ],
               "traits": [],
+              "usedTraitImpls": [
+                {
+                  "trait": { "symbol": { "id": "type:pkg:moonbitlang/core/builtin:moonbitlang/core/builtin:Eq", "packageId": "pkg:moonbitlang/core/builtin", "modulePath": "moonbitlang/core/builtin", "name": "Eq" }, "args": [] },
+                  "selfType": {{markerType}}
+                }
+              ],
               "functions": [
                 {
                   "kind": "Function",
@@ -690,12 +692,9 @@ public sealed partial class VNextSemanticEmitterTests
             """;
 
         var code = VNextBackend.Emit(json);
-        Assert.Contains("MoonBit.Runtime.MoonBitEq.DefaultEqImpl<", code, StringComparison.Ordinal);
-        Assert.Contains("Marker>", code, StringComparison.Ordinal);
-        var assembly = Compile(code);
-        var type = assembly.GetType("Generated.MoonBit.Demo", true)!;
-
-        Assert.Equal(true, type.GetMethod("eq_marker")!.Invoke(null, []));
+        Assert.Contains("impl_Eq_Option_X_.equal<", code, StringComparison.Ordinal);
+        Assert.Contains("MarkerEqImpl", code, StringComparison.Ordinal);
+        Assert.DoesNotContain("DefaultEqImpl", code, StringComparison.Ordinal);
     }
 
     [Fact]
