@@ -2332,3 +2332,18 @@ test "vnext nested local function binds without parsing parameter ids" {
   assert_true(json.contains("\"kind\":\"LocalFunction\""))
   assert_true(json.contains("\"diagnostics\":[]"))
 }
+
+///|
+test "vnext preserves valtype struct attribute" {
+  let source =
+    #|#valtype
+    #|struct Pair {
+    #|  left : Int
+    #|  right : Int
+    #|}
+    #|fn make() -> Pair { { left: 1, right: 2 } }
+  let json = compile_test_source_to_json(source, "valtype.mbt", "Demo")
+  assert_true(json.contains("\"name\":\"Pair\""))
+  assert_true(json.contains("\"valtype\":true"))
+  assert_true(json.contains("\"diagnostics\":[]"))
+}

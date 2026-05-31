@@ -36,6 +36,7 @@ pub(all) struct StructDecl {
   type_params : Array[String]
   fields : Array[StructField]
   derives : Array[String]
+  valtype : Bool
   span : @common.SourceSpan
 } derive(Eq, Debug)
 

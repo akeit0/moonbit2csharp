@@ -15,6 +15,7 @@ test "declaration index resolves imported alias and detects duplicate local type
       type_params: ["T"],
       fields: [],
       derives: [],
+      valtype: false,
     }),
   ])
   assert_true(find_visible_type_header(index, Some("dep"), "Box") is Some(_))
@@ -333,6 +334,7 @@ test "executable validation rejects invalid field access and assignment" {
           },
         ],
         derives: [],
+        valtype: false,
       }),
     ],
     traits: [],

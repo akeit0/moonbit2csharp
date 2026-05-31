@@ -543,40 +543,69 @@ public sealed partial class VNextSemanticEmitter
     private bool CanEmitSwitchExpression(JsonElement targetType, JsonElement[] arms)
     {
         foreach (var arm in arms)
+            if (!CanEmitSwitchPatternExpression(targetType, arm.GetProperty("pattern")))
+                return false;
+        return true;
+    }
+
+    private bool CanEmitSwitchPatternExpression(JsonElement targetType, JsonElement pattern)
+    {
+        var kind = pattern.GetProperty("kind").GetString();
+        switch (kind)
         {
-            var pattern = arm.GetProperty("pattern");
-            var kind = pattern.GetProperty("kind").GetString();
-            if (kind == "Wildcard")
-                continue;
+            case "Wildcard"
+            or "IntLiteral"
+            or "CharLiteral"
+            or "StringLiteral"
+            or "BoolLiteral"
+            or "Range":
+                return true;
+            case "Binding":
+                return (pattern.GetProperty("symbol").GetProperty("name").GetString() ?? "_") == "_";
+            case "Tuple":
+            {
+                var items = pattern.GetProperty("items").EnumerateArray().ToArray();
+                for (var i = 0; i < items.Length; i++)
+                    if (!CanEmitSwitchPatternExpression(TupleItemType(targetType, i), items[i]))
+                        return false;
+                return true;
+            }
 
-            if (
-                kind
-                is "IntLiteral"
-                    or "CharLiteral"
-                    or "StringLiteral"
-                    or "BoolLiteral"
-                    or "Range"
-                    or "Binding"
-                    or "Tuple"
-                    or "Array"
-                    or "Or"
-                    or "OptionNone"
-                    or "OptionSome"
-            )
-                continue;
+            case "Array":
+            {
+                var itemType = TryArrayElementType(targetType);
+                if (itemType is null)
+                    return false;
+                foreach (var item in pattern.GetProperty("items").EnumerateArray())
+                    if (!CanEmitSwitchPatternExpression(itemType.Value, item))
+                        return false;
+                return !pattern.TryGetProperty("rest", out var rest)
+                    || rest.ValueKind == JsonValueKind.Null
+                    || CanEmitSwitchPatternExpression(targetType, rest);
+            }
 
-            if (kind != "EnumCase")
-                return false;
+            case "Or":
+                return pattern
+                    .GetProperty("alternatives")
+                    .EnumerateArray()
+                    .All(alternative => CanEmitSwitchPatternExpression(targetType, alternative));
+            case "OptionNone":
+                return true;
+            case "OptionSome":
+                return CanEmitSwitchPatternExpression(
+                    OptionElementType(targetType),
+                    pattern.GetProperty("payload")
+                );
+            case "EnumCase":
+            {
+                var typeId = pattern.GetProperty("typeId").GetString() ?? "";
+                return typeDefinitions.TryGetValue(typeId, out var typeDefinition)
+                    && IsAllConstantEnum(typeDefinition);
+            }
 
-            var typeId = pattern.GetProperty("typeId").GetString() ?? "";
-            if (!typeDefinitions.TryGetValue(typeId, out var typeDefinition))
-                return false;
-
-            if (!IsAllConstantEnum(typeDefinition))
+            default:
                 return false;
         }
-
-        return true;
     }
 
     private string MatchPatternExpression(JsonElement targetType, JsonElement pattern)
@@ -1155,6 +1184,14 @@ public sealed partial class VNextSemanticEmitter
 
     private static JsonElement ArrayElementType(JsonElement targetType)
     {
+        return TryArrayElementType(targetType)
+            ?? throw new NotSupportedException(
+                "vnext array match pattern target must be array type"
+            );
+    }
+
+    private static JsonElement? TryArrayElementType(JsonElement targetType)
+    {
         if (IsBuiltinType(targetType, "String") || IsBuiltinType(targetType, "StringView"))
         {
             using var document = JsonDocument.Parse("""{"kind":"Builtin","name":"Char"}""");
@@ -1166,7 +1203,7 @@ public sealed partial class VNextSemanticEmitter
             && !IsBuiltinApply(targetType, "FixedArray")
             && !IsBuiltinApply(targetType, "ArrayView")
         )
-            throw new NotSupportedException("vnext array match pattern target must be array type");
+            return null;
 
         return targetType.GetProperty("args").EnumerateArray().First();
     }

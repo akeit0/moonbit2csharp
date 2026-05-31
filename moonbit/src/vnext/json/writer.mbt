@@ -125,6 +125,8 @@ fn write_type_definition(
       }
       out.write_string("],\"derives\":")
       write_derives(out, struct_def.derives)
+      out.write_string(",\"valtype\":")
+      out.write_string(if struct_def.valtype { "true" } else { "false" })
       out.write_string("}")
     }
     @binding.TypeDefinition::Enum(enum_def) => {

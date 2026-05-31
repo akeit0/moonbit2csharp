@@ -110,7 +110,11 @@ fn bind_array_literal(
             spread_span,
           )
         }
-        bound_items.push(BoundArrayElement::Spread(bound))
+        bound_items.push(
+          BoundArrayElement::Spread(
+            normalize_array_spread_expr(typing, bound, spread_span),
+          ),
+        )
       }
     }
   }
@@ -130,6 +134,32 @@ fn bind_array_literal(
     expected,
     span,
   )
+}
+
+///|
+fn normalize_array_spread_expr(
+  typing : TypingContext,
+  value : BoundExpr,
+  span : SourceSpan,
+) -> BoundExpr {
+  let value_type = @semantic.resolve_inferred_type(typing, @ir.expr_type(value))
+  match @binding.type_constructor_name(value_type) {
+    Some(("Iter", [item])) =>
+      BoundExpr::Call(
+        @binding.function_id(
+          "pkg:moonbitlang/core/builtin",
+          "moonbitlang/core/builtin",
+          "Iter::to_array",
+        ),
+        [item],
+        [],
+        [value],
+        None,
+        @binding.array_type(item),
+        span,
+      )
+    _ => value
+  }
 }
 
 ///|

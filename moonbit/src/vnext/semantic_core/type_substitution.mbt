@@ -34,6 +34,42 @@ pub fn substitute_type(
       }
       TypeRef::Tuple(mapped)
     }
+    TypeRef::Function(param_types, return_type, effect) => {
+      let mapped_params : Array[ParamTypeRef] = []
+      for param in param_types {
+        mapped_params.push({
+          label: param.label,
+          type_: substitute_type(params, args, param.type_),
+          optional: param.optional,
+          has_default: param.has_default,
+        })
+      }
+      TypeRef::Function(
+        mapped_params,
+        substitute_type(params, args, return_type),
+        substitute_effect(params, args, effect),
+      )
+    }
+    TypeRef::TraitObject(trait_ref) => {
+      let mapped_args : Array[TypeRef] = []
+      for arg in trait_ref.args {
+        mapped_args.push(substitute_type(params, args, arg))
+      }
+      TypeRef::TraitObject({ trait_: trait_ref.trait_, args: mapped_args })
+    }
     _ => type_
+  }
+}
+
+///|
+fn substitute_effect(
+  params : Array[String],
+  args : Array[TypeRef],
+  effect : EffectRef,
+) -> EffectRef {
+  match effect {
+    EffectRef::Raises(error_type) =>
+      EffectRef::Raises(substitute_type(params, args, error_type))
+    _ => effect
   }
 }

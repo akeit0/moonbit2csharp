@@ -85,6 +85,7 @@ fn collect_structs(
       type_params: decl.type_params,
       fields,
       derives: decl.derives,
+      valtype: decl.valtype,
     })
     context.types.push(def)
     @semantic.define_type(index, def)

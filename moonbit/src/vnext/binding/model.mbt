@@ -13,6 +13,7 @@ pub(all) enum SymbolKind {
 } derive(Eq, Debug)
 
 ///|
+#valtype
 pub(all) struct TypeSymbolRef {
   id : String
   package_id : String
@@ -72,6 +73,7 @@ pub(all) struct Symbol {
 } derive(Eq, Debug)
 
 ///|
+#valtype
 pub(all) struct ImportRef {
   alias_name : String
   package_id : String
@@ -79,6 +81,7 @@ pub(all) struct ImportRef {
 } derive(Eq, Debug)
 
 ///|
+#valtype
 pub(all) struct FieldDef {
   id : String
   name : String
@@ -114,6 +117,7 @@ pub(all) struct StructDefinition {
   type_params : Array[String]
   fields : Array[FieldDef]
   derives : Array[String]
+  valtype : Bool
 } derive(Eq, Debug)
 
 ///|

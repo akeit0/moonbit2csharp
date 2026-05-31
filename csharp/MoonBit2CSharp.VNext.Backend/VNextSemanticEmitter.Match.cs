@@ -97,6 +97,12 @@ public sealed partial class VNextSemanticEmitter
 
         var matchName = "__moonbitMatch" + tempNameIndex++.ToString(CultureInfo.InvariantCulture);
         statements.Add(ParseStatement($"var {matchName} = {target};"));
+        if (!CanEmitSwitchExpression(targetType, arms))
+        {
+            EmitConditionMatchAsReturn(matchName, targetType, arms, statements);
+            return;
+        }
+
         if (CanEmitSingleSwitchStatement(arms))
         {
             EmitSingleSwitchMatchAsReturn(matchName, targetType, arms, statements);
@@ -133,6 +139,50 @@ public sealed partial class VNextSemanticEmitter
         // Do not add a runtime fallback here; guarded arms that miss are frontend-invalid.
     }
 
+    private void EmitConditionMatchAsReturn(
+        string matchName,
+        JsonElement targetType,
+        JsonElement[] arms,
+        List<StatementSyntax> statements
+    )
+    {
+        var builder = new StringBuilder();
+        foreach (var arm in arms)
+        {
+            var pattern = arm.GetProperty("pattern");
+            if (pattern.GetProperty("kind").GetString() == "Or")
+                foreach (var alternative in pattern.GetProperty("alternatives").EnumerateArray())
+                    AppendReturnMatchArm(builder, matchName, targetType, alternative, arm);
+            else
+                AppendReturnMatchArm(builder, matchName, targetType, pattern, arm);
+        }
+
+        builder.Append(UnreachableStatementText());
+        statements.Add(ParseStatement("{ " + builder + " }"));
+    }
+
+    private void AppendReturnMatchArm(
+        StringBuilder builder,
+        string matchName,
+        JsonElement targetType,
+        JsonElement pattern,
+        JsonElement arm
+    )
+    {
+        builder
+            .Append("if (")
+            .Append(PayloadPatternCondition(matchName, targetType, pattern))
+            .Append(") { ");
+        EmitPatternBindings(builder, matchName, pattern);
+        var condition = MatchArmConditionExpression(arm);
+        if (condition.Length > 0)
+            builder.Append("if (").Append(condition).Append(") { ");
+        AppendReturnBody(builder, arm.GetProperty("body"));
+        if (condition.Length > 0)
+            builder.Append("} ");
+        builder.Append("} ");
+    }
+
     private void EmitMatchAsAssignment(
         JsonElement expr,
         string destination,
@@ -148,15 +198,16 @@ public sealed partial class VNextSemanticEmitter
             return;
         }
 
-        if (!CanEmitSwitchExpression(targetType, arms))
-            throw new NotSupportedException(
-                "vnext assignment match currently supports switch-compatible arms"
-            );
-
         var matchName = "__moonbitMatch" + tempNameIndex++.ToString(CultureInfo.InvariantCulture);
         var doneLabel =
             "__moonbitMatchDone" + tempNameIndex++.ToString(CultureInfo.InvariantCulture);
         statements.Add(ParseStatement($"var {matchName} = {target};"));
+        if (!CanEmitSwitchExpression(targetType, arms))
+        {
+            EmitConditionMatchAsAssignment(matchName, targetType, arms, destination, doneLabel, statements);
+            return;
+        }
+
         if (CanEmitSingleSwitchStatement(arms))
         {
             EmitSingleSwitchMatchAsAssignment(
@@ -197,6 +248,70 @@ public sealed partial class VNextSemanticEmitter
         }
 
         statements.Add(ParseStatement(doneLabel + ": ;"));
+    }
+
+    private void EmitConditionMatchAsAssignment(
+        string matchName,
+        JsonElement targetType,
+        JsonElement[] arms,
+        string destination,
+        string doneLabel,
+        List<StatementSyntax> statements
+    )
+    {
+        var builder = new StringBuilder();
+        foreach (var arm in arms)
+        {
+            var pattern = arm.GetProperty("pattern");
+            if (pattern.GetProperty("kind").GetString() == "Or")
+                foreach (var alternative in pattern.GetProperty("alternatives").EnumerateArray())
+                    AppendAssignmentMatchArm(
+                        builder,
+                        matchName,
+                        targetType,
+                        alternative,
+                        arm,
+                        destination,
+                        doneLabel
+                    );
+            else
+                AppendAssignmentMatchArm(
+                    builder,
+                    matchName,
+                    targetType,
+                    pattern,
+                    arm,
+                    destination,
+                    doneLabel
+                );
+        }
+
+        builder.Append(doneLabel).Append(": ;");
+        statements.Add(ParseStatement("{ " + builder + " }"));
+    }
+
+    private void AppendAssignmentMatchArm(
+        StringBuilder builder,
+        string matchName,
+        JsonElement targetType,
+        JsonElement pattern,
+        JsonElement arm,
+        string destination,
+        string doneLabel
+    )
+    {
+        builder
+            .Append("if (")
+            .Append(PayloadPatternCondition(matchName, targetType, pattern))
+            .Append(") { ");
+        EmitPatternBindings(builder, matchName, pattern);
+        var condition = MatchArmConditionExpression(arm);
+        if (condition.Length > 0)
+            builder.Append("if (").Append(condition).Append(") { ");
+        AppendAssignmentBody(builder, arm.GetProperty("body"), destination, doneLabel);
+        if (condition.Length > 0)
+            builder.Append("} ");
+        builder.Append("} ");
     }
 
     private void EmitMatchAsStatement(JsonElement expr, List<StatementSyntax> statements)

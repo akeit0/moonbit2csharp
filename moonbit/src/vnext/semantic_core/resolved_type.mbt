@@ -10,6 +10,7 @@ pub(all) enum TypeDefKind {
 } derive(Eq, Debug)
 
 ///|
+#valtype
 pub(all) struct TypeDefId {
   package_id : String
   module_path : String

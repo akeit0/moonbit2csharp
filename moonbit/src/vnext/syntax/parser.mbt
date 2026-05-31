@@ -26,6 +26,7 @@ pub fn parse_source_with_mode(
     pending_aliases: [],
     pending_intrinsic: None,
     pending_decl_enabled: true,
+    pending_valtype: false,
     is_interface: file.path.has_suffix(".mbti"),
     declarations_only,
     diagnostics: lexed.diagnostics,
@@ -40,6 +41,7 @@ priv struct Parser {
   mut pending_aliases : Array[String]
   mut pending_intrinsic : String?
   mut pending_decl_enabled : Bool
+  mut pending_valtype : Bool
   is_interface : Bool
   declarations_only : Bool
   diagnostics : Array[@common.Diagnostic]
@@ -169,6 +171,9 @@ fn Parser::record_attribute(self : Parser) -> Unit {
       self.pending_decl_enabled = self.pending_decl_enabled && enabled
     None => ()
   }
+  if token.text == "#valtype" {
+    self.pending_valtype = true
+  }
 }
 
 ///|
@@ -232,6 +237,13 @@ fn Parser::take_pending_decl_enabled(self : Parser) -> Bool {
 }
 
 ///|
+fn Parser::take_pending_valtype(self : Parser) -> Bool {
+  let valtype = self.pending_valtype
+  self.pending_valtype = false
+  valtype
+}
+
+///|
 fn Parser::parse_using(self : Parser) -> @ast.UsingDecl {
   let start = self.expect(TokenKind::Using)
   let alias_name = self.expect_package_name()
@@ -287,13 +299,14 @@ fn Parser::skip_visibility(self : Parser) -> Bool {
 
 ///|
 fn Parser::parse_struct(self : Parser) -> @ast.StructDecl {
+  let valtype = self.take_pending_valtype()
   let start = self.expect(TokenKind::Struct)
   let name = self.expect(TokenKind::Identifier)
   let type_params = self.parse_nominal_type_params()
   if self.current().kind == TokenKind::LParen {
     let fields = self.parse_tuple_struct_fields()
     let derives = self.parse_derive_clause()
-    return { name: name.text, type_params, fields, derives, span: start.span }
+    return { name: name.text, type_params, fields, derives, valtype, span: start.span }
   }
   ignore(self.expect(TokenKind::LBrace))
   let fields : Array[@ast.StructField] = []
@@ -320,7 +333,7 @@ fn Parser::parse_struct(self : Parser) -> @ast.StructDecl {
   }
   ignore(self.expect(TokenKind::RBrace))
   let derives = self.parse_derive_clause()
-  { name: name.text, type_params, fields, derives, span: start.span }
+  { name: name.text, type_params, fields, derives, valtype, span: start.span }
 }
 
 ///|

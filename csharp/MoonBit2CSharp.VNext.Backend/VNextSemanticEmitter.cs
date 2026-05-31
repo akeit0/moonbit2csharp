@@ -154,6 +154,10 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
         }
 
         BuildUsedDerivedTraitImplKeys(usedTraitImpls);
+        CollectExpressionDerivedTraitImplKeys(root);
+        if (RequiresCoreDebugPackage(usedTraitIds))
+            AddCoreDebugSourceDependencies(usedTypeIds, usedTraitIds);
+        CloseDerivedTraitImpls("Eq");
         CloseDerivedTraitImpls("Hash");
         CloseDerivedTraitImpls("Debug");
         foreach (var typeId in UsedDerivedTraitImplTypeIds())
@@ -191,6 +195,11 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
         var packages = usedTypes
             .Select(TypeDefinitionPackageName)
             .Concat(usedTraits.Select(TraitPackageName))
+            .Concat(
+                RequiresCoreDebugPackage(usedTraitIds)
+                    ? new[] { "moonbitlang/core/debug" }
+                    : Array.Empty<string>()
+            )
             .Concat(
                 emittedFunctions.Select(function =>
                     PackageNameFromSymbolId(function.GetProperty("symbolId").GetString() ?? "")
@@ -420,34 +429,18 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
         var name = TypeDefinitionName(symbol);
         var typeParams = ReadTypeParams(typeDefinition.GetProperty("typeParams"));
         var fields = typeDefinition.GetProperty("fields").EnumerateArray().ToArray();
+        var isValType =
+            typeDefinition.TryGetProperty("valtype", out var valtype)
+            && valtype.ValueKind == JsonValueKind.True;
         var hasMutableField = fields.Any(field => field.GetProperty("mutable").GetBoolean());
 
-        if (!hasMutableField)
-            return EmitReadonlyRecordStruct(name, typeParams, fields);
+        if (isValType)
+            return EmitStructDefinition(name, typeParams, fields, hasMutableField);
 
-        var properties = fields
-            .Select(field =>
-                PropertyDeclaration(
-                        EmitType(field.GetProperty("type")),
-                        ToPublicIdentifier(field.GetProperty("name").GetString() ?? "")
-                    )
-                    .AddModifiers(Token(SyntaxKind.PublicKeyword))
-                    .WithAccessorList(
-                        AccessorList(
-                            List([
-                                AccessorDeclaration(SyntaxKind.GetAccessorDeclaration)
-                                    .WithSemicolonToken(Token(SyntaxKind.SemicolonToken)),
-                                AccessorDeclaration(SyntaxKind.SetAccessorDeclaration)
-                                    .WithSemicolonToken(Token(SyntaxKind.SemicolonToken)),
-                            ])
-                        )
-                    )
-            )
-            .Cast<MemberDeclarationSyntax>();
-        var constructor = EmitConstructor(name, fields);
+        var properties = fields.Select(EmitStructProperty).Cast<MemberDeclarationSyntax>();
         var declaration = ClassDeclaration(name)
             .AddModifiers(Token(SyntaxKind.PublicKeyword), Token(SyntaxKind.SealedKeyword))
-            .AddMembers(properties.Append(constructor).ToArray());
+            .AddMembers(properties.Append(EmitConstructor(name, fields)).ToArray());
         return typeParams.Length == 0
             ? declaration
             : declaration.WithTypeParameterList(TypeParameterList(SeparatedList(typeParams)));
@@ -627,7 +620,7 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
         ExpressionSyntax hasher
     )
     {
-        var typeName = TypeDefinitionName(definition.GetProperty("symbol"));
+        var typeName = QualifiedTypeDefinitionName(definition.GetProperty("symbol"));
         var variants = definition.GetProperty("variants").EnumerateArray().ToArray();
         var valueText = value.NormalizeWhitespace().ToFullString();
         if (variants.All(variant => variant.GetProperty("payloads").GetArrayLength() == 0))
@@ -1035,37 +1028,49 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
             : null;
     }
 
-    private MemberDeclarationSyntax EmitReadonlyRecordStruct(
+    private MemberDeclarationSyntax EmitStructDefinition(
         string name,
         TypeParameterSyntax[] typeParams,
-        JsonElement[] fields
+        JsonElement[] fields,
+        bool hasMutableField
     )
     {
-        var properties = fields
-            .Select(field =>
-                PropertyDeclaration(
-                        EmitType(field.GetProperty("type")),
-                        ToPublicIdentifier(field.GetProperty("name").GetString() ?? "")
-                    )
-                    .AddModifiers(Token(SyntaxKind.PublicKeyword))
-                    .WithAccessorList(
-                        AccessorList(
-                            List([
-                                AccessorDeclaration(SyntaxKind.GetAccessorDeclaration)
-                                    .WithSemicolonToken(Token(SyntaxKind.SemicolonToken)),
-                                AccessorDeclaration(SyntaxKind.InitAccessorDeclaration)
-                                    .WithSemicolonToken(Token(SyntaxKind.SemicolonToken)),
-                            ])
-                        )
-                    )
-            )
-            .Cast<MemberDeclarationSyntax>();
+        var modifiers = hasMutableField
+            ? new[] { Token(SyntaxKind.PublicKeyword) }
+            : [Token(SyntaxKind.PublicKeyword), Token(SyntaxKind.ReadOnlyKeyword)];
         var declaration = StructDeclaration(name)
-            .AddModifiers(Token(SyntaxKind.PublicKeyword), Token(SyntaxKind.ReadOnlyKeyword))
-            .AddMembers(properties.Append(EmitConstructor(name, fields)).ToArray());
+            .AddModifiers(modifiers)
+            .AddMembers(
+                fields.Select(EmitStructProperty)
+                    .Cast<MemberDeclarationSyntax>()
+                    .Append(EmitConstructor(name, fields))
+                    .ToArray()
+            );
         return typeParams.Length == 0
             ? declaration
             : declaration.WithTypeParameterList(TypeParameterList(SeparatedList(typeParams)));
+    }
+
+    private PropertyDeclarationSyntax EmitStructProperty(JsonElement field)
+    {
+        var mutable = field.GetProperty("mutable").GetBoolean();
+        var secondAccessor = mutable
+            ? AccessorDeclaration(SyntaxKind.SetAccessorDeclaration)
+            : AccessorDeclaration(SyntaxKind.InitAccessorDeclaration);
+        return PropertyDeclaration(
+                EmitType(field.GetProperty("type")),
+                ToPublicIdentifier(field.GetProperty("name").GetString() ?? "")
+            )
+            .AddModifiers(Token(SyntaxKind.PublicKeyword))
+            .WithAccessorList(
+                AccessorList(
+                    List([
+                        AccessorDeclaration(SyntaxKind.GetAccessorDeclaration)
+                            .WithSemicolonToken(Token(SyntaxKind.SemicolonToken)),
+                        secondAccessor.WithSemicolonToken(Token(SyntaxKind.SemicolonToken)),
+                    ])
+                )
+            );
     }
 
     private ConstructorDeclarationSyntax EmitConstructor(
@@ -2381,15 +2386,31 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
         var iteratorType = expr.GetProperty("iterator").GetProperty("type");
         if (
             iteratorType.GetProperty("kind").GetString() == "Declared"
-            && (
-                IsDeclaredTypeNamed(iteratorType, "Iter")
-                || IsDeclaredTypeNamed(iteratorType, "Iter2")
-            )
+            && IsDeclaredTypeNamed(iteratorType, "Iter")
         )
-            return InvocationExpression(IterNextMemberAccess(iteratorType))
-                .WithArgumentList(
-                    ArgumentList(SingletonSeparatedList(Argument(IdentifierName(iteratorName))))
-                );
+            return InvocationExpression(
+                MemberAccessExpression(
+                    SyntaxKind.SimpleMemberAccessExpression,
+                    IdentifierName(iteratorName),
+                    IdentifierName("f")
+                )
+            );
+
+        if (
+            iteratorType.GetProperty("kind").GetString() == "Declared"
+            && IsDeclaredTypeNamed(iteratorType, "Iter2")
+        )
+            return InvocationExpression(
+                MemberAccessExpression(
+                    SyntaxKind.SimpleMemberAccessExpression,
+                    MemberAccessExpression(
+                        SyntaxKind.SimpleMemberAccessExpression,
+                        IdentifierName(iteratorName),
+                        IdentifierName("iter")
+                    ),
+                    IdentifierName("f")
+                )
+            );
 
         return InvocationExpression(
             MemberAccessExpression(
@@ -3085,21 +3106,7 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
                 );
         }
 
-        if (type.GetProperty("kind").GetString() == "Builtin")
-            return BuiltinTypeName(type) switch
-            {
-                "Int" => CoreDebugTypeName("IntDebugImpl"),
-                "String" => CoreDebugTypeName("StringDebugImpl"),
-                "StringView" => CoreDebugTypeName("StringViewDebugImpl"),
-                "Bool" => CoreDebugTypeName("BoolDebugImpl"),
-                "Char" => CoreDebugTypeName("CharDebugImpl"),
-                "Float" => CoreDebugTypeName("FloatDebugImpl"),
-                "Double" => CoreDebugTypeName("DoubleDebugImpl"),
-                "Unit" => CoreDebugTypeName("UnitDebugImpl"),
-                _ => CoreDebugTypeName("FallbackDebugImpl"),
-            };
-
-        return CoreDebugTypeName("FallbackDebugImpl");
+        return TraitEvidenceTypeArgument(type, "Debug");
     }
 
     private ExpressionSyntax EmitDerivedDebugRepr(ExpressionSyntax value, JsonElement type)
@@ -3207,7 +3214,7 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
     {
         var reprType = CoreDebugTypeName("Repr");
         var reprArrayType = $"MoonBitArray<{reprType}>";
-        var typeName = TypeDefinitionName(definition.GetProperty("symbol"));
+        var typeName = QualifiedTypeDefinitionName(definition.GetProperty("symbol"));
         var variants = definition.GetProperty("variants").EnumerateArray().ToArray();
         var valueText = value.NormalizeWhitespace().ToFullString();
         if (variants.All(variant => variant.GetProperty("payloads").GetArrayLength() == 0))
@@ -3793,51 +3800,51 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
         if (CoreBuiltinEvidenceRequired("StringShowImpl"))
             yield return ParseMemberDeclaration(
                 """
-                public sealed class StringShowImpl : global::MoonBit.Runtime.IShowImpl<string, StringShowImpl>
+                public sealed class StringShowImpl : IShowImpl<string, StringShowImpl>
                 {
-                    public static MoonBitUnit Output(string self, global::MoonBit.Runtime.Logger arg0) => arg0.WriteString(self);
-                    public static string ToString(string self) => self;
+                    public static MoonBitUnit output(string self, LoggerObject arg0) => arg0.Impl.write_string(arg0.Self, self);
+                    public static string to_string(string self) => self;
                 }
                 """
             )!;
         if (CoreBuiltinEvidenceRequired("StringViewShowImpl"))
             yield return ParseMemberDeclaration(
                 """
-                public sealed class StringViewShowImpl : global::MoonBit.Runtime.IShowImpl<MoonBitStringView, StringViewShowImpl>
+                public sealed class StringViewShowImpl : IShowImpl<MoonBitStringView, StringViewShowImpl>
                 {
-                    public static MoonBitUnit Output(MoonBitStringView self, global::MoonBit.Runtime.Logger arg0) => arg0.WriteString(self.ToString());
-                    public static string ToString(MoonBitStringView self) => self.ToString();
+                    public static MoonBitUnit output(MoonBitStringView self, LoggerObject arg0) => arg0.Impl.write_string(arg0.Self, self.ToString());
+                    public static string to_string(MoonBitStringView self) => self.ToString();
                 }
                 """
             )!;
         if (CoreBuiltinEvidenceRequired("CharShowImpl"))
             yield return ParseMemberDeclaration(
                 """
-                public sealed class CharShowImpl : global::MoonBit.Runtime.IShowImpl<int, CharShowImpl>
+                public sealed class CharShowImpl : IShowImpl<int, CharShowImpl>
                 {
-                    public static MoonBitUnit Output(int self, global::MoonBit.Runtime.Logger arg0) => arg0.WriteChar(self);
-                    public static string ToString(int self) => char.ConvertFromUtf32(self);
+                    public static MoonBitUnit output(int self, LoggerObject arg0) => arg0.Impl.write_char(arg0.Self, self);
+                    public static string to_string(int self) => char.ConvertFromUtf32(self);
                 }
                 """
             )!;
         if (CoreBuiltinEvidenceRequired("IntShowImpl"))
             yield return ParseMemberDeclaration(
                 """
-                public sealed class IntShowImpl : global::MoonBit.Runtime.IShowImpl<int, IntShowImpl>
+                public sealed class IntShowImpl : IShowImpl<int, IntShowImpl>
                 {
-                    public static MoonBitUnit Output(int self, global::MoonBit.Runtime.Logger arg0) => arg0.WriteString(self.ToString(System.Globalization.CultureInfo.InvariantCulture));
-                    public static string ToString(int self) => self.ToString(System.Globalization.CultureInfo.InvariantCulture);
+                    public static MoonBitUnit output(int self, LoggerObject arg0) => arg0.Impl.write_string(arg0.Self, self.ToString(System.Globalization.CultureInfo.InvariantCulture));
+                    public static string to_string(int self) => self.ToString(System.Globalization.CultureInfo.InvariantCulture);
                 }
                 """
             )!;
         if (CoreBuiltinEvidenceRequired("BytesShowImpl"))
             yield return ParseMemberDeclaration(
                 """
-                public sealed class BytesShowImpl : global::MoonBit.Runtime.IShowImpl<byte[], BytesShowImpl>
+                public sealed class BytesShowImpl : IShowImpl<byte[], BytesShowImpl>
                 {
-                    public static MoonBitUnit Output(byte[] self, global::MoonBit.Runtime.Logger arg0) => arg0.WriteString(ToString(self));
+                    public static MoonBitUnit output(byte[] self, LoggerObject arg0) => arg0.Impl.write_string(arg0.Self, to_string(self));
 
-                    public static string ToString(byte[] self)
+                    public static string to_string(byte[] self)
                     {
                         var builder = new System.Text.StringBuilder();
                         builder.Append("b\"");
@@ -3863,11 +3870,11 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
         if (CoreBuiltinEvidenceRequired("BytesViewShowImpl"))
             yield return ParseMemberDeclaration(
                 """
-                public sealed class BytesViewShowImpl : global::MoonBit.Runtime.IShowImpl<MoonBitBytesView, BytesViewShowImpl>
+                public sealed class BytesViewShowImpl : IShowImpl<MoonBitBytesView, BytesViewShowImpl>
                 {
-                    public static MoonBitUnit Output(MoonBitBytesView self, global::MoonBit.Runtime.Logger arg0) => arg0.WriteString(ToString(self));
+                    public static MoonBitUnit output(MoonBitBytesView self, LoggerObject arg0) => arg0.Impl.write_string(arg0.Self, to_string(self));
 
-                    public static string ToString(MoonBitBytesView self)
+                    public static string to_string(MoonBitBytesView self)
                     {
                         var builder = new System.Text.StringBuilder();
                         builder.Append("b\"");
@@ -3918,54 +3925,6 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
             public sealed class StringViewDebugImpl : IDebugImpl<MoonBitStringView, StringViewDebugImpl>
             {
                 public static Repr to_repr(MoonBitStringView self) => Repr.Opaque("StringView", Repr.StringLit(self.ToString()));
-            }
-            """
-        )!;
-        yield return ParseMemberDeclaration(
-            """
-            public sealed class BoolDebugImpl : IDebugImpl<bool, BoolDebugImpl>
-            {
-                public static Repr to_repr(bool self) => Repr.BoolLit(self);
-            }
-            """
-        )!;
-        yield return ParseMemberDeclaration(
-            """
-            public sealed class CharDebugImpl : IDebugImpl<int, CharDebugImpl>
-            {
-                public static Repr to_repr(int self) => Repr.CharLit(self);
-            }
-            """
-        )!;
-        yield return ParseMemberDeclaration(
-            """
-            public sealed class FloatDebugImpl : IDebugImpl<float, FloatDebugImpl>
-            {
-                public static Repr to_repr(float self) => Repr.FloatLit(self);
-            }
-            """
-        )!;
-        yield return ParseMemberDeclaration(
-            """
-            public sealed class DoubleDebugImpl : IDebugImpl<double, DoubleDebugImpl>
-            {
-                public static Repr to_repr(double self) => Repr.DoubleLit(self);
-            }
-            """
-        )!;
-        yield return ParseMemberDeclaration(
-            """
-            public sealed class UnitDebugImpl : IDebugImpl<MoonBitUnit, UnitDebugImpl>
-            {
-                public static Repr to_repr(MoonBitUnit self) => Repr.UnitLit;
-            }
-            """
-        )!;
-        yield return ParseMemberDeclaration(
-            """
-            public sealed class FallbackDebugImpl : IDebugImpl<object, FallbackDebugImpl>
-            {
-                public static Repr to_repr(object self) => Repr.Literal(self?.ToString() ?? "<null>");
             }
             """
         )!;
@@ -4072,6 +4031,7 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
             ("BytesView", "Show") => CoreBuiltinTypeName("BytesViewShowImpl"),
             ("Int", "Debug") => CoreDebugTypeName("IntDebugImpl"),
             ("String", "Debug") => CoreDebugTypeName("StringDebugImpl"),
+            ("StringView", "Debug") => CoreDebugTypeName("StringViewDebugImpl"),
             _ => StaticTraitImplTypeParameterName(
                 EmitType(type).NormalizeWhitespace().ToFullString(),
                 traitName
@@ -4909,10 +4869,89 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
             }
     }
 
+    private void CollectExpressionDerivedTraitImplKeys(JsonElement value)
+    {
+        if (value.ValueKind == JsonValueKind.Object)
+        {
+            if (
+                value.TryGetProperty("selectedFunctionId", out var selectedFunctionId)
+                && selectedFunctionId.ValueKind == JsonValueKind.String
+                && TryDerivedTraitName(selectedFunctionId.GetString() ?? "", out var traitName)
+                && value.TryGetProperty("left", out var left)
+                && left.ValueKind == JsonValueKind.Object
+                && left.TryGetProperty("type", out var selfType)
+            )
+                AddUsedDerivedTraitImplKey(selfType, traitName);
+
+            foreach (var property in value.EnumerateObject())
+                CollectExpressionDerivedTraitImplKeys(property.Value);
+            return;
+        }
+
+        if (value.ValueKind == JsonValueKind.Array)
+            foreach (var item in value.EnumerateArray())
+                CollectExpressionDerivedTraitImplKeys(item);
+    }
+
+    private void AddUsedDerivedTraitImplKey(JsonElement selfType, string traitName)
+    {
+        if (
+            selfType.ValueKind == JsonValueKind.Object
+            && selfType.TryGetProperty("kind", out var kind)
+            && kind.GetString() == "Declared"
+            && selfType.TryGetProperty("symbol", out var selfSymbol)
+            && selfSymbol.TryGetProperty("id", out var selfId)
+            && selfId.ValueKind == JsonValueKind.String
+        )
+        {
+            var typeId = selfId.GetString() ?? "";
+            if (
+                typeDefinitions.TryGetValue(typeId, out var definition)
+                && TypeDefinitionDerives(definition, traitName)
+            )
+                usedDerivedTraitImplKeys.Add(UsedDerivedTraitImplKey(typeId, traitName));
+        }
+    }
+
+    private static bool TryDerivedTraitName(string functionId, out string traitName)
+    {
+        traitName = "";
+        if (!functionId.StartsWith("derived:trait:", StringComparison.Ordinal))
+            return false;
+
+        foreach (var candidate in new[] { "Eq", "Hash", "Debug" })
+            if (functionId.Contains(":" + candidate + ":", StringComparison.Ordinal))
+            {
+                traitName = candidate;
+                return true;
+            }
+
+        return false;
+    }
+
     private bool UsedDerivedTraitImpl(JsonElement typeDefinition, string traitName)
     {
         var typeId = typeDefinition.GetProperty("symbol").GetProperty("id").GetString() ?? "";
         return usedDerivedTraitImplKeys.Contains(UsedDerivedTraitImplKey(typeId, traitName));
+    }
+
+    private bool RequiresCoreDebugPackage(IReadOnlySet<string> usedTraitIds)
+    {
+        return usedDerivedTraitImplKeys.Any(key =>
+                key.StartsWith("Debug|", StringComparison.Ordinal)
+            )
+            || usedTraitIds.Any(traitId =>
+                PackageNameFromSymbolId(traitId) == "moonbitlang/core/debug"
+            );
+    }
+
+    private static void AddCoreDebugSourceDependencies(
+        HashSet<string> usedTypeIds,
+        HashSet<string> usedTraitIds
+    )
+    {
+        usedTypeIds.Add("type:pkg:moonbitlang/core/debug:moonbitlang/core/debug:Repr");
+        usedTraitIds.Add("type:pkg:moonbitlang/core/debug:moonbitlang/core/debug:Debug");
     }
 
     private IEnumerable<string> UsedDerivedTraitImplTypeIds()
@@ -5243,9 +5282,7 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
             {
                 result = ConcatArraySegment(result, elementTypeName, values);
                 values.Clear();
-                var spread = EmitExpr(item.GetProperty("value"))
-                    .NormalizeWhitespace()
-                    .ToFullString();
+                var spread = EmitArraySpreadValue(item.GetProperty("value"), elementTypeName);
                 result = ParseExpression(
                     $"ArrayUtility.Concat({result.NormalizeWhitespace().ToFullString()}, {spread})"
                 );
@@ -5269,6 +5306,16 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
         throw new NotSupportedException(
             $"array literal target type is not supported: {type.GetProperty("kind").GetString()}"
         );
+    }
+
+    private string EmitArraySpreadValue(JsonElement spreadValue, string elementTypeName)
+    {
+        var spread = EmitExpr(spreadValue).NormalizeWhitespace().ToFullString();
+        return ConstructedCoreBuiltinTypeNameOrNull(spreadValue.GetProperty("type")) switch
+        {
+            "Iter" => $"{CoreBuiltinTypeName("Iter_")}.to_array<{elementTypeName}>({spread})",
+            _ => spread,
+        };
     }
 
     private static bool IsArraySpreadElement(JsonElement item)
@@ -5333,8 +5380,8 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
     {
         return BuiltinTypeName(keyType) switch
         {
-            "String" => RuntimeTypeName("MoonBitEq.StringEqImpl"),
-            "Int" => RuntimeTypeName("MoonBitEq.IntEqImpl"),
+            "String" => CoreBuiltinTypeName("StringEqImpl"),
+            "Int" => CoreBuiltinTypeName("IntEqImpl"),
             var name => throw new NotSupportedException(
                 $"vnext map literal key equality evidence is not supported: {name}"
             ),
@@ -5353,18 +5400,18 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
         if (type.GetProperty("kind").GetString() == "Declared" && DeclaredTypeDerives(type, "Eq"))
         {
             var typeName = EmitType(type).NormalizeWhitespace().ToFullString();
-            return $"{RuntimeTypeName("MoonBitEq.DefaultEqImpl")}<{typeName}>";
+            return $"global::{options.GeneratedNamespace}.Runtime.BuiltinEq.DefaultEqImpl<{typeName}>";
         }
 
         return BuiltinTypeName(type) switch
         {
-            "Int" => "MoonBitEq.IntEqImpl",
-            "Bool" => "MoonBitEq.BoolEqImpl",
-            "String" => "MoonBitEq.StringEqImpl",
-            "Double" => "MoonBitEq.DoubleEqImpl",
-            "Float" => "MoonBitEq.FloatEqImpl",
-            "UInt16" => "MoonBitEq.UInt16EqImpl",
-            "Char" => "MoonBitEq.CharEqImpl",
+            "Int" => CoreBuiltinTypeName("IntEqImpl"),
+            "Bool" => CoreBuiltinTypeName("BoolEqImpl"),
+            "String" => CoreBuiltinTypeName("StringEqImpl"),
+            "Double" => CoreBuiltinTypeName("DoubleEqImpl"),
+            "Float" => CoreBuiltinTypeName("FloatEqImpl"),
+            "UInt16" => CoreBuiltinTypeName("UInt16EqImpl"),
+            "Char" => CoreBuiltinTypeName("CharEqImpl"),
             var name => throw new NotSupportedException(
                 $"vnext option equality element Eq evidence is not supported: {name}"
             ),
@@ -5405,9 +5452,7 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
 
     private static string BuiltinTypeName(JsonElement type)
     {
-        return type.GetProperty("kind").GetString() == "Builtin"
-            ? type.GetProperty("name").GetString() ?? ""
-            : "";
+        return CoreBuiltinTypeNameOrNull(type) ?? "";
     }
 
     private ExpressionSyntax EmitBytesLiteral(string value)
@@ -5673,8 +5718,8 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
             "Builtin" when type.GetProperty("name").GetString() == "BytesView" => IdentifierName(
                 "MoonBitBytesView"
             ),
-            "Builtin" when type.GetProperty("name").GetString() == "Error" => ParseTypeName(
-                CoreBuiltinTypeName("Error")
+            "Builtin" when type.GetProperty("name").GetString() == "Error" => IdentifierName(
+                "MoonBitError"
             ),
             "Builtin" when type.GetProperty("name").GetString() == "SourceLoc" => IdentifierName(
                 "MoonBitSourceLoc"
@@ -5690,28 +5735,25 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
             "Builtin" when type.GetProperty("name").GetString() == "Unit" => IdentifierName(
                 "MoonBitUnit"
             ),
-            "Apply" when IsBuiltinApply(type, "Array") => ParseTypeName(
+            _ when IsBuiltinApply(type, "Array") => ParseTypeName(
                 $"MoonBitArray<{EmitType(type.GetProperty("args")[0]).NormalizeWhitespace().ToFullString()}>"
             ),
-            "Apply" when IsBuiltinApply(type, "ArrayView") => ParseTypeName(
+            _ when IsBuiltinApply(type, "ArrayView") => ParseTypeName(
                 $"MoonBitArrayView<{EmitType(type.GetProperty("args")[0]).NormalizeWhitespace().ToFullString()}>"
             ),
-            "Apply" when IsBuiltinApply(type, "MutArrayView") => ParseTypeName(
+            _ when IsBuiltinApply(type, "MutArrayView") => ParseTypeName(
                 $"MoonBitMutArrayView<{EmitType(type.GetProperty("args")[0]).NormalizeWhitespace().ToFullString()}>"
             ),
-            "Apply" when IsBuiltinApply(type, "Option") => ParseTypeName(
+            _ when IsBuiltinApply(type, "Option") => ParseTypeName(
                 $"MoonBitOption<{EmitType(type.GetProperty("args")[0]).NormalizeWhitespace().ToFullString()}>"
             ),
-            "Apply" when IsBuiltinApply(type, "Result") => ParseTypeName(
+            _ when IsBuiltinApply(type, "Result") => ParseTypeName(
                 $"MoonBitResult<{EmitType(type.GetProperty("args")[0]).NormalizeWhitespace().ToFullString()}, {EmitType(type.GetProperty("args")[1]).NormalizeWhitespace().ToFullString()}>"
             ),
-            "Apply" when IsBuiltinApply(type, "Map") => ParseTypeName(
+            _ when IsBuiltinApply(type, "Map") => ParseTypeName(
                 $"{CoreBuiltinTypeName("Map")}<{EmitType(type.GetProperty("args")[0]).NormalizeWhitespace().ToFullString()}, {EmitType(type.GetProperty("args")[1]).NormalizeWhitespace().ToFullString()}>"
             ),
-            "Apply" when IsBuiltinApply(type, "Iter") => ParseTypeName(
-                $"MoonBitIter<{EmitType(type.GetProperty("args")[0]).NormalizeWhitespace().ToFullString()}>"
-            ),
-            "Apply" when IsBuiltinApply(type, "UninitializedArray") => ArrayType(
+            _ when IsBuiltinApply(type, "UninitializedArray") => ArrayType(
                     EmitType(type.GetProperty("args")[0])
                 )
                 .WithRankSpecifiers(
@@ -5721,7 +5763,7 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
                         )
                     )
                 ),
-            "Apply" when IsBuiltinApply(type, "FixedArray") => ArrayType(
+            _ when IsBuiltinApply(type, "FixedArray") => ArrayType(
                     EmitType(type.GetProperty("args")[0])
                 )
                 .WithRankSpecifiers(
@@ -5834,28 +5876,80 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
 
     private static bool IsBuiltinApply(JsonElement type, string name)
     {
-        if (type.GetProperty("kind").GetString() != "Apply")
-            return false;
-
-        var constructor = type.GetProperty("constructor");
-        return constructor.GetProperty("kind").GetString() == "Builtin"
-            && constructor.GetProperty("name").GetString() == name;
+        return ConstructedCoreBuiltinTypeNameOrNull(type) == name;
     }
 
     private static bool IsBuiltinType(JsonElement type, string name)
     {
-        return type.GetProperty("kind").GetString() == "Builtin"
-            && type.GetProperty("name").GetString() == name;
+        return CoreBuiltinTypeNameOrNull(type) == name
+            && !type.TryGetProperty("args", out _)
+            && type.GetProperty("kind").GetString() != "Apply";
     }
 
     private static bool IsDeclaredTypeNamed(JsonElement type, string name)
     {
-        var kind = type.GetProperty("kind").GetString();
-        if (kind == "Declared")
-            return type.GetProperty("symbol").GetProperty("name").GetString() == name;
-        return kind == "Apply"
-            && type.GetProperty("constructor").GetProperty("kind").GetString() == "Builtin"
-            && type.GetProperty("constructor").GetProperty("name").GetString() == name;
+        return TypeNameOrNull(type) == name;
+    }
+
+    private static string? TypeNameOrNull(JsonElement type)
+    {
+        return type.GetProperty("kind").GetString() switch
+        {
+            "Builtin" => type.GetProperty("name").GetString(),
+            "Declared" => type.GetProperty("symbol").GetProperty("name").GetString(),
+            "Apply" => TypeConstructorNameOrNull(type.GetProperty("constructor")),
+            _ => null,
+        };
+    }
+
+    private static string? CoreBuiltinTypeNameOrNull(JsonElement type)
+    {
+        return type.GetProperty("kind").GetString() switch
+        {
+            "Builtin" => type.GetProperty("name").GetString(),
+            "Declared" => CoreBuiltinSymbolNameOrNull(type.GetProperty("symbol")),
+            "Apply" => CoreBuiltinConstructorNameOrNull(type.GetProperty("constructor")),
+            _ => null,
+        };
+    }
+
+    private static string? ConstructedCoreBuiltinTypeNameOrNull(JsonElement type)
+    {
+        return type.GetProperty("kind").GetString() switch
+        {
+            "Apply" => CoreBuiltinConstructorNameOrNull(type.GetProperty("constructor")),
+            "Declared" when type.TryGetProperty("args", out _) =>
+                CoreBuiltinSymbolNameOrNull(type.GetProperty("symbol")),
+            _ => null,
+        };
+    }
+
+    private static string? TypeConstructorNameOrNull(JsonElement constructor)
+    {
+        return constructor.GetProperty("kind").GetString() switch
+        {
+            "Builtin" => constructor.GetProperty("name").GetString(),
+            "Declared" => constructor.GetProperty("symbol").GetProperty("name").GetString(),
+            "TypeParameter" => constructor.GetProperty("name").GetString(),
+            _ => null,
+        };
+    }
+
+    private static string? CoreBuiltinConstructorNameOrNull(JsonElement constructor)
+    {
+        return constructor.GetProperty("kind").GetString() switch
+        {
+            "Builtin" => constructor.GetProperty("name").GetString(),
+            "Declared" => CoreBuiltinSymbolNameOrNull(constructor.GetProperty("symbol")),
+            _ => null,
+        };
+    }
+
+    private static string? CoreBuiltinSymbolNameOrNull(JsonElement symbol)
+    {
+        return symbol.GetProperty("packageId").GetString() == "pkg:moonbitlang/core/builtin"
+            ? symbol.GetProperty("name").GetString()
+            : null;
     }
 
     private static IEnumerable<JsonElement> EnumerateOptionalArray(
@@ -6216,7 +6310,7 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
     {
         var value = raise.GetProperty("value");
         var emitted = EmitExpr(value);
-        if (currentFunctionErrorType != CoreBuiltinTypeName("Error"))
+        if (currentFunctionErrorType != "MoonBitError")
             return emitted;
 
         var valueType = value.GetProperty("type");
@@ -6240,12 +6334,12 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
             var valueTypeName = EmitType(valueType).NormalizeWhitespace().ToFullString();
             var implType = TraitEvidenceTypeArgument(valueType, traitName);
             return ParseExpression(
-                $"{CoreBuiltinTypeName("Error")}.FromObject({emittedText}, {Literal(displayName)}, {implObjectType}<{valueTypeName}, {implType}>.Instance)"
+                $"MoonBitError.FromObject({emittedText}, {Literal(displayName)}, {implObjectType}<{valueTypeName}, {implType}>.Instance)"
             );
         }
 
         return ParseExpression(
-            $"{CoreBuiltinTypeName("Error")}.FromObject({emittedText}, {Literal(displayName)})"
+            $"MoonBitError.FromObject({emittedText}, {Literal(displayName)})"
         );
     }
 
@@ -6543,6 +6637,12 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
             : ToPublicIdentifier(symbol.GetProperty("name").GetString() ?? symbolId);
     }
 
+    private string QualifiedTypeDefinitionName(JsonElement symbol)
+    {
+        var symbolId = symbol.GetProperty("id").GetString() ?? "";
+        return QualifyPackageTypeName(symbolId, TypeDefinitionName(symbol));
+    }
+
     private string FunctionMethodName(string functionId, string fallbackName)
     {
         return functionNames.TryGetValue(functionId, out var name)
@@ -6705,6 +6805,7 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
                 ["MoonBitStringView"] = "StringView",
                 ["MoonBitUnit"] = "Unit",
                 ["MoonBitEq"] = "BuiltinEq",
+                ["MoonBitError"] = "Error",
             };
         private static readonly IReadOnlyDictionary<string, string> QualifiedRuntimeIdentifierTargets =
             RuntimeIdentifierTargets

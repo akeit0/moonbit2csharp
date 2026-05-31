@@ -74,22 +74,23 @@ pub fn[X] Iter::iter(self : Iter[X]) -> Iter[X] {
 }
 
 pub fn[X, Y] Iter::map(self : Iter[X], f : (X) -> Y) -> Iter[Y] {
-  Iter::new(
-    () => {
+  let result : Iter[Y] = {
+    f: () => {
       match self.next() {
         Some(item) => Some(f(item))
         None => None
       }
     },
-    size_hint=self.size_hint(),
-  )
+    size_hint: self.size_hint(),
+  }
+  result
 }
 
 pub fn[X, Y] Iter2::new(
   f : () -> (X, Y)?,
   size_hint? : Int,
 ) -> Iter2[X, Y] {
-  { iter: Iter::new(f, size_hint~) }
+  { iter: { f, size_hint } }
 }
 
 pub fn[X, Y] Iter2::iter(self : Iter2[X, Y]) -> Iter[(X, Y)] {
@@ -124,8 +125,8 @@ pub fn[X, Y] Iter2::to_array(self : Iter2[X, Y]) -> Array[(X, Y)] {
 pub fn[T] Array::iter(self : Array[T]) -> Iter[T] {
   let mut index = 0
   let len = self.length()
-  Iter::new(
-    () => {
+  let result : Iter[T] = {
+    f: () => {
       if index >= len {
         None
       } else {
@@ -134,15 +135,16 @@ pub fn[T] Array::iter(self : Array[T]) -> Iter[T] {
         Some(item)
       }
     },
-    size_hint=len,
-  )
+    size_hint: Some(len),
+  }
+  result
 }
 
 pub fn[X] ArrayView::iter(self : ArrayView[X]) -> Iter[X] {
   let mut index = 0
   let len = self.length()
-  Iter::new(
-    () => {
+  let result : Iter[X] = {
+    f: () => {
       if index >= len {
         None
       } else {
@@ -151,15 +153,16 @@ pub fn[X] ArrayView::iter(self : ArrayView[X]) -> Iter[X] {
         Some(item)
       }
     },
-    size_hint=len,
-  )
+    size_hint: Some(len),
+  }
+  result
 }
 
 pub fn StringView::iter(self : StringView) -> Iter[Char] {
   let mut index = 0
   let len = self.length()
-  Iter::new(
-    () => {
+  let result : Iter[Char] = {
+    f: () => {
       if index >= len {
         None
       } else {
@@ -177,8 +180,9 @@ pub fn StringView::iter(self : StringView) -> Iter[Char] {
         Some(c1.unsafe_to_char())
       }
     },
-    size_hint=len,
-  )
+    size_hint: Some(len),
+  }
+  result
 }
 
 pub fn Int::until(self : Int, end : Int) -> Iter[Int] {
@@ -255,8 +259,8 @@ pub fn StringView::split(
   let sep_len = sep.length()
   if sep_len == 0 {
       let mut index = 0
-      return Iter::new(
-      () => {
+      let result : Iter[StringView] = {
+      f: () => {
         if index >= self.length() {
           None
         } else {
@@ -265,8 +269,9 @@ pub fn StringView::split(
           Some(item)
         }
       },
-      size_hint=self.length(),
-    )
+      size_hint: Some(self.length()),
+    }
+      return result
   }
   let mut remaining = Some(self)
   Iter::new(() => {

@@ -231,9 +231,44 @@ public sealed partial class VNextSemanticEmitter
             default:
                 if (EmitRaisingExprAsStatement(expr, statements))
                     break;
-                statements.Add(ExpressionStatement(EmitExpr(expr)));
+                EmitIgnoredExprAsStatement(expr, statements);
                 break;
         }
+    }
+
+    private void EmitIgnoredExprAsStatement(JsonElement expr, List<StatementSyntax> statements)
+    {
+        var emitted = EmitExpr(expr);
+        if (IsUnitValueExpression(emitted))
+            return;
+
+        if (CanEmitAsExpressionStatement(emitted))
+        {
+            statements.Add(ExpressionStatement(emitted));
+            return;
+        }
+
+        statements.Add(
+            ExpressionStatement(
+                AssignmentExpression(
+                    SyntaxKind.SimpleAssignmentExpression,
+                    IdentifierName("_"),
+                    emitted
+                )
+            )
+        );
+    }
+
+    private static bool CanEmitAsExpressionStatement(ExpressionSyntax expression)
+    {
+        return expression is AssignmentExpressionSyntax
+            or InvocationExpressionSyntax
+            or ObjectCreationExpressionSyntax
+            or AwaitExpressionSyntax
+            || expression.IsKind(SyntaxKind.PostIncrementExpression)
+            || expression.IsKind(SyntaxKind.PostDecrementExpression)
+            || expression.IsKind(SyntaxKind.PreIncrementExpression)
+            || expression.IsKind(SyntaxKind.PreDecrementExpression);
     }
 
     private static ObjectCreationExpressionSyntax NewMoonBitPanicExpression()
@@ -1360,7 +1395,7 @@ public sealed partial class VNextSemanticEmitter
         if (string.Equals(errorType, currentFunctionErrorType, StringComparison.Ordinal))
             return ParseExpression(errorExpression);
 
-        if (currentFunctionErrorType == CoreBuiltinTypeName("Error"))
+        if (currentFunctionErrorType == "MoonBitError")
         {
             var displayName = MoonBitTypeDisplayName(errorTypeNode);
             var displayExpression = TryEnumErrorNameExpression(
@@ -1383,12 +1418,12 @@ public sealed partial class VNextSemanticEmitter
                 );
                 var implType = TraitEvidenceTypeArgument(errorTypeNode, "Show");
                 return ParseExpression(
-                    $"{CoreBuiltinTypeName("Error")}.FromObject({errorExpression}, {displayExpression}, {implObjectType}<{valueTypeName}, {implType}>.Instance)"
+                    $"MoonBitError.FromObject({errorExpression}, {displayExpression}, {implObjectType}<{valueTypeName}, {implType}>.Instance)"
                 );
             }
 
             return ParseExpression(
-                $"{CoreBuiltinTypeName("Error")}.FromObject({errorExpression}, {displayExpression})"
+                $"MoonBitError.FromObject({errorExpression}, {displayExpression})"
             );
         }
 
@@ -1424,7 +1459,7 @@ public sealed partial class VNextSemanticEmitter
         if (string.Equals(sourceErrorType, tryErrorType, StringComparison.Ordinal))
             return ParseExpression(errorExpression);
 
-        if (tryErrorType == CoreBuiltinTypeName("Error"))
+        if (tryErrorType == "MoonBitError")
         {
             var displayName = MoonBitTypeDisplayName(sourceErrorTypeNode);
             var displayExpression = TryEnumErrorNameExpression(
@@ -1447,12 +1482,12 @@ public sealed partial class VNextSemanticEmitter
                 );
                 var implType = TraitEvidenceTypeArgument(sourceErrorTypeNode, "Show");
                 return ParseExpression(
-                    $"{CoreBuiltinTypeName("Error")}.FromObject({errorExpression}, {displayExpression}, {implObjectType}<{valueTypeName}, {implType}>.Instance)"
+                    $"MoonBitError.FromObject({errorExpression}, {displayExpression}, {implObjectType}<{valueTypeName}, {implType}>.Instance)"
                 );
             }
 
             return ParseExpression(
-                $"{CoreBuiltinTypeName("Error")}.FromObject({errorExpression}, {displayExpression})"
+                $"MoonBitError.FromObject({errorExpression}, {displayExpression})"
             );
         }
 

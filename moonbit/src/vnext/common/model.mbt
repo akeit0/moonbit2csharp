@@ -1,4 +1,5 @@
 ///|
+#valtype
 pub(all) struct SourceSpan {
   file : String
   start : Int

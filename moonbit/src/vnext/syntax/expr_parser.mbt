@@ -788,7 +788,7 @@ fn Parser::parse_match(self : Parser) -> @ast.Expr {
     let pattern = self.parse_pattern()
     let condition = if self.current().kind == TokenKind::If {
       ignore(self.bump())
-      Some(self.parse_is_expr())
+      Some(self.parse_pipe_expr())
     } else {
       None
     }

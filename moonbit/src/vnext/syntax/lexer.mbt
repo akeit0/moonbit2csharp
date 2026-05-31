@@ -177,7 +177,8 @@ fn Lexer::scan_hash_line(self : Lexer) -> Unit {
     self.scan_hash_pipe_string_literal()
   } else if self.starts_with("#alias(") ||
     self.starts_with("#cfg(") ||
-    self.starts_with("#intrinsic(") {
+    self.starts_with("#intrinsic(") ||
+    self.starts_with("#valtype") {
     self.scan_attribute_line()
   } else {
     while !self.at_end() && self.peek() != '\n' {
