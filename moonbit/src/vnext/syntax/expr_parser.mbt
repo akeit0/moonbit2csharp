@@ -550,7 +550,7 @@ fn Parser::next_non_separator_token(self : Parser) -> Token {
 ///|
 fn Parser::parse_break(self : Parser) -> @ast.Expr {
   let start = self.expect(TokenKind::Break)
-  let value = if self.current().kind
+  let value : @ast.Expr? = if self.current().kind
     is (TokenKind::Newline
     | TokenKind::Semicolon
     | TokenKind::RBrace
@@ -595,14 +595,14 @@ fn Parser::parse_continue(self : Parser) -> @ast.Expr {
 fn Parser::parse_index_or_slice(self : Parser, target : @ast.Expr) -> @ast.Expr {
   let start = @ast.expr_span(target)
   ignore(self.expect(TokenKind::LBracket))
-  let first = if self.current().kind == TokenKind::Colon ||
+  let first : @ast.Expr? = if self.current().kind == TokenKind::Colon ||
     self.current().kind == TokenKind::RBracket {
     None
   } else {
     Some(self.parse_expr())
   }
   let mut is_slice = false
-  let second = if self.current().kind == TokenKind::Colon {
+  let second : @ast.Expr? = if self.current().kind == TokenKind::Colon {
     is_slice = true
     ignore(self.bump())
     if self.current().kind == TokenKind::RBracket {
@@ -727,7 +727,7 @@ fn Parser::parse_while(self : Parser) -> @ast.Expr {
 ///|
 fn Parser::parse_return(self : Parser) -> @ast.Expr {
   let start = self.expect(TokenKind::Return)
-  let value = if self.current().kind
+  let value : @ast.Expr? = if self.current().kind
     is (TokenKind::Newline
     | TokenKind::Semicolon
     | TokenKind::RBrace

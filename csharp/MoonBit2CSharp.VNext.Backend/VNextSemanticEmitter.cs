@@ -5082,6 +5082,8 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
             "StringToStringView" => value,
             "ArrayToArrayView" => value,
             "FixedArrayToArrayView" => value,
+            "IterToIter2" => ObjectCreationExpression(EmitType(expr.GetProperty("type")))
+                .WithArgumentList(ArgumentList(SingletonSeparatedList(Argument(value)))),
             "ConcreteToTraitObject" => EmitConcreteToTraitObject(expr, value),
             var kind => throw new NotSupportedException(
                 $"vnext conversion is not supported: {kind}"

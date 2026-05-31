@@ -280,6 +280,7 @@ test "executable validation rejects error expressions and missing struct definit
       {
         symbol_id: "global:Main:m",
         name: "m",
+        is_public: false,
         type_: TypeRef::Declared(missing_symbol, []),
         value: BoundExpr::StructLiteral(
           missing_symbol.id,
@@ -341,6 +342,7 @@ test "executable validation rejects invalid field access and assignment" {
       {
         symbol_id: "global:pkg:main:Main:bad_read",
         name: "bad_read",
+        is_public: false,
         type_: @binding.int_type(),
         value: BoundExpr::FieldAccess(
           target,
@@ -359,6 +361,7 @@ test "executable validation rejects invalid field access and assignment" {
       {
         symbol_id: "global:pkg:main:Main:bad_write",
         name: "bad_write",
+        is_public: false,
         type_: @binding.unit_type(),
         value: BoundExpr::FieldAssign(
           target,

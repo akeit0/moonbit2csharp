@@ -340,102 +340,103 @@ fn Lexer::scan_identifier_or_keyword(self : Lexer) -> Unit {
 
 ///|
 fn Lexer::scan_punctuation_or_bad(self : Lexer) -> Unit {
+  if self.peek() == '@' &&
+    self.pos + 1 < self.source.length() &&
+    is_ident_start(self.source[self.pos + 1]) {
+    self.scan_package_name()
+    return
+  }
+  if self.peek() == '/' &&
+    self.pos + 1 < self.source.length() &&
+    self.source[self.pos + 1] == '/' {
+    self.scan_line_comment()
+    return
+  }
   let start = self.pos
   let start_col = self.col
   let start_line = self.line
   let token = match self.peek() {
-    '.' => self.dot_token()
-    '>' => self.greater_token()
-    '<' => self.less_token()
+    '.' => Some(self.dot_token())
+    '>' => Some(self.greater_token())
+    '<' => Some(self.less_token())
     ':' =>
-      self.two_char_token(
+      Some(self.two_char_token(
         ':',
         TokenKind::ColonColon,
         "::",
         TokenKind::Colon,
         ":",
-      )
-    '=' => self.equal_token()
-    '-' => self.minus_token()
-    '&' => self.amp_token()
-    '|' => self.pipe_token()
+      ))
+    '=' => Some(self.equal_token())
+    '-' => Some(self.minus_token())
+    '&' => Some(self.amp_token())
+    '|' => Some(self.pipe_token())
     '!' =>
-      self.two_char_token(
+      Some(self.two_char_token(
         '=',
         TokenKind::BangEq,
         "!=",
         TokenKind::Exclamation,
         "!",
-      )
-    ';' => token(TokenKind::Semicolon, ";")
-    ',' => token(TokenKind::Comma, ",")
-    '@' => {
-      if self.pos + 1 < self.source.length() &&
-        is_ident_start(self.source[self.pos + 1]) {
-        self.scan_package_name()
-        return
-      }
-      token(TokenKind::At, "@")
-    }
-    '(' => token(TokenKind::LParen, "(")
-    ')' => token(TokenKind::RParen, ")")
-    '[' => token(TokenKind::LBracket, "[")
-    ']' => token(TokenKind::RBracket, "]")
-    '{' => token(TokenKind::LBrace, "{")
-    '}' => token(TokenKind::RBrace, "}")
+      ))
+    ';' => Some(token(TokenKind::Semicolon, ";"))
+    ',' => Some(token(TokenKind::Comma, ","))
+    '@' => Some(token(TokenKind::At, "@"))
+    '(' => Some(token(TokenKind::LParen, "("))
+    ')' => Some(token(TokenKind::RParen, ")"))
+    '[' => Some(token(TokenKind::LBracket, "["))
+    ']' => Some(token(TokenKind::RBracket, "]"))
+    '{' => Some(token(TokenKind::LBrace, "{"))
+    '}' => Some(token(TokenKind::RBrace, "}"))
     '+' =>
-      self.two_char_token(
+      Some(self.two_char_token(
         '=',
         TokenKind::AugmentedAssign,
         "+=",
         TokenKind::Plus,
         "+",
-      )
+      ))
     '*' =>
-      self.two_char_token(
+      Some(self.two_char_token(
         '=',
         TokenKind::AugmentedAssign,
         "*=",
         TokenKind::Star,
         "*",
-      )
+      ))
     '/' =>
-      if self.pos + 1 < self.source.length() && self.source[self.pos + 1] == '/' {
-        self.scan_line_comment()
-        return
-      } else {
-        self.two_char_token(
-          '=',
-          TokenKind::AugmentedAssign,
-          "/=",
-          TokenKind::Slash,
-          "/",
-        )
-      }
+      Some(self.two_char_token(
+        '=',
+        TokenKind::AugmentedAssign,
+        "/=",
+        TokenKind::Slash,
+        "/",
+      ))
     '%' =>
-      self.two_char_token(
+      Some(self.two_char_token(
         '=',
         TokenKind::AugmentedAssign,
         "%=",
         TokenKind::Percent,
         "%",
-      )
+      ))
     '^' =>
-      self.two_char_token(
+      Some(self.two_char_token(
         '=',
         TokenKind::AugmentedAssign,
         "^=",
         TokenKind::Caret,
         "^",
-      )
-    '?' => token(TokenKind::Question, "?")
-    '~' => token(TokenKind::Tilde, "~")
-    '_' => token(TokenKind::Underscore, "_")
+      ))
+    '?' => Some(token(TokenKind::Question, "?"))
+    '~' => Some(token(TokenKind::Tilde, "~"))
+    '_' => Some(token(TokenKind::Underscore, "_"))
     _ => {
       self.scan_bad_character()
-      return
+      None
     }
   }
+  guard token is Some(token) else { return }
   self.tokens.push({
     kind: token.kind,
     text: token.text,

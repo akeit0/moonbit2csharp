@@ -489,6 +489,7 @@ fn bind_missing_selected_impl_method_bodies(
     current_owner_id: session.context.current_owner_id,
     current_effect: session.context.current_effect,
     loop_depth: session.context.loop_depth,
+    loop_break_expected_types: session.context.loop_break_expected_types,
     used_trait_impls: session.context.used_trait_impls,
     used_trait_impl_keys: session.context.used_trait_impl_keys,
     trait_default_context: session.context.trait_default_context,

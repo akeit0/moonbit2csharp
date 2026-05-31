@@ -86,7 +86,7 @@ fn resolve_type_with_params_and_self(
           type_.name,
         ) {
         Some(header) =>
-          if type_header_should_resolve_as_builtin(header) {
+          if type_header_should_resolve_as_builtin(index, header) {
             match
               resolve_builtin_constructed_type_with_self(
                 context, index, type_, type_params, self_type,
@@ -207,9 +207,27 @@ fn resolve_self_type_syntax(
 }
 
 ///|
-fn type_header_should_resolve_as_builtin(header : @semantic.TypeHeader) -> Bool {
+fn type_header_should_resolve_as_builtin(
+  index : DeclarationIndex,
+  header : @semantic.TypeHeader,
+) -> Bool {
   header.symbol.package_id == "pkg:moonbitlang/core/builtin" &&
+  !core_builtin_struct_defined_in_current_package(index, header) &&
   core_builtin_type_header_has_canonical_type(header)
+}
+
+///|
+fn core_builtin_struct_defined_in_current_package(
+  index : DeclarationIndex,
+  header : @semantic.TypeHeader,
+) -> Bool {
+  if index.package_id != header.symbol.package_id {
+    return false
+  }
+  match @semantic.find_type_definition(index, header.symbol.id) {
+    Some(TypeDefinition::Struct(_)) => true
+    _ => false
+  }
 }
 
 ///|

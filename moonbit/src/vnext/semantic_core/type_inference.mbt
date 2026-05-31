@@ -250,6 +250,18 @@ fn unify_concrete_types(
   match (expected, actual) {
     (TypeRef::Declared(left, left_args), TypeRef::Declared(right, right_args)) =>
       left.id == right.id && unify_type_arrays(context, left_args, right_args)
+    (
+      TypeRef::Declared(symbol, left_args),
+      TypeRef::Apply(TypeConstructorRef::Builtin(name), right_args),
+    ) =>
+      @binding.is_core_builtin_type_symbol(symbol, name) &&
+      unify_type_arrays(context, left_args, right_args)
+    (
+      TypeRef::Apply(TypeConstructorRef::Builtin(name), left_args),
+      TypeRef::Declared(symbol, right_args),
+    ) =>
+      @binding.is_core_builtin_type_symbol(symbol, name) &&
+      unify_type_arrays(context, left_args, right_args)
     (TypeRef::Tuple(left), TypeRef::Tuple(right)) =>
       unify_type_arrays(context, left, right)
     (
@@ -317,8 +329,9 @@ fn constructor_equal(
     (TypeConstructorRef::Builtin(a), TypeConstructorRef::Builtin(b)) => a == b
     (TypeConstructorRef::Declared(a), TypeConstructorRef::Declared(b)) =>
       a.id == b.id
-    (TypeConstructorRef::Declared(symbol), TypeConstructorRef::Builtin(name))
-    | (TypeConstructorRef::Builtin(name), TypeConstructorRef::Declared(symbol)) =>
+    (TypeConstructorRef::Declared(symbol), TypeConstructorRef::Builtin(name)) =>
+      @binding.is_core_builtin_type_symbol(symbol, name)
+    (TypeConstructorRef::Builtin(name), TypeConstructorRef::Declared(symbol)) =>
       @binding.is_core_builtin_type_symbol(symbol, name)
     (
       TypeConstructorRef::TypeParameter(a, _),

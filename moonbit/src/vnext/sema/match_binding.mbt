@@ -234,6 +234,33 @@ fn bind_if_condition(
         result.symbols,
       )
     }
+    Expr::Binary("&&", left, right, span) => {
+      let (left_bound, left_symbols) = bind_if_condition(
+        context, index, scope, left, ast,
+      )
+      let right_scope = scope_with_pattern_symbols(scope, left_symbols)
+      let (right_bound, right_symbols) = bind_if_condition(
+        context, index, right_scope, right, ast,
+      )
+      let symbols = left_symbols.copy()
+      for symbol in right_symbols {
+        symbols.push(symbol)
+      }
+      (
+        BoundExpr::Binary(
+          "&&",
+          left_bound,
+          right_bound,
+          "",
+          [],
+          [],
+          None,
+          bool_type(),
+          span,
+        ),
+        symbols,
+      )
+    }
     _ =>
       (
         bind_expr(

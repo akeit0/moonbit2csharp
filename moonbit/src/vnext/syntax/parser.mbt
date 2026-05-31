@@ -688,11 +688,12 @@ fn Parser::parse_impl_method(self : Parser) -> @ast.ImplMethodDecl {
   }
   self.skip_effect_suffix()
   if self.declarations_only {
-    let intrinsic = if self.current().kind == TokenKind::Eq {
+    let mut intrinsic : String? = None
+    if self.current().kind == TokenKind::Eq {
       ignore(self.bump())
       self.skip_separators()
       if self.current().kind == TokenKind::StringLiteral {
-        Some(self.parse_string_binding())
+        intrinsic = Some(self.parse_string_binding())
       } else {
         self.skip_declaration_body_tail()
         return {
@@ -712,10 +713,8 @@ fn Parser::parse_impl_method(self : Parser) -> @ast.ImplMethodDecl {
         return_type,
         body: Some(@ast.Expr::Missing(name.span)),
         intrinsic: None,
-        span: name.span,
-      }
-    } else {
-      None
+          span: name.span,
+        }
     }
     return {
       name: name.text,

@@ -397,7 +397,7 @@ fn bind_expr(
         context,
         bind_for_loop(
           typing, context, index, scope, bindings, condition, updates, body, no_break_expr,
-          span, ast,
+          expected, span, ast,
         ),
         expected,
         span,

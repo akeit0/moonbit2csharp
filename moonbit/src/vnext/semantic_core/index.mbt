@@ -1242,16 +1242,13 @@ fn add_operator_trait_impl_method(
   let trait_def = operator_trait_definition_or_fallback(
     index, binding, method_name, span,
   )
-  let trait_method = match find_trait_method_signature(trait_def, method_name) {
-    Some(trait_method) => trait_method
-    None => {
-      index.error(
-        "VNX2202",
-        "impl method is not declared by trait: " + method_name,
-        span,
-      )
-      return
-    }
+  guard find_trait_method_signature(trait_def, method_name) is Some(trait_method) else {
+    index.error(
+      "VNX2202",
+      "impl method is not declared by trait: " + method_name,
+      span,
+    )
+    return
   }
   let method_id = trait_method.method_id
   let function_id = impl_method_function_id_for(
@@ -2105,7 +2102,7 @@ pub fn find_functions_by_name(
   name : String,
 ) -> Array[FunctionSignature] {
   let result : Array[FunctionSignature] = []
-  let seen : @set.Set[String] = @set.Set::default()
+  let seen : @set.Set[String] = Set([])
   for function in index.functions {
     if function.name == name && function_visible_by_name(index, function) {
       push_visible_function_once(result, seen, function)
@@ -2417,8 +2414,8 @@ fn receiver_type_shape_equal(candidate : TypeRef, actual : TypeRef) -> Bool {
     (
       TypeRef::Apply(TypeConstructorRef::Builtin(name), _),
       TypeRef::Declared(symbol, _),
-    )
-    | (
+    ) => @binding.is_core_builtin_type_symbol(symbol, name)
+    (
       TypeRef::Declared(symbol, _),
       TypeRef::Apply(TypeConstructorRef::Builtin(name), _),
     ) => @binding.is_core_builtin_type_symbol(symbol, name)
@@ -2436,8 +2433,9 @@ fn receiver_constructor_equal(
     (TypeConstructorRef::Builtin(a), TypeConstructorRef::Builtin(b)) => a == b
     (TypeConstructorRef::Declared(a), TypeConstructorRef::Declared(b)) =>
       a.id == b.id
-    (TypeConstructorRef::Declared(symbol), TypeConstructorRef::Builtin(name))
-    | (TypeConstructorRef::Builtin(name), TypeConstructorRef::Declared(symbol)) =>
+    (TypeConstructorRef::Declared(symbol), TypeConstructorRef::Builtin(name)) =>
+      @binding.is_core_builtin_type_symbol(symbol, name)
+    (TypeConstructorRef::Builtin(name), TypeConstructorRef::Declared(symbol)) =>
       @binding.is_core_builtin_type_symbol(symbol, name)
     (TypeConstructorRef::TypeParameter(_, _), _) => true
     (_, TypeConstructorRef::TypeParameter(_, _)) => true

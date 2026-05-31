@@ -27,13 +27,22 @@ pub fn resolve_builtin_scalar_type(name : String) -> TypeRef? {
 ///|
 pub fn builtin_unary_type_constructor(name : String) -> ((TypeRef) -> TypeRef)? {
   match name {
-    "Array" => Some(@binding.array_type)
-    "FixedArray" => Some(@binding.fixed_array_type)
+    "Array" =>
+      Some(fn(item) {
+        @binding.array_type(item)
+      })
+    "FixedArray" =>
+      Some(fn(item) {
+        @binding.fixed_array_type(item)
+      })
     "ReadOnlyArray" =>
       Some(fn(item) {
         TypeRef::Apply(TypeConstructorRef::Builtin("ReadOnlyArray"), [item])
       })
-    "ArrayView" => Some(@binding.array_view_type)
+    "ArrayView" =>
+      Some(fn(item) {
+        @binding.array_view_type(item)
+      })
     "MutArrayView" =>
       Some(fn(item) {
         TypeRef::Apply(TypeConstructorRef::Builtin("MutArrayView"), [item])
@@ -42,7 +51,10 @@ pub fn builtin_unary_type_constructor(name : String) -> ((TypeRef) -> TypeRef)? 
       Some(fn(item) {
         TypeRef::Apply(TypeConstructorRef::Builtin("UninitializedArray"), [item])
       })
-    "Option" => Some(@binding.option_type)
+    "Option" =>
+      Some(fn(item) {
+        @binding.option_type(item)
+      })
     "Ref" =>
       Some(fn(item) {
         TypeRef::Apply(TypeConstructorRef::Builtin("Ref"), [item])
@@ -56,7 +68,10 @@ pub fn builtin_binary_type_constructor(
   name : String,
 ) -> ((TypeRef, TypeRef) -> TypeRef)? {
   match name {
-    "Map" => Some(@binding.map_type)
+    "Map" =>
+      Some(fn(key, value) {
+        @binding.map_type(key, value)
+      })
     "Result" =>
       Some(fn(ok, err) {
         TypeRef::Apply(TypeConstructorRef::Builtin("Result"), [ok, err])

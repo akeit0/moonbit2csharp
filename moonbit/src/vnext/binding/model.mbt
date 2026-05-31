@@ -213,6 +213,7 @@ pub(all) struct BindingContext {
   current_owner_id : String?
   current_effect : EffectRef
   mut loop_depth : Int
+  mut loop_break_expected_types : Array[TypeRef]
   used_trait_impls : Array[UsedTraitImpl]
   used_trait_impl_keys : Set[String]
   trait_default_context : TraitRef?
@@ -247,8 +248,9 @@ pub fn binding_context(
     current_owner_id: None,
     current_effect: no_raise(),
     loop_depth: 0,
+    loop_break_expected_types: [],
     used_trait_impls: [],
-    used_trait_impl_keys: Set::default(),
+    used_trait_impl_keys: Set([]),
     trait_default_context: None,
     diagnostics,
     suppress_diagnostics: false,
@@ -281,8 +283,9 @@ pub fn binding_context_with_imports(
     current_owner_id: None,
     current_effect: no_raise(),
     loop_depth: 0,
+    loop_break_expected_types: [],
     used_trait_impls: [],
-    used_trait_impl_keys: Set::default(),
+    used_trait_impl_keys: Set([]),
     trait_default_context: None,
     diagnostics,
     suppress_diagnostics: false,
@@ -551,8 +554,10 @@ pub fn type_equal(left : TypeRef, right : TypeRef) -> Bool {
     (Builtin(a), Builtin(b)) => a == b
     (Declared(a, left_args), Declared(b, right_args)) =>
       a.id == b.id && type_arrays_equal(left_args, right_args)
-    (Declared(symbol, left_args), Apply(Builtin(name), right_args))
-    | (Apply(Builtin(name), right_args), Declared(symbol, left_args)) =>
+    (Declared(symbol, left_args), Apply(Builtin(name), right_args)) =>
+      is_core_builtin_type_symbol(symbol, name) &&
+      type_arrays_equal(left_args, right_args)
+    (Apply(Builtin(name), right_args), Declared(symbol, left_args)) =>
       is_core_builtin_type_symbol(symbol, name) &&
       type_arrays_equal(left_args, right_args)
     (TypeParameter(a, _), TypeParameter(b, _)) => a == b
@@ -621,7 +626,8 @@ fn constructor_equal(
   match (left, right) {
     (Builtin(a), Builtin(b)) => a == b
     (Declared(a), Declared(b)) => a.id == b.id
-    (Declared(symbol), Builtin(name)) | (Builtin(name), Declared(symbol)) =>
+    (Declared(symbol), Builtin(name)) => is_core_builtin_type_symbol(symbol, name)
+    (Builtin(name), Declared(symbol)) =>
       is_core_builtin_type_symbol(symbol, name)
     (TypeParameter(a, _), TypeParameter(b, _)) => a == b
     _ => false
@@ -706,6 +712,7 @@ pub fn binding_context_with_owner(
     current_owner_id: Some(owner_id),
     current_effect: context.current_effect,
     loop_depth: context.loop_depth,
+    loop_break_expected_types: context.loop_break_expected_types,
     used_trait_impls: context.used_trait_impls,
     used_trait_impl_keys: context.used_trait_impl_keys,
     trait_default_context: context.trait_default_context,

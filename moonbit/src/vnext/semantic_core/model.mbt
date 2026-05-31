@@ -254,7 +254,7 @@ pub fn declaration_index(
     impl_indices_by_trait_id: Map([]),
     impl_indices_by_self_type_key: Map([]),
     impl_indices_by_method_name: Map([]),
-    impl_method_function_ids: @set.Set::default(),
+    impl_method_function_ids: Set([]),
     operator_impls: [],
     operator_impls_by_key: Map([]),
     type_headers: [],

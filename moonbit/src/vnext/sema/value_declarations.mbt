@@ -123,7 +123,7 @@ fn resolve_function_receiver_type(
       receiver.name,
     ) {
     Some(header) =>
-      if !receiver_type_header_should_resolve_as_builtin(header) {
+      if !receiver_type_header_should_resolve_as_builtin(index, header) {
         return declared_receiver_type(
           context, index, receiver, type_params, header,
         )
@@ -211,9 +211,11 @@ fn declared_receiver_type(
 
 ///|
 fn receiver_type_header_should_resolve_as_builtin(
+  index : DeclarationIndex,
   header : @semantic.TypeHeader,
 ) -> Bool {
   header.symbol.package_id == "pkg:moonbitlang/core/builtin" &&
+  !core_builtin_receiver_struct_defined_in_current_package(index, header) &&
   (
     @semantic.resolve_builtin_scalar_type(header.symbol.name) is Some(_) ||
     (
@@ -225,6 +227,20 @@ fn receiver_type_header_should_resolve_as_builtin(
       @semantic.builtin_binary_type_constructor(header.symbol.name) is Some(_)
     )
   )
+}
+
+///|
+fn core_builtin_receiver_struct_defined_in_current_package(
+  index : DeclarationIndex,
+  header : @semantic.TypeHeader,
+) -> Bool {
+  if index.package_id != header.symbol.package_id {
+    return false
+  }
+  match @semantic.find_type_definition(index, header.symbol.id) {
+    Some(TypeDefinition::Struct(_)) => true
+    _ => false
+  }
 }
 
 ///|

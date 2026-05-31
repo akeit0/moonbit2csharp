@@ -668,6 +668,19 @@ public static class MoonBitSourceTranspiler
         string modulePath
     )
     {
+        if (modulePath == "moonbitlang/core/env")
+        {
+            var envOverride = Path.Combine(
+                RepositoryRoot(),
+                "moonbit",
+                "builtin",
+                "overrides",
+                "core_env_env_csharp.mbt"
+            );
+            if (File.Exists(envOverride))
+                return [Path.GetFullPath(envOverride)];
+        }
+
         var sourceFiles = PackageSourceFiles(packageRoot);
         if (sourceFiles.Count > 0)
             return sourceFiles;
@@ -769,6 +782,13 @@ public static class MoonBitSourceTranspiler
             "set",
             "moonbitlang/core/set",
             Path.Combine(root, "moonbitlang", "core", "set")
+        );
+        AddDeclarationSource(
+            result,
+            "env",
+            "pkg:moonbitlang/core/env",
+            "moonbitlang/core/env",
+            Path.Combine(root, "moonbit", "builtin", "overrides", "core_env_env_csharp.mbt")
         );
         AddDeclarationSource(
             result,
@@ -956,6 +976,13 @@ public static class MoonBitSourceTranspiler
         );
         AddDeclarationSource(
             result,
+            "builtin",
+            "pkg:moonbitlang/core/builtin",
+            "moonbitlang/core/builtin",
+            Path.Combine(root, "moonbitlang", "core", "builtin", "linked_hash_map.mbt")
+        );
+        AddDeclarationSource(
+            result,
             "debug",
             "pkg:moonbitlang/core/debug",
             "moonbitlang/core/debug",
@@ -1016,6 +1043,13 @@ public static class MoonBitSourceTranspiler
             "pkg:moonbitlang/core/set",
             "moonbitlang/core/set",
             Path.Combine(root, "moonbitlang", "core", "set", "debug.mbt")
+        );
+        AddDeclarationSource(
+            result,
+            "env",
+            "pkg:moonbitlang/core/env",
+            "moonbitlang/core/env",
+            Path.Combine(root, "moonbit", "builtin", "overrides", "core_env_env_csharp.mbt")
         );
         return result;
     }

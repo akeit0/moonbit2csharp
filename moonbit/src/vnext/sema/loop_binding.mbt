@@ -332,6 +332,7 @@ fn bind_for_loop(
   updates : Array[Expr],
   body : Expr,
   no_break_expr : Expr?,
+  expected : TypeRef,
   span : SourceSpan,
   ast : Module,
 ) -> BoundExpr {
@@ -360,7 +361,12 @@ fn bind_for_loop(
     )
   }
   let previous_loop_depth = context.loop_depth
+  let previous_loop_break_expected_types = context.loop_break_expected_types
   context.loop_depth = previous_loop_depth + 1
+  context.loop_break_expected_types = push_loop_break_expected_type(
+    previous_loop_break_expected_types,
+    expected,
+  )
   let bound_body = bind_expr(
     typing,
     context,
@@ -371,6 +377,7 @@ fn bind_for_loop(
     ast,
   )
   context.loop_depth = previous_loop_depth
+  context.loop_break_expected_types = previous_loop_break_expected_types
   let result_type = loop_result_type(bound_body)
   BoundExpr::ForLoop(
     {
@@ -447,12 +454,33 @@ fn bind_break(
   if context.loop_depth == 0 {
     context.error("VNX1700", "break outside loop", span)
   }
+  let expected = current_loop_break_expected_type(context)
   let bound_value = match value {
     Some(expr) =>
-      Some(bind_expr(typing, context, index, scope, expr, error_type(), ast))
+      Some(bind_expr(typing, context, index, scope, expr, expected, ast))
     None => None
   }
   BoundExpr::Break(bound_value, unit_type(), span)
+}
+
+///|
+fn push_loop_break_expected_type(
+  types : Array[TypeRef],
+  expected : TypeRef,
+) -> Array[TypeRef] {
+  let result = types.copy()
+  result.push(expected)
+  result
+}
+
+///|
+fn current_loop_break_expected_type(context : BindingContext) -> TypeRef {
+  let types = context.loop_break_expected_types
+  if types.length() == 0 {
+    error_type()
+  } else {
+    types[types.length() - 1]
+  }
 }
 
 ///|

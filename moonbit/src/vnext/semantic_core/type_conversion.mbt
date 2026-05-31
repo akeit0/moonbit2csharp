@@ -4,6 +4,7 @@ pub(all) enum ConversionKind {
   StringToStringView
   ArrayToArrayView
   FixedArrayToArrayView
+  IterToIter2
   ConcreteToTraitObject
   Incompatible
 } derive(Eq, Debug)
@@ -64,6 +65,16 @@ pub fn classify_conversion_with_inference(
           } else {
             ConversionKind::Incompatible
           }
+        (
+          Some(("Iter2", [expected_key, expected_value])),
+          Some(("Iter", [TypeRef::Tuple([actual_key, actual_value])])),
+        ) =>
+          if unify_types(context, expected_key, actual_key) &&
+            unify_types(context, expected_value, actual_value) {
+            ConversionKind::IterToIter2
+          } else {
+            ConversionKind::Incompatible
+          }
         _ => classify_conversion(expected, actual)
       }
   }
@@ -111,6 +122,7 @@ pub fn conversion_kind_text(kind : ConversionKind) -> String {
     StringToStringView => "StringToStringView"
     ArrayToArrayView => "ArrayToArrayView"
     FixedArrayToArrayView => "FixedArrayToArrayView"
+    IterToIter2 => "IterToIter2"
     ConcreteToTraitObject => "ConcreteToTraitObject"
     Incompatible => "Incompatible"
   }

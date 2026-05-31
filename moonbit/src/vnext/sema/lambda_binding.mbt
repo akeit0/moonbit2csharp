@@ -84,6 +84,7 @@ fn context_with_return_type(
     current_owner_id: context.current_owner_id,
     current_effect: effect,
     loop_depth: context.loop_depth,
+    loop_break_expected_types: context.loop_break_expected_types,
     used_trait_impls: context.used_trait_impls,
     used_trait_impl_keys: context.used_trait_impl_keys,
     trait_default_context: context.trait_default_context,
