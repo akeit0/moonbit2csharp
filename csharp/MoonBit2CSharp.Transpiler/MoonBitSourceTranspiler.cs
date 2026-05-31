@@ -63,120 +63,6 @@ public static class MoonBitSourceTranspiler
 {
     public const string DefaultVNextRuntimeNamespace = "MoonBit.Runtime";
 
-    // static IEnumerable<string> OfficialCorePackageImplementationSources(
-    //     string packagePath,
-    //     string packageName,
-    //     IReadOnlySet<string> referencedSymbols
-    // )
-    // {
-    //     var sources = Directory
-    //         .EnumerateFiles(packagePath, "*.mbt", SearchOption.TopDirectoryOnly)
-    //         .Where(IsSourceCandidate)
-    //         .Where(source => !IsOfficialCoreSourceReplacedByCSharpOverride(packageName, source));
-
-    //     if (packageName == "builtin")
-    //     {
-    //         return sources.Where(source =>
-    //         {
-    //             var fileName = Path.GetFileName(source);
-    //             return !fileName.Equals("show.mbt", StringComparison.OrdinalIgnoreCase)
-    //                 && !fileName.StartsWith("stringbuilder", StringComparison.OrdinalIgnoreCase)
-    //                 && (
-    //                     fileName.Equals("intrinsics.mbt", StringComparison.OrdinalIgnoreCase)
-    //                     || fileName.Equals("int64.mbt", StringComparison.OrdinalIgnoreCase)
-    //                     || (
-    //                         fileName.Equals("hasher.mbt", StringComparison.OrdinalIgnoreCase)
-    //                         && ReferencesTraitImplementation(referencedSymbols, "Hash")
-    //                     )
-    //                     || fileName.Equals("to_string.mbt", StringComparison.OrdinalIgnoreCase)
-    //                     || SourceMentionsReferencedSymbol(
-    //                         File.ReadAllText(source),
-    //                         referencedSymbols
-    //                     )
-    //                 );
-    //         });
-    //     }
-
-    //     if (IsOfficialCoreNumericImplementationPackage(packageName))
-    //     {
-    //         return sources;
-    //     }
-
-    //     return sources;
-    // }
-
-    // static bool IsOfficialCoreSourceReplacedByCSharpOverride(string packageName, string source)
-    // {
-    //     var baseName = Path.GetFileNameWithoutExtension(source);
-    //     var overrideName =
-    //         "core_"
-    //         + packageName.Replace('/', '_').Replace('\\', '_')
-    //         + "_"
-    //         + baseName
-    //         + "_csharp.mbt";
-    //     var overridePath = BuiltinDeclarationLoader.FindRepositoryPath(
-    //         AppContext.BaseDirectory,
-    //         "moonbit",
-    //         "builtin",
-    //         "overrides",
-    //         overrideName
-    //     );
-    //     return overridePath is not null && File.Exists(overridePath);
-    // }
-
-    // static IReadOnlyList<string> OfficialCorePackageCSharpOverrideSources(string packageName)
-    // {
-    //     var overridesRoot = BuiltinDeclarationLoader.FindRepositoryPath(
-    //         AppContext.BaseDirectory,
-    //         "moonbit",
-    //         "builtin",
-    //         "overrides"
-    //     );
-    //     if (overridesRoot is null || !Directory.Exists(overridesRoot))
-    //     {
-    //         return [];
-    //     }
-
-    //     var prefix = "core_" + packageName.Replace('/', '_').Replace('\\', '_') + "_";
-    //     return Directory
-    //         .EnumerateFiles(overridesRoot, "*.mbt", SearchOption.TopDirectoryOnly)
-    //         .Where(path =>
-    //             Path.GetFileName(path).StartsWith(prefix, StringComparison.OrdinalIgnoreCase)
-    //             && Path.GetFileName(path)
-    //                 .EndsWith("_csharp.mbt", StringComparison.OrdinalIgnoreCase)
-    //         )
-    //         .Order(StringComparer.OrdinalIgnoreCase)
-    //         .Select(Path.GetFullPath)
-    //         .ToArray();
-    // }
-
-    // static bool ShouldLoadOfficialCoreImplementationPackage(
-    //     string packageName,
-    //     IReadOnlySet<string> referencedSymbols
-    // )
-    // {
-    //     if (packageName == "builtin")
-    //     {
-    //         return true;
-    //     }
-
-    //     return packageName switch
-    //     {
-    //         _ when IsOfficialCoreNumericImplementationPackage(packageName) => true,
-    //         "math" => referencedSymbols.Any(symbol =>
-    //             symbol == "Math" || symbol.StartsWith("Math::", StringComparison.Ordinal)
-    //         ),
-    //         "debug" => referencedSymbols.Any(symbol =>
-    //             symbol is "Debug" or "Repr" or "render"
-    //             || symbol.Contains("::Debug::", StringComparison.Ordinal)
-    //         ),
-    //         "json" => false,
-    //         _ => referencedSymbols.Any(symbol =>
-    //             symbol.StartsWith(packageName, StringComparison.OrdinalIgnoreCase)
-    //         ),
-    //     };
-    // }
-
     private static readonly string[] OfficialCoreNumericImplementationPackages =
     [
         "byte",
@@ -191,10 +77,6 @@ public static class MoonBitSourceTranspiler
     ];
 
     private static readonly string[] MoonModFileNames = ["moon.mod", "moon.mod.json"];
-
-    // static readonly Lazy<IReadOnlyList<SyntaxModule>> BuiltinDeclarationModules = new(
-    //     LoadBuiltinDeclarationModules
-    // );
 
     public static string DefaultRuntimeProjectPath { get; } =
         Path.GetFullPath(
@@ -286,41 +168,6 @@ public static class MoonBitSourceTranspiler
 
         throw new DirectoryNotFoundException("could not find repository root containing moonbit");
     }
-
-    // static HashSet<string> AddResolvedPackageInputs(
-    //     MoonBitCompilationContext context,
-    //     List<MoonBitIrInput> irInputs,
-    //     IReadOnlyList<string> fullInputs,
-    //     bool includeMainPackages,
-    //     string? moonModPath
-    // )
-    // {
-    //     var handledPackageRoots = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-    //     var packageInputs = ResolvePackageInputs(fullInputs, includeMainPackages, moonModPath);
-    //     foreach (var package in packageInputs)
-    //     {
-    //         var environmentPackageName = !string.IsNullOrWhiteSpace(package.EnvPackageName)
-    //             ? package.EnvPackageName
-    //             : package.SourceLocationPackageName;
-    //         if (!string.IsNullOrWhiteSpace(environmentPackageName))
-    //         {
-    //             context.AddEnvironmentPackage(package.PackageRoot, environmentPackageName!);
-    //         }
-    //     }
-
-    //     foreach (var package in packageInputs.Where(package => package.EmitOutput))
-    //     {
-    //         handledPackageRoots.Add(Path.GetFullPath(package.PackageRoot));
-    //         context.AddPackageIr(
-    //             irInputs,
-    //             package.PackageRoot,
-    //             package.SourceLocationPackageName,
-    //             package.EnvPackageName
-    //         );
-    //     }
-
-    //     return handledPackageRoots;
-    // }
 
     private static IReadOnlyList<string> OfficialCorePackageSourceFilesForTarget(
         string packagePath,
@@ -1739,71 +1586,6 @@ public static class MoonBitSourceTranspiler
                 )
             );
     }
-
-    // static bool IsOfficialCoreNumericImplementationPackage(string packageName) =>
-    //     OfficialCoreNumericImplementationPackages.Contains(packageName, StringComparer.Ordinal);
-
-    // static string TraitImplementationSourceSymbol(TypeRefIr type, string traitName)
-    // {
-    //     var methodName = traitName switch
-    //     {
-    //         "Eq" => "equal",
-    //         "Compare" => "compare",
-    //         "Show" => "output",
-    //         "Hash" => "hash_combine",
-    //         "ToJson" => "to_json",
-    //         "Debug" => "to_repr",
-    //         _ => "",
-    //     };
-    //     return methodName.Length == 0 ? "" : $"{type.Name}::{traitName}::{methodName}";
-    // }
-
-    // static bool ReferencesTraitImplementation(
-    //     IReadOnlySet<string> referencedSymbols,
-    //     string traitName
-    // ) =>
-    //     referencedSymbols.Any(symbol =>
-    //         symbol.Contains($"::{traitName}::", StringComparison.Ordinal)
-    //     );
-
-    // static bool SourceMentionsReferencedSymbol(
-    //     string source,
-    //     IReadOnlySet<string> referencedSymbols
-    // )
-    // {
-    //     foreach (var symbol in referencedSymbols)
-    //     {
-    //         if (!symbol.Contains("::", StringComparison.Ordinal))
-    //         {
-    //             continue;
-    //         }
-
-    //         var parts = symbol.Split("::", StringSplitOptions.None);
-    //         if (parts.Length == 2)
-    //         {
-    //             if (
-    //                 source.Contains($"{parts[0]}::{parts[1]}", StringComparison.Ordinal)
-    //                 || source.Contains($"fn {parts[0]}::{parts[1]}", StringComparison.Ordinal)
-    //                 || source.Contains($"let {parts[0]}::{parts[1]}", StringComparison.Ordinal)
-    //             )
-    //             {
-    //                 return true;
-    //             }
-    //         }
-    //         else if (
-    //             parts.Length == 3
-    //             && source.Contains(
-    //                 $"impl {parts[1]} for {parts[0]} with {parts[2]}",
-    //                 StringComparison.Ordinal
-    //             )
-    //         )
-    //         {
-    //             return true;
-    //         }
-    //     }
-
-    //     return false;
-    // }
 
     private static IEnumerable<string> MoonPkgImportPaths(string moonPkgPath)
     {
