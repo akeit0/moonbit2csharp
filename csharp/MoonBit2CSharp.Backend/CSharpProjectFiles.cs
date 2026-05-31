@@ -1,6 +1,5 @@
 using System.Text;
 using System.Text.Json;
-using System.Text.RegularExpressions;
 
 namespace MoonBit2CSharp.Backend;
 
@@ -80,7 +79,7 @@ public static class CSharpProjectFiles
 
     public static string ProjectNameFromMoonMod(string moonModPath)
     {
-        var name = MoonModFieldValue(moonModPath, "name");
+        var name = MoonModManifest.FieldValue(moonModPath, "name");
         var leaf = string.IsNullOrWhiteSpace(name)
             ? Path.GetFileName(Path.GetDirectoryName(moonModPath))
             : name.Split('/', '\\').LastOrDefault();
@@ -90,7 +89,19 @@ public static class CSharpProjectFiles
         return safeName == "" ? "MoonBitProject" : safeName;
     }
 
-    private static string? MoonModFieldValue(string moonModPath, string fieldName)
+    private static string SanitizeProjectName(string name)
+    {
+        var chars = name.Select(ch =>
+                char.IsLetterOrDigit(ch) || ch is '_' or '-' or '.' ? ch : '_'
+            )
+            .ToArray();
+        return new string(chars).Trim('.', '_', '-');
+    }
+}
+
+public static class MoonModManifest
+{
+    public static string? FieldValue(string moonModPath, string fieldName)
     {
         if (Path.GetExtension(moonModPath).Equals(".json", StringComparison.OrdinalIgnoreCase))
         {
@@ -102,22 +113,224 @@ public static class CSharpProjectFiles
                 : null;
         }
 
-        var source = File.ReadAllText(moonModPath);
-        var escapedName = Regex.Escape(fieldName);
-        var match = Regex.Match(
-            source,
-            @"(?m)^[\t ]*" + escapedName + @"[\t ]*=\s*""(?<value>(?:\\.|[^""])*?)""",
-            RegexOptions.Compiled
-        );
-        return match.Success ? Regex.Unescape(match.Groups["value"].Value) : null;
+        return new Parser(File.ReadAllText(moonModPath)).FieldValue(fieldName);
     }
 
-    private static string SanitizeProjectName(string name)
+    private sealed class Parser(string text)
     {
-        var chars = name.Select(ch =>
-                char.IsLetterOrDigit(ch) || ch is '_' or '-' or '.' ? ch : '_'
+        private int position;
+
+        public string? FieldValue(string fieldName)
+        {
+            while (true)
+            {
+                SkipTrivia();
+                if (AtEnd)
+                    return null;
+
+                if (!TryReadIdentifier(out var name))
+                {
+                    position++;
+                    continue;
+                }
+
+                SkipTrivia();
+                if (TryReadChar('='))
+                {
+                    SkipTrivia();
+                    if (name == fieldName && TryReadString(out var value))
+                        return value;
+
+                    SkipExpr();
+                    continue;
+                }
+
+                if (TryReadChar('('))
+                {
+                    if (name == "options")
+                    {
+                        if (TryReadApplyStringArgument(fieldName, out var value))
+                            return value;
+                        continue;
+                    }
+
+                    SkipBalancedBody('(', ')');
+                }
+            }
+        }
+
+        private bool TryReadApplyStringArgument(string fieldName, out string? value)
+        {
+            value = null;
+            while (true)
+            {
+                SkipTrivia();
+                if (AtEnd || TryReadChar(')'))
+                    return false;
+
+                var argumentStart = position;
+                string? key = null;
+                if (!TryReadIdentifier(out key))
+                    TryReadString(out key);
+
+                SkipTrivia();
+                if (key is null || !TryReadChar(':'))
+                {
+                    position = argumentStart;
+                    SkipExpr();
+                    TryReadChar(',');
+                    continue;
+                }
+
+                SkipTrivia();
+                if (key == fieldName && TryReadString(out value))
+                    return true;
+
+                SkipExpr();
+                TryReadChar(',');
+            }
+        }
+
+        private void SkipExpr()
+        {
+            SkipTrivia();
+            if (AtEnd)
+                return;
+
+            if (TryReadString(out _))
+                return;
+
+            if (TryReadChar('['))
+            {
+                SkipBalancedBody('[', ']');
+                return;
+            }
+
+            if (TryReadChar('{'))
+            {
+                SkipBalancedBody('{', '}');
+                return;
+            }
+
+            if (TryReadIdentifier(out _))
+            {
+                SkipTrivia();
+                if (TryReadChar('('))
+                    SkipBalancedBody('(', ')');
+                return;
+            }
+
+            while (
+                !AtEnd && !char.IsWhiteSpace(Current) && Current is not ',' and not ')' and not ']'
             )
-            .ToArray();
-        return new string(chars).Trim('.', '_', '-');
+                position++;
+        }
+
+        private void SkipBalancedBody(char open, char close)
+        {
+            var depth = 1;
+            while (!AtEnd && depth > 0)
+            {
+                if (TryReadString(out _))
+                    continue;
+
+                var ch = Current;
+                position++;
+                if (ch == open)
+                    depth++;
+                else if (ch == close)
+                    depth--;
+            }
+        }
+
+        private bool TryReadIdentifier(out string? value)
+        {
+            value = null;
+            if (AtEnd || !(char.IsLetter(Current) || Current == '_'))
+                return false;
+
+            var start = position++;
+            while (!AtEnd && (char.IsLetterOrDigit(Current) || Current == '_' || Current == '-'))
+                position++;
+
+            value = text[start..position];
+            return true;
+        }
+
+        private bool TryReadString(out string? value)
+        {
+            value = null;
+            if (!TryReadChar('"'))
+                return false;
+
+            var builder = new StringBuilder();
+            while (!AtEnd)
+            {
+                var ch = Current;
+                position++;
+                if (ch == '"')
+                {
+                    value = builder.ToString();
+                    return true;
+                }
+
+                if (ch == '\\' && !AtEnd)
+                {
+                    var escaped = Current;
+                    position++;
+                    builder.Append(
+                        escaped switch
+                        {
+                            '"' => '"',
+                            '\\' => '\\',
+                            'n' => '\n',
+                            'r' => '\r',
+                            't' => '\t',
+                            _ => escaped,
+                        }
+                    );
+                    continue;
+                }
+
+                builder.Append(ch);
+            }
+
+            value = builder.ToString();
+            return true;
+        }
+
+        private bool TryReadChar(char ch)
+        {
+            if (AtEnd || Current != ch)
+                return false;
+
+            position++;
+            return true;
+        }
+
+        private void SkipTrivia()
+        {
+            while (!AtEnd)
+            {
+                if (char.IsWhiteSpace(Current))
+                {
+                    position++;
+                    continue;
+                }
+
+                if (Current == '/' && position + 1 < text.Length && text[position + 1] == '/')
+                {
+                    position += 2;
+                    while (!AtEnd && Current is not '\r' and not '\n')
+                        position++;
+                    continue;
+                }
+
+                break;
+            }
+        }
+
+        private bool AtEnd => position >= text.Length;
+        private char Current => text[position];
     }
 }

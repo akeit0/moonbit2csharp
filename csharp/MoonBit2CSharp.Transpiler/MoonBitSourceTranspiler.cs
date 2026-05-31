@@ -133,28 +133,6 @@ public static class MoonBitSourceTranspiler
         return null;
     }
 
-    private static string? MoonModFieldValue(string moonModPath, string fieldName)
-    {
-        if (Path.GetExtension(moonModPath).Equals(".json", StringComparison.OrdinalIgnoreCase))
-        {
-            using var doc = JsonDocument.Parse(File.ReadAllText(moonModPath));
-            return
-                doc.RootElement.TryGetProperty(fieldName, out var propertyElement)
-                && propertyElement.ValueKind == JsonValueKind.String
-                ? propertyElement.GetString()
-                : null;
-        }
-
-        var source = File.ReadAllText(moonModPath);
-        var escapedName = Regex.Escape(fieldName);
-        var match = Regex.Match(
-            source,
-            @"(?m)^[\t ]*" + escapedName + @"[\t ]*=\s*""(?<value>(?:\\.|[^\""])*)""",
-            RegexOptions.Compiled
-        );
-        return match.Success ? Regex.Unescape(match.Groups["value"].Value) : null;
-    }
-
     private static string RepositoryRoot()
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);
@@ -1917,7 +1895,7 @@ public static class MoonBitSourceTranspiler
 
     private static string? MoonModuleNameFromMoonMod(string moonModPath)
     {
-        return MoonModFieldValue(moonModPath, "name");
+        return MoonModManifest.FieldValue(moonModPath, "name");
     }
 
     private static string MoonModuleSourceRoot(string moduleRoot)
@@ -1926,12 +1904,10 @@ public static class MoonBitSourceTranspiler
         if (moonModPath is null)
             return moduleRoot;
 
-        var source = MoonModFieldValue(moonModPath, "source");
-        if (!string.IsNullOrWhiteSpace(source))
-            return Path.GetFullPath(Path.Combine(moduleRoot, source));
-
-        var src = Path.Combine(moduleRoot, "src");
-        return Directory.Exists(src) ? Path.GetFullPath(src) : moduleRoot;
+        var source = MoonModManifest.FieldValue(moonModPath, "source");
+        return string.IsNullOrWhiteSpace(source)
+            ? Path.GetFullPath(moduleRoot)
+            : Path.GetFullPath(Path.Combine(moduleRoot, source));
     }
 
     // static IReadOnlyList<SyntaxModule> LoadBuiltinDeclarationModules()
