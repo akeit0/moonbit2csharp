@@ -2569,79 +2569,85 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
     )
     {
         var kind = expr.GetProperty("kind").GetString();
-        if (kind == "Sequence")
+        switch (kind)
         {
-            EmitForLoopBodyStatement(
-                expr.GetProperty("first"),
-                loop,
-                statements,
-                loopResultDestination
-            );
-            if (IsTerminalLoopControl(expr.GetProperty("first")))
+            case "Sequence":
+                EmitForLoopBodyStatement(
+                    expr.GetProperty("first"),
+                    loop,
+                    statements,
+                    loopResultDestination
+                );
+                if (IsTerminalLoopControl(expr.GetProperty("first")))
+                    return;
+                EmitForLoopBodyStatement(
+                    expr.GetProperty("body"),
+                    loop,
+                    statements,
+                    loopResultDestination
+                );
                 return;
-            EmitForLoopBodyStatement(
-                expr.GetProperty("body"),
-                loop,
-                statements,
-                loopResultDestination
-            );
-        }
-        else if (kind == "LocalLet")
-        {
-            EmitExprAsStatement(expr, statements);
-        }
-        else if (kind == "Break")
-        {
-            EmitBreakStatement(expr, statements);
-        }
-        else if (kind == "Continue")
-        {
-            EmitContinueStatement(expr, statements);
-        }
-        else if (kind == "If")
-        {
-            var thenStatements = new List<StatementSyntax>();
-            EmitForLoopBodyStatement(
-                expr.GetProperty("then"),
-                loop,
-                thenStatements,
-                loopResultDestination
-            );
-            var elseStatements = new List<StatementSyntax>();
-            EmitForLoopBodyStatement(
-                expr.GetProperty("else"),
-                loop,
-                elseStatements,
-                loopResultDestination
-            );
-            statements.Add(
-                IfStatement(
-                    EmitExpr(expr.GetProperty("condition")),
-                    Block(thenStatements),
-                    ElseClauseIfNotEmpty(elseStatements)
-                )
-            );
-        }
-        else if (kind == "Match")
-        {
-            EmitMatchAsStatement(expr, statements);
-        }
-        else if (kind == "Guard")
-        {
-            EmitGuardAsStatement(expr, statements);
-        }
-        else if (kind == "ForRange")
-        {
-            statements.Add(EmitForRange(expr));
-        }
-        else if (kind == "ForLoop")
-        {
-            statements.Add(EmitForLoop(expr));
-        }
-        else if (kind == "UnitLiteral") { }
-        else
-        {
-            statements.Add(ExpressionStatement(EmitExpr(expr)));
+
+            case "LocalLet":
+                EmitExprAsStatement(expr, statements);
+                return;
+
+            case "Break":
+                EmitBreakStatement(expr, statements);
+                return;
+
+            case "Continue":
+                EmitContinueStatement(expr, statements);
+                return;
+
+            case "If":
+            {
+                var thenStatements = new List<StatementSyntax>();
+                EmitForLoopBodyStatement(
+                    expr.GetProperty("then"),
+                    loop,
+                    thenStatements,
+                    loopResultDestination
+                );
+                var elseStatements = new List<StatementSyntax>();
+                EmitForLoopBodyStatement(
+                    expr.GetProperty("else"),
+                    loop,
+                    elseStatements,
+                    loopResultDestination
+                );
+                statements.Add(
+                    IfStatement(
+                        EmitExpr(expr.GetProperty("condition")),
+                        Block(thenStatements),
+                        ElseClauseIfNotEmpty(elseStatements)
+                    )
+                );
+                return;
+            }
+
+            case "Match":
+                EmitMatchAsStatement(expr, statements);
+                return;
+
+            case "Guard":
+                EmitGuardAsStatement(expr, statements);
+                return;
+
+            case "ForRange":
+                statements.Add(EmitForRange(expr));
+                return;
+
+            case "ForLoop":
+                statements.Add(EmitForLoop(expr));
+                return;
+
+            case "UnitLiteral":
+                return;
+
+            default:
+                statements.Add(ExpressionStatement(EmitExpr(expr)));
+                return;
         }
     }
 

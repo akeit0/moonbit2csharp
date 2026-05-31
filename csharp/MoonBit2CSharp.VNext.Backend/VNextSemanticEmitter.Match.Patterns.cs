@@ -640,6 +640,24 @@ public sealed partial class VNextSemanticEmitter
                     + ")";
             }
 
+            case "Struct":
+            {
+                var fieldPatterns = pattern
+                    .GetProperty("fields")
+                    .EnumerateArray()
+                    .Select(field =>
+                    {
+                        var fieldRef = field.GetProperty("field");
+                        return ToPublicIdentifier(fieldRef.GetProperty("name").GetString() ?? "")
+                            + ": "
+                            + MatchPatternExpression(
+                                fieldRef.GetProperty("type"),
+                                field.GetProperty("pattern")
+                            );
+                    });
+                return "{ " + string.Join(", ", fieldPatterns) + " }";
+            }
+
             case "Array":
             {
                 var itemType = ArrayElementType(targetType);
@@ -701,6 +719,24 @@ public sealed partial class VNextSemanticEmitter
                             )
                     )
                     + ")";
+            }
+
+            case "Struct":
+            {
+                var fieldPatterns = pattern
+                    .GetProperty("fields")
+                    .EnumerateArray()
+                    .Select(field =>
+                    {
+                        var fieldRef = field.GetProperty("field");
+                        return ToPublicIdentifier(fieldRef.GetProperty("name").GetString() ?? "")
+                            + ": "
+                            + MatchTestPatternExpression(
+                                fieldRef.GetProperty("type"),
+                                field.GetProperty("pattern")
+                            );
+                    });
+                return "{ " + string.Join(", ", fieldPatterns) + " }";
             }
 
             case "Array":
@@ -785,6 +821,23 @@ public sealed partial class VNextSemanticEmitter
                         .Select(item => MatchConditionPatternExpression(itemType, item))
                 );
                 return "[" + string.Join(", ", itemPatterns) + "]";
+            }
+            case "Struct":
+            {
+                var fieldPatterns = pattern
+                    .GetProperty("fields")
+                    .EnumerateArray()
+                    .Select(field =>
+                    {
+                        var fieldRef = field.GetProperty("field");
+                        return ToPublicIdentifier(fieldRef.GetProperty("name").GetString() ?? "")
+                            + ": "
+                            + MatchConditionPatternExpression(
+                                fieldRef.GetProperty("type"),
+                                field.GetProperty("pattern")
+                            );
+                    });
+                return "{ " + string.Join(", ", fieldPatterns) + " }";
             }
             case "OptionSome":
             {
