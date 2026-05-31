@@ -200,6 +200,8 @@ fn write_global(out : StringBuilder, global : @ir.BoundGlobal) -> Unit {
   write_string(out, global.symbol_id)
   out.write_string(",\"name\":")
   write_string(out, global.name)
+  out.write_string(",\"isPublic\":")
+  out.write_string(if global.is_public { "true" } else { "false" })
   out.write_string(",\"type\":")
   write_type(out, global.type_)
   out.write_string(",\"value\":")
@@ -213,6 +215,8 @@ fn write_function(out : StringBuilder, function : @ir.BoundFunction) -> Unit {
   write_string(out, function.symbol_id)
   out.write_string(",\"name\":")
   write_string(out, function.name)
+  out.write_string(",\"isPublic\":")
+  out.write_string(if function.is_public { "true" } else { "false" })
   out.write_string(",\"typeParams\":[")
   for i in 0..<function.type_params.length() {
     comma(out, i)

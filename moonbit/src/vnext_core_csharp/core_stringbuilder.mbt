@@ -4,7 +4,7 @@ package "moonbitlang/core/builtin"
 pub extern "csharp" fn StringBuilder::new(
   size_hint? : Int = 0,
 ) -> StringBuilder =
-  #|return new MoonBitStringBuilder(size_hint);
+  #|return new StringBuilder(size_hint);
 
 ///|
 pub extern "csharp" fn StringBuilder::is_empty(self : StringBuilder) -> Bool =

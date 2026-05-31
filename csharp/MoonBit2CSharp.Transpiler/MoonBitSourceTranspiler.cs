@@ -307,7 +307,7 @@ public static class MoonBitSourceTranspiler
                 [new(mainFiles[0], irJson)],
                 0,
                 request.SingleFileName,
-                request.WriteProjectFile || request.ReferenceRuntime,
+                request.ReferenceRuntime,
                 request.WriteProjectFile,
                 projectName,
                 moonModPath ?? "",
@@ -318,6 +318,15 @@ public static class MoonBitSourceTranspiler
             var singleFilePath = outputPaths.Paths[0];
             WriteAllTextIfChanged(singleFilePath, VNextBackend.Emit(irJson, options));
             writtenFiles.Add(singleFilePath);
+            if (!request.ReferenceRuntime)
+            {
+                var supportPath = Path.Combine(outputDir, "moonbit_runtime.g.cs");
+                WriteAllTextIfChanged(
+                    supportPath,
+                    VNextRuntimeSupportSource(request.GeneratedNamespace)
+                );
+                writtenFiles.Add(supportPath);
+            }
 
             if (request.WriteProjectFile && !string.IsNullOrWhiteSpace(outputPaths.ProjectName))
             {
@@ -327,7 +336,7 @@ public static class MoonBitSourceTranspiler
                     CSharpProjectFiles.BuildProjectFile(
                         outputDir,
                         Path.GetFullPath(runtimeProjectPath),
-                        true,
+                        request.ReferenceRuntime,
                         request.Executable,
                         request.AdditionalProjectReferences,
                         formattingOptions: new(
@@ -346,9 +355,9 @@ public static class MoonBitSourceTranspiler
         var generatedFiles = VNextBackend.EmitFiles(irJson, options);
         var plannedPaths = new List<string>();
         string? runtimePath = null;
-        if (!request.WriteProjectFile && !request.ReferenceRuntime)
+        if (!request.ReferenceRuntime)
         {
-            runtimePath = Path.Combine(outputDir, "MoonBitRuntime.g.cs");
+            runtimePath = Path.Combine(outputDir, "moonbit_runtime.g.cs");
             plannedPaths.Add(runtimePath);
         }
 
@@ -364,16 +373,14 @@ public static class MoonBitSourceTranspiler
 
         CleanUnplannedGeneratedOutputs(outputDir, plannedPaths);
 
-        // if (runtimePath is not null)
-        // {
-        //     WriteAllTextIfChanged(
-        //         runtimePath,
-        //         CSharpBackend.EmitRuntime(
-        //             new CSharpEmitterOptions(RuntimeNamespace: runtimeNamespace)
-        //         )
-        //     );
-        //     writtenFiles.Add(runtimePath);
-        // }
+        if (runtimePath is not null)
+        {
+            WriteAllTextIfChanged(
+                runtimePath,
+                VNextRuntimeSupportSource(request.GeneratedNamespace)
+            );
+            writtenFiles.Add(runtimePath);
+        }
 
         foreach (var generatedFile in generatedFiles)
         {
@@ -390,7 +397,7 @@ public static class MoonBitSourceTranspiler
                 CSharpProjectFiles.BuildProjectFile(
                     outputDir,
                     Path.GetFullPath(runtimeProjectPath),
-                    true,
+                    request.ReferenceRuntime,
                     request.Executable,
                     request.AdditionalProjectReferences,
                     formattingOptions: new(
@@ -404,6 +411,23 @@ public static class MoonBitSourceTranspiler
         }
 
         return new(writtenFiles);
+    }
+
+    private static string VNextRuntimeSupportSource(string generatedNamespace)
+    {
+        var template = File.ReadAllText(
+            Path.Combine(
+                RepositoryRoot(),
+                "csharp",
+                "MoonBit2CSharp.Transpiler",
+                "VNextRuntimeSupportTemplate.cs.txt"
+            )
+        );
+        return template.Replace(
+            "__MOONBIT_RUNTIME_NAMESPACE__",
+            generatedNamespace + ".Runtime",
+            StringComparison.Ordinal
+        );
     }
 
     private static IReadOnlyList<string> ResolveVNextImportedPackageRoots(

@@ -31,6 +31,7 @@ pub(all) struct BoundTraitMethod {
 pub(all) struct BoundGlobal {
   symbol_id : String
   name : String
+  is_public : Bool
   type_ : @binding.TypeRef
   value : BoundExpr
   span : @common.SourceSpan
@@ -40,6 +41,7 @@ pub(all) struct BoundGlobal {
 pub(all) struct BoundFunction {
   symbol_id : String
   name : String
+  is_public : Bool
   type_params : Array[BoundTypeParam]
   params : Array[BoundParam]
   return_type : @binding.TypeRef

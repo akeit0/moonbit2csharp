@@ -14,12 +14,12 @@ pub extern "csharp" fn[X, Y] Iter::map(
   self : Iter[X],
   f : (X) -> Y,
 ) -> Iter[Y] =
-  #|return new MoonBitIter<Y>(() =>
+  #|return new Iter<Y>(() =>
   #|{
   #|    var next = self.Next();
   #|    return next.IsSome
-  #|        ? MoonBitOption<Y>.Some(f(next.Value))
-  #|        : MoonBitOption<Y>.None();
+  #|        ? Option<Y>.Some(f(next.Value))
+  #|        : Option<Y>.None();
   #|});
 
 ///|

@@ -5,30 +5,32 @@
 using System;
 using System.Collections.Generic;
 
-namespace MoonBit.Runtime;
-public readonly record struct MoonBitUnit
+namespace __MOONBIT_RUNTIME_NAMESPACE__;
+
+public readonly record struct Unit
 {
-    public static readonly MoonBitUnit Value = new();
+    public static readonly Unit Value = new();
 }
 
-public sealed class MoonBitPanic : Exception
+public sealed class Panic : Exception
 {
-    public MoonBitPanic(string message = "panic") : base(message)
+    public Panic(string message = "panic") : base(message)
     {
     }
 }
 
-public readonly record struct MoonBitSourceLoc(string Repr)
+public readonly record struct SourceLoc(string Repr)
 {
     public override string ToString() => Repr;
 }
 
-public readonly record struct MoonBitArgsLoc(MoonBitOption<MoonBitSourceLoc>[] Items);
+public readonly record struct ArgsLoc(Option<SourceLoc>[] Items);
 
-public readonly struct MoonBitOption<T>
+
+public readonly struct Option<T>
 {
     private readonly T? value;
-    private MoonBitOption(T? value, bool isSome)
+    private Option(T? value, bool isSome)
     {
         this.value = value;
         IsSome = isSome;
@@ -41,17 +43,17 @@ public readonly struct MoonBitOption<T>
     public T Unwrap() => Value;
     public T UnwrapOr(T fallback) => IsSome ? value! : fallback;
     public bool IsEmpty() => IsNone;
-    public static MoonBitOption<T> Some(T value) => new(value, true);
-    public static MoonBitOption<T> None() => new(default, false);
+    public static Option<T> Some(T value) => new(value, true);
+    public static Option<T> None() => new(default, false);
     public override string ToString() => IsSome ? "Some(" + value!.ToString() + ")" : "None";
 }
 
-public class MoonBitError
+public class Error
 {
     public object Self { get; }
     public IShowImpl? Impl { get; }
     public string DisplayName { get; }
-    public MoonBitError(
+    public Error(
         object self,
         IShowImpl? showImpl,
         string displayName
@@ -62,94 +64,86 @@ public class MoonBitError
         this.DisplayName = displayName;
     }
 
-    public static MoonBitError FromObject<T, TImpl>(T value)
+    public static Error FromObject<T, TImpl>(T value)
         where TImpl : IShowImpl<T, TImpl> =>
-        new MoonBitError(value!, ShowImplObject<T, TImpl>.Instance, "");
-    public static MoonBitError FromObject(object value, string displayName) =>
-        new MoonBitError(value!, null, displayName);
-    public static MoonBitError FromObject(object value, string displayName, IShowImpl impl) =>
-        new MoonBitError(value!, impl, displayName);
+        new Error(value!, ShowImplObject<T, TImpl>.Instance, "");
+    public static Error FromObject(object value, string displayName) =>
+        new Error(value!, null, displayName);
+    public static Error FromObject(object value, string displayName, IShowImpl impl) =>
+        new Error(value!, impl, displayName);
 
     public override string ToString() =>
         Impl is not null ? Impl.ToString(Self) : DisplayName;
 
-    public MoonBitUnit Output(Logger logger)
+    public Unit Output(Logger logger)
     {
         logger.WriteString(ToString());
-        return MoonBitUnit.Value;
+        return Unit.Value;
     }
 }
 
-public readonly record struct MoonBitResult<TOk, TError>(bool IsOk, TOk? Value, TError? Error)
+public readonly record struct Result<TOk, TError>(bool IsOk, TOk? Value, TError? Error)
 {
-    public static MoonBitResult<TOk, TError> Ok(TOk value) => new(true, value, default);
-    public static MoonBitResult<TOk, TError> Err(TError error) => new(false, default, error);
-}
-
-public static class MoonBitCoreMath
-{
-    public static float DefaultFloat() => 0.0f;
-    public static double ExpM1(double x) => Math.Exp(x) - 1.0;
-    public static float ExpM1(float x) => MathF.Exp(x) - 1.0f;
-    public static double Log1P(double x) => Math.Log(1.0 + x);
-    public static float Log1P(float x) => MathF.Log(1.0f + x);
+    public static Result<TOk, TError> Ok(TOk value) => new(true, value, default);
+    public static Result<TOk, TError> Err(TError error) => new(false, default, error);
 }
 
 public readonly record struct Logger(object Self, ILoggerImpl Impl)
 {
-    public MoonBitUnit WriteString(string value) => Impl.WriteString(Self, value);
-    public MoonBitUnit WriteView(MoonBitStringView value) => Impl.WriteView(Self, value);
-    public MoonBitUnit WriteChar(int value) => Impl.WriteChar(Self, value);
+    public Unit WriteString(string value) => Impl.WriteString(Self, value);
+    public Unit WriteView(StringView value) => Impl.WriteView(Self, value);
+    public Unit WriteChar(int value) => Impl.WriteChar(Self, value);
 }
 
 public interface ILoggerImpl
 {
-    MoonBitUnit WriteString(object self, string value);
-    MoonBitUnit WriteView(object self, MoonBitStringView value);
-    MoonBitUnit WriteChar(object self, int value);
+    Unit WriteString(object self, string value);
+    Unit WriteView(object self, StringView value);
+    Unit WriteChar(object self, int value);
 }
 
-public sealed class MoonBitStringBuilderAsLogger : ILoggerImpl
+public sealed class StringBuilderAsLogger : ILoggerImpl
 {
-    public static readonly MoonBitStringBuilderAsLogger Instance = new();
-    private MoonBitStringBuilderAsLogger()
+    public static readonly StringBuilderAsLogger Instance = new();
+    private StringBuilderAsLogger()
     {
     }
 
-    public MoonBitUnit WriteString(object self, string value) =>
-        ((MoonBitStringBuilder)self).WriteString(value);
+    public Unit WriteString(object self, string value) =>
+        ((StringBuilder)self).WriteString(value);
 
-    public MoonBitUnit WriteView(object self, MoonBitStringView value) =>
-        ((MoonBitStringBuilder)self).WriteString(value.ToString());
+    public Unit WriteView(object self, StringView value) =>
+        ((StringBuilder)self).WriteString(value.ToString());
 
-    public MoonBitUnit WriteChar(object self, int value) =>
-        ((MoonBitStringBuilder)self).WriteChar(value);
+    public Unit WriteChar(object self, int value) =>
+        ((StringBuilder)self).WriteChar(value);
 }
 
 public readonly record struct ShowObject(object Self, IShowImpl Impl);
 
+
 public interface IShowImpl
 {
     string ToString(object self);
-    MoonBitUnit Output(object self, Logger logger);
+    Unit Output(object self, Logger logger);
 }
 
 public interface IShowImpl<T, TImpl>
     where TImpl : IShowImpl<T, TImpl>
 {
-    static virtual MoonBitUnit Output(T value, Logger logger)
+    static virtual Unit Output(T value, Logger logger)
     {
         logger.WriteString(TImpl.ToString(value));
-        return MoonBitUnit.Value;
+        return Unit.Value;
     }
 
     static virtual string ToString(T value) =>
-        MoonBitShow.ToMoonBitStringViaOutput<T, TImpl>(value);
+        ShowSupport.ToMoonBitStringViaOutput<T, TImpl>(value);
 }
 
 public static class Show
 {
-    public static MoonBitUnit Output<T, TImpl>(T value, Logger logger)
+    public static Unit Output<T, TImpl>(T value, Logger logger)
         where TImpl : IShowImpl<T, TImpl> => TImpl.Output(value, logger);
 
     public static string ToString<T, TImpl>(T value)
@@ -160,26 +154,26 @@ public sealed class ShowImplObject<T, TImpl> : IShowImpl where TImpl : IShowImpl
 {
     public static readonly ShowImplObject<T, TImpl> Instance = new();
     private ShowImplObject() { }
-    public MoonBitUnit Output(object self, Logger logger)
+    public Unit Output(object self, Logger logger)
     {
         return TImpl.Output((T)self, logger);
     }
     public string ToString(object self) => TImpl.ToString((T)self);
 }
 
-public static class MoonBitShow
+public static class ShowSupport
 {
     public static string QuoteString(string value) => "\"" + value.Replace("\\", "\\\\", StringComparison.Ordinal).Replace("\"", "\\\"", StringComparison.Ordinal) + "\"";
 
     public static string ToMoonBitStringViaOutput<T, TShowImpl>(T value)
         where TShowImpl : IShowImpl<T, TShowImpl>
     {
-        var logger = new MoonBitStringBuilder();
-        TShowImpl.Output(value, new Logger(logger, MoonBitStringBuilderAsLogger.Instance));
+        var logger = new StringBuilder();
+        TShowImpl.Output(value, new Logger(logger, StringBuilderAsLogger.Instance));
         return logger.ToString();
     }
 
-    private static MoonBitUnit WriteSpan<T, TShowImpl>(Logger logger, ReadOnlySpan<T> values, string prefix = "[", string suffix = "]", string sep = ", ", bool trailing = false)
+    private static Unit WriteSpan<T, TShowImpl>(Logger logger, ReadOnlySpan<T> values, string prefix = "[", string suffix = "]", string sep = ", ", bool trailing = false)
         where TShowImpl : IShowImpl<T, TShowImpl>
     {
         logger.WriteString(prefix);
@@ -198,7 +192,7 @@ public static class MoonBitShow
         }
 
         logger.WriteString(suffix);
-        return MoonBitUnit.Value;
+        return Unit.Value;
     }
 
     public readonly struct Int16ShowImpl : IShowImpl<short, Int16ShowImpl>
@@ -253,7 +247,7 @@ public static class MoonBitShow
 
     public readonly struct StringShowImpl : IShowImpl<string, StringShowImpl>
     {
-        public static MoonBitUnit Output(string value, Logger logger) => logger.WriteString(QuoteString(value));
+        public static Unit Output(string value, Logger logger) => logger.WriteString(QuoteString(value));
         public static string ToString(string value) => value;
 
     }
@@ -263,14 +257,14 @@ public static class MoonBitShow
         public static string ToString(int value) => char.ConvertFromUtf32(value);
     }
 
-    public readonly struct ErrorShowImpl : IShowImpl<MoonBitError, ErrorShowImpl>
+    public readonly struct ErrorShowImpl : IShowImpl<Error, ErrorShowImpl>
     {
-        public static MoonBitUnit Output(MoonBitError value, Logger logger)
+        public static Unit Output(Error value, Logger logger)
         {
             return value.Output(logger);
         }
 
-        public static string ToString(MoonBitError value) => value.ToString();
+        public static string ToString(Error value) => value.ToString();
     }
 
     private static string ShowByte(byte value)
@@ -282,60 +276,60 @@ public static class MoonBitShow
     public readonly struct ShowObjectShowImpl : IShowImpl<ShowObject, ShowObjectShowImpl>
     {
         public static string ToString(ShowObject value) => value.Impl.ToString(value.Self);
-        public static MoonBitUnit Output(ShowObject value, Logger logger) => value.Impl.Output(value.Self, logger);
+        public static Unit Output(ShowObject value, Logger logger) => value.Impl.Output(value.Self, logger);
     }
 
-    public readonly struct StringViewShowImpl : IShowImpl<MoonBitStringView, StringViewShowImpl>
+    public readonly struct StringViewShowImpl : IShowImpl<StringView, StringViewShowImpl>
     {
-        public static MoonBitUnit Output(MoonBitStringView value, Logger logger) => logger.WriteString(QuoteString(value.ToString()));
-        public static string ToString(MoonBitStringView value) => value.ToString();
+        public static Unit Output(StringView value, Logger logger) => logger.WriteString(QuoteString(value.ToString()));
+        public static string ToString(StringView value) => value.ToString();
     }
 
-    public sealed class MoonBitOptionShowImpl<T, TShowImpl> : IShowImpl<MoonBitOption<T>, MoonBitOptionShowImpl<T, TShowImpl>>
+    public sealed class OptionShowImpl<T, TShowImpl> : IShowImpl<Option<T>, OptionShowImpl<T, TShowImpl>>
         where TShowImpl : IShowImpl<T, TShowImpl>
     {
-        public static MoonBitUnit Output(MoonBitOption<T> value, Logger logger)
+        public static Unit Output(Option<T> value, Logger logger)
         {
             if (value.IsNone)
             {
                 logger.WriteString("None");
-                return MoonBitUnit.Value;
+                return Unit.Value;
             }
 
             logger.WriteString("Some(");
             TShowImpl.Output(value.Value, logger);
             logger.WriteString(")");
-            return MoonBitUnit.Value;
+            return Unit.Value;
         }
 
     }
 
-    public sealed class MoonBitResultShowImpl<TOk, TOkShowImpl, TError, TErrorShowImpl> : IShowImpl<MoonBitResult<TOk, TError>, MoonBitResultShowImpl<TOk, TOkShowImpl, TError, TErrorShowImpl>>
+    public sealed class ResultShowImpl<TOk, TOkShowImpl, TError, TErrorShowImpl> : IShowImpl<Result<TOk, TError>, ResultShowImpl<TOk, TOkShowImpl, TError, TErrorShowImpl>>
         where TOkShowImpl : IShowImpl<TOk, TOkShowImpl>
         where TErrorShowImpl : IShowImpl<TError, TErrorShowImpl>
     {
-        public static MoonBitUnit Output(MoonBitResult<TOk, TError> value, Logger logger)
+        public static Unit Output(Result<TOk, TError> value, Logger logger)
         {
             if (value.IsOk)
             {
                 logger.WriteString("Ok(");
                 TOkShowImpl.Output(value.Value!, logger);
                 logger.WriteString(")");
-                return MoonBitUnit.Value;
+                return Unit.Value;
             }
 
             logger.WriteString("Err(");
             TErrorShowImpl.Output(value.Error!, logger);
             logger.WriteString(")");
-            return MoonBitUnit.Value;
+            return Unit.Value;
         }
 
     }
 
-    public sealed class MoonBitArrayShowImpl<T, TShowImpl> : IShowImpl<MoonBitArray<T>, MoonBitArrayShowImpl<T, TShowImpl>>
+    public sealed class ArrayShowImpl<T, TShowImpl> : IShowImpl<Array<T>, ArrayShowImpl<T, TShowImpl>>
         where TShowImpl : IShowImpl<T, TShowImpl>
     {
-        public static MoonBitUnit Output(MoonBitArray<T> value, Logger logger) =>
+        public static Unit Output(Array<T> value, Logger logger) =>
             WriteSpan<T, TShowImpl>(logger, value.AsSpan());
 
     }
@@ -343,130 +337,130 @@ public static class MoonBitShow
     public sealed class FixedArrayShowImpl<T, TShowImpl> : IShowImpl<T[], FixedArrayShowImpl<T, TShowImpl>>
         where TShowImpl : IShowImpl<T, TShowImpl>
     {
-        public static MoonBitUnit Output(T[] value, Logger logger) =>
+        public static Unit Output(T[] value, Logger logger) =>
             WriteSpan<T, TShowImpl>(logger, value.AsSpan());
 
     }
 
-    public sealed class MoonBitArrayViewShowImpl<T, TShowImpl> : IShowImpl<MoonBitArrayView<T>, MoonBitArrayViewShowImpl<T, TShowImpl>>
+    public sealed class ArrayViewShowImpl<T, TShowImpl> : IShowImpl<ArrayView<T>, ArrayViewShowImpl<T, TShowImpl>>
         where TShowImpl : IShowImpl<T, TShowImpl>
     {
-        public static MoonBitUnit Output(MoonBitArrayView<T> value, Logger logger) =>
+        public static Unit Output(ArrayView<T> value, Logger logger) =>
             WriteSpan<T, TShowImpl>(logger, value.AsSpan());
 
     }
 
-    public sealed class MoonBitMutArrayViewShowImpl<T, TShowImpl> : IShowImpl<MoonBitMutArrayView<T>, MoonBitMutArrayViewShowImpl<T, TShowImpl>>
+    public sealed class MutArrayViewShowImpl<T, TShowImpl> : IShowImpl<MutArrayView<T>, MutArrayViewShowImpl<T, TShowImpl>>
         where TShowImpl : IShowImpl<T, TShowImpl>
     {
-        public static MoonBitUnit Output(MoonBitMutArrayView<T> value, Logger logger) =>
+        public static Unit Output(MutArrayView<T> value, Logger logger) =>
             WriteSpan<T, TShowImpl>(logger, value.AsSpan());
 
     }
 
 }
 
-public static class MoonBitConsole
+public static class ConsoleUtility
 {
-    public static MoonBitUnit println<T, TShow>(T value) where TShow : IShowImpl<T, TShow>
+    public static Unit println<T, TShow>(T value) where TShow : IShowImpl<T, TShow>
     {
         Console.WriteLine(TShow.ToString(value));
-        return MoonBitUnit.Value;
+        return Unit.Value;
     }
 
 }
 
-public static partial class MoonBitIntrinsics
+public static partial class Intrinsics
 {
-    public static MoonBitIter<T> ArrayIter<T>(MoonBitArray<T> self)
+    public static Iter<T> ArrayIter<T>(Array<T> self)
     {
         var i = 0;
-        return new MoonBitIter<T>(() =>
+        return new Iter<T>(() =>
         {
             if (i >= self.Length)
             {
-                return MoonBitOption<T>.None();
+                return Option<T>.None();
             }
 
-            return MoonBitOption<T>.Some(self.buf[i++]);
+            return Option<T>.Some(self.buf[i++]);
         });
     }
 
-    public static T ArrayRemove<T>(MoonBitArray<T> self, int index)
+    public static T ArrayRemove<T>(Array<T> self, int index)
     {
         if ((uint)index >= (uint)self.Length)
         {
-            throw new MoonBitPanic("panic");
+            throw new Panic("panic");
         }
 
         var value = self.buf[index];
-        Array.Copy(self.buf, index + 1, self.buf, index, self.Length - index - 1);
+        System.Array.Copy(self.buf, index + 1, self.buf, index, self.Length - index - 1);
         self.Length--;
         self.buf[self.Length] = default!;
         return value;
     }
 
-    public static MoonBitArray<T> ArrayMake<T>(int length, T value)
+    public static Array<T> ArrayMake<T>(int length, T value)
     {
-        var result = new MoonBitArray<T>(length);
+        var result = new Array<T>(length);
         for (var i = 0; i < length; i++)
         {
-            MoonBitArray.Push(result, value);
+            ArrayUtility.Push(result, value);
         }
 
         return result;
     }
 
-    public static MoonBitOption<T> ArrayLast<T>(MoonBitArray<T> self)
+    public static Option<T> ArrayLast<T>(Array<T> self)
     {
         return self.Length == 0
-            ? MoonBitOption<T>.None()
-            : MoonBitOption<T>.Some(self.buf[self.Length - 1]);
+            ? Option<T>.None()
+            : Option<T>.Some(self.buf[self.Length - 1]);
     }
 
-    public static MoonBitArray<T> ArrayFilter<T>(MoonBitArray<T> self, Func<T, bool> predicate)
+    public static Array<T> ArrayFilter<T>(Array<T> self, Func<T, bool> predicate)
     {
-        var result = new MoonBitArray<T>();
+        var result = new Array<T>();
         for (var i = 0; i < self.Length; i++)
         {
             var item = self.buf[i];
             if (predicate(item))
             {
-                MoonBitArray.Push(result, item);
+                ArrayUtility.Push(result, item);
             }
         }
 
         return result;
     }
 
-    public static MoonBitUnit ArraySortBy<T>(MoonBitArray<T> self, Func<T, T, int> compare)
+    public static Unit ArraySortBy<T>(Array<T> self, Func<T, T, int> compare)
     {
-        Array.Sort(self.buf, 0, self.Length, Comparer<T>.Create((left, right) => compare(left, right)));
-        return MoonBitUnit.Value;
+        System.Array.Sort(self.buf, 0, self.Length, Comparer<T>.Create((left, right) => compare(left, right)));
+        return Unit.Value;
     }
 
-    public static MoonBitUnit PrintlnString(string value)
+    public static Unit PrintlnString(string value)
     {
         Console.WriteLine(value);
-        return MoonBitUnit.Value;
+        return Unit.Value;
     }
 
-    public static MoonBitOption<int> StringViewFind(MoonBitStringView self, MoonBitStringView needle)
+    public static Option<int> StringViewFind(StringView self, StringView needle)
     {
         var index = self.AsSpan().IndexOf(needle.AsSpan(), StringComparison.Ordinal);
-        return index < 0 ? MoonBitOption<int>.None() : MoonBitOption<int>.Some(index);
+        return index < 0 ? Option<int>.None() : Option<int>.Some(index);
     }
 
-    public static MoonBitStringView StringViewView(MoonBitStringView self, int startOffset, MoonBitOption<int> endOffset)
+    public static StringView StringViewView(StringView self, int startOffset, Option<int> endOffset)
     {
         return self.Sub(startOffset, endOffset.IsSome ? endOffset.Value : self.Length);
     }
 
-    public static MoonBitOption<int> StringGetChar(string self, int index)
+    public static Option<int> StringGetChar(string self, int index)
     {
         if ((uint)index >= (uint)self.Length)
         {
-            return MoonBitOption<int>.None();
+            return Option<int>.None();
         }
 
         var current = self[index];
@@ -474,28 +468,28 @@ public static partial class MoonBitIntrinsics
         {
             if (index + 1 >= self.Length || !char.IsLowSurrogate(self[index + 1]))
             {
-                return MoonBitOption<int>.None();
+                return Option<int>.None();
             }
 
-            return MoonBitOption<int>.Some(char.ConvertToUtf32(current, self[index + 1]));
+            return Option<int>.Some(char.ConvertToUtf32(current, self[index + 1]));
         }
 
         return char.IsLowSurrogate(current)
-            ? MoonBitOption<int>.None()
-            : MoonBitOption<int>.Some(current);
+            ? Option<int>.None()
+            : Option<int>.Some(current);
     }
 
-    public static MoonBitOption<int> StringViewGetChar(MoonBitStringView self, int index)
+    public static Option<int> StringViewGetChar(StringView self, int index)
     {
         if ((uint)index >= (uint)self.Length)
         {
-            return MoonBitOption<int>.None();
+            return Option<int>.None();
         }
 
         return StringGetChar(self.Data, self.Start + index);
     }
 
-    public static MoonBitArray<int> StringToArray(MoonBitStringView self)
+    public static Array<int> StringToArray(StringView self)
     {
         var values = new List<int>();
         var index = self.Start;
@@ -514,10 +508,10 @@ public static partial class MoonBitIntrinsics
             }
         }
 
-        return new MoonBitArray<int>(values.ToArray());
+        return new Array<int>(values.ToArray());
     }
 
-    public static bool StringContainsChar(MoonBitStringView self, int value)
+    public static bool StringContainsChar(StringView self, int value)
     {
         var index = self.Start;
         while (index < self.End)
@@ -546,7 +540,7 @@ public static partial class MoonBitIntrinsics
         return false;
     }
 
-    public static int StringCharLength(MoonBitStringView self)
+    public static int StringCharLength(StringView self)
     {
         var count = 0;
         var index = self.Start;
@@ -572,12 +566,12 @@ public static partial class MoonBitIntrinsics
         });
     }
 
-    public static MoonBitStringView StringViewTrim(MoonBitStringView self, MoonBitStringView chars)
+    public static StringView StringViewTrim(StringView self, StringView chars)
     {
         return StringViewTrimEnd(StringViewTrimStart(self, chars), chars);
     }
 
-    public static MoonBitStringView StringViewTrimStart(MoonBitStringView self, MoonBitStringView chars)
+    public static StringView StringViewTrimStart(StringView self, StringView chars)
     {
         var start = self.Start;
         while (start < self.End && chars.AsSpan().IndexOf(self.Data[start]) >= 0)
@@ -585,10 +579,10 @@ public static partial class MoonBitIntrinsics
             start++;
         }
 
-        return new MoonBitStringView(self.Data, start, self.End);
+        return new StringView(self.Data, start, self.End);
     }
 
-    public static MoonBitStringView StringViewTrimEnd(MoonBitStringView self, MoonBitStringView chars)
+    public static StringView StringViewTrimEnd(StringView self, StringView chars)
     {
         var end = self.End;
         while (end > self.Start && chars.AsSpan().IndexOf(self.Data[end - 1]) >= 0)
@@ -596,11 +590,11 @@ public static partial class MoonBitIntrinsics
             end--;
         }
 
-        return new MoonBitStringView(self.Data, self.Start, end);
+        return new StringView(self.Data, self.Start, end);
     }
 }
 
-public static class MoonBitCompare
+public static class CompareSupport
 {
     public static int Compare<T>(T left, T right)
     {
@@ -613,9 +607,9 @@ public static class MoonBitCompare
     }
 }
 
-public static class MoonBitOptionEq
+public static class OptionEq
 {
-    public static bool equal<T, TEqImpl>(MoonBitOption<T> self, MoonBitOption<T> other)
+    public static bool equal<T, TEqImpl>(Option<T> self, Option<T> other)
         where TEqImpl : IEqImpl<T, TEqImpl>
     {
         if (self.IsNone || other.IsNone)
@@ -627,11 +621,11 @@ public static class MoonBitOptionEq
     }
 }
 
-public readonly struct MoonBitOptionEqImpl<T, TEqImpl> : IEqImpl<MoonBitOption<T>, MoonBitOptionEqImpl<T, TEqImpl>>
+public readonly struct OptionEqImpl<T, TEqImpl> : IEqImpl<Option<T>, OptionEqImpl<T, TEqImpl>>
     where TEqImpl : IEqImpl<T, TEqImpl>
 {
-    public static bool equal(MoonBitOption<T> self, MoonBitOption<T> other) =>
-        MoonBitOptionEq.equal<T, TEqImpl>(self, other);
+    public static bool equal(Option<T> self, Option<T> other) =>
+        OptionEq.equal<T, TEqImpl>(self, other);
 }
 
 public interface IEqImpl
@@ -664,7 +658,7 @@ public sealed class EqImplObject<T, TImpl> : IEqImpl where TImpl : IEqImpl<T, TI
     public bool not_equal(object left, object right) => TImpl.not_equal((T)left, (T)right);
 }
 
-public static class MoonBitEq
+public static class BuiltinEq
 {
     public readonly struct IntEqImpl : IEqImpl<int, IntEqImpl>
     {
@@ -708,106 +702,19 @@ public static class MoonBitEq
     }
 }
 
-public interface IAddImpl<T>
+public sealed class Iter<T>
 {
-    static abstract T Add(T self, T arg0);
-}
+    private readonly Func<Option<T>> next;
 
-public interface ISubImpl<T>
-{
-    static abstract T Sub(T self, T arg0);
-}
-
-public interface IMulImpl<T>
-{
-    static abstract T Mul(T self, T arg0);
-}
-
-public interface IDivImpl<T>
-{
-    static abstract T Div(T self, T arg0);
-}
-
-public interface IModImpl<T>
-{
-    static abstract T Mod(T self, T arg0);
-}
-
-public interface INegImpl<T>
-{
-    static abstract T Neg(T self);
-}
-
-public interface ICompareImpl<T, TImpl>
-    where TImpl : ICompareImpl<T, TImpl>
-{
-    static abstract int Compare(T self, T arg0);
-    static virtual bool OpLt(T self, T arg0) => TImpl.Compare(self, arg0) < 0;
-    static virtual bool OpGt(T self, T arg0) => TImpl.Compare(self, arg0) > 0;
-    static virtual bool OpLe(T self, T arg0) => TImpl.Compare(self, arg0) <= 0;
-    static virtual bool OpGe(T self, T arg0) => TImpl.Compare(self, arg0) >= 0;
-}
-
-public static class CompareTrait
-{
-    public static int Compare<T, TImpl>(T self, T arg0)
-        where TImpl : ICompareImpl<T, TImpl> => TImpl.Compare(self, arg0);
-    public static bool OpLt<T, TImpl>(T self, T arg0)
-        where TImpl : ICompareImpl<T, TImpl> => TImpl.OpLt(self, arg0);
-    public static bool OpGt<T, TImpl>(T self, T arg0)
-        where TImpl : ICompareImpl<T, TImpl> => TImpl.OpGt(self, arg0);
-    public static bool OpLe<T, TImpl>(T self, T arg0)
-        where TImpl : ICompareImpl<T, TImpl> => TImpl.OpLe(self, arg0);
-    public static bool OpGe<T, TImpl>(T self, T arg0)
-        where TImpl : ICompareImpl<T, TImpl> => TImpl.OpGe(self, arg0);
-}
-
-public static class MoonBitOperators
-{
-    public readonly struct IntAddImpl : IAddImpl<int>
-    {
-        public static int Add(int self, int arg0) => self + arg0;
-    }
-
-    public readonly struct IntSubImpl : ISubImpl<int>
-    {
-        public static int Sub(int self, int arg0) => self - arg0;
-    }
-
-    public readonly struct IntMulImpl : IMulImpl<int>
-    {
-        public static int Mul(int self, int arg0) => self * arg0;
-    }
-
-    public readonly struct IntDivImpl : IDivImpl<int>
-    {
-        public static int Div(int self, int arg0) => self / arg0;
-    }
-
-    public readonly struct IntModImpl : IModImpl<int>
-    {
-        public static int Mod(int self, int arg0) => self % arg0;
-    }
-
-    public readonly struct IntNegImpl : INegImpl<int>
-    {
-        public static int Neg(int self) => -self;
-    }
-}
-
-public sealed class MoonBitIter<T>
-{
-    private readonly Func<MoonBitOption<T>> next;
-
-    public MoonBitIter(Func<MoonBitOption<T>> next)
+    public Iter(Func<Option<T>> next)
     {
         this.next = next;
     }
 
-    public MoonBitOption<T> Next() => next();
+    public Option<T> Next() => next();
 }
 
-public static partial class MoonBitIntrinsics
+public static partial class Intrinsics
 {
     public static bool BoolNot(bool value) => !value;
     public static double F64Add(double left, double right) => left + right;
@@ -860,167 +767,167 @@ public static partial class MoonBitIntrinsics
     public static uint U32Sub(uint left, uint right) => left - right;
 }
 
-public sealed class MoonBitArray<T>
+public sealed class Array<T>
 {
     public T[] buf;
     public int Length;
     public int Count => Length;
 
-    public MoonBitArray()
+    public Array()
     {
         buf = [];
         Length = 0;
     }
 
-    public MoonBitArray(int capacity)
+    public Array(int capacity)
     {
         buf = new T[capacity];
         Length = 0;
     }
 
-    public MoonBitArray(ReadOnlySpan<T> items)
+    public Array(ReadOnlySpan<T> items)
     {
         buf = items.ToArray();
         Length = buf.Length;
     }
 
-    public MoonBitArray(T[] buffer)
+    public Array(T[] buffer)
     {
         buf = buffer;
         Length = buffer.Length;
     }
 
-    public MoonBitArray(T[] buffer, int length)
+    public Array(T[] buffer, int length)
     {
         buf = buffer;
         Length = length;
     }
 
-    public T this[int index] { get => MoonBitArray.At(this, index); set => MoonBitArray.Set(this, index, value); }
+    public T this[int index] { get => ArrayUtility.At(this, index); set => ArrayUtility.Set(this, index, value); }
 
     public ReadOnlySpan<T> AsSpan() => buf.AsSpan(0, Length);
 
-    public static MoonBitArray<T> MakeUninit(int length) => new(new T[length], length);
+    public static Array<T> MakeUninit(int length) => new(new T[length], length);
 
-    public static MoonBitArray<T> operator +(MoonBitArray<T> left, MoonBitArray<T> right) =>
-        MoonBitArray.Concat(left, right);
+    public static Array<T> operator +(Array<T> left, Array<T> right) =>
+        ArrayUtility.Concat(left, right);
 
-    public static MoonBitArray<T> operator +(MoonBitArray<T> left, MoonBitArrayView<T> right) =>
-        MoonBitArray.Concat(left, right);
+    public static Array<T> operator +(Array<T> left, ArrayView<T> right) =>
+        ArrayUtility.Concat(left, right);
 
-    public static MoonBitArray<T> operator +(MoonBitArray<T> left, MoonBitIter<T> right) =>
-        MoonBitArray.Concat(left, right);
+    public static Array<T> operator +(Array<T> left, Iter<T> right) =>
+        ArrayUtility.Concat(left, right);
 
 }
 
-public static class MoonBitArray
+public static class ArrayUtility
 {
-    public static MoonBitArray<T> FromSpan<T>(ReadOnlySpan<T> items) => new(items);
-    public static MoonBitArray<T> FromArray<T>(T[] items) => new(items.AsSpan());
-    public static bool IsEmpty<T>(MoonBitArray<T> array) => array.Length == 0;
+    public static Array<T> FromSpan<T>(ReadOnlySpan<T> items) => new(items);
+    public static Array<T> FromArray<T>(T[] items) => new(items.AsSpan());
+    public static bool IsEmpty<T>(Array<T> array) => array.Length == 0;
 
-    public static MoonBitArray<T> Concat<T>(MoonBitArray<T> left, MoonBitArray<T> right)
+    public static Array<T> Concat<T>(Array<T> left, Array<T> right)
     {
-        var result = new MoonBitArray<T>(new T[left.Length + right.Length], left.Length + right.Length);
+        var result = new Array<T>(new T[left.Length + right.Length], left.Length + right.Length);
         left.AsSpan().CopyTo(result.buf);
         right.AsSpan().CopyTo(result.buf.AsSpan(left.Length));
         return result;
     }
 
-    public static MoonBitArray<T> Concat<T>(MoonBitArray<T> left, MoonBitArrayView<T> right)
+    public static Array<T> Concat<T>(Array<T> left, ArrayView<T> right)
     {
-        var result = new MoonBitArray<T>(new T[left.Length + right.Length], left.Length + right.Length);
+        var result = new Array<T>(new T[left.Length + right.Length], left.Length + right.Length);
         left.AsSpan().CopyTo(result.buf);
         right.AsSpan().CopyTo(result.buf.AsSpan(left.Length));
         return result;
     }
 
-    public static MoonBitArray<T> Concat<T>(MoonBitArray<T> left, MoonBitIter<T> right) =>
+    public static Array<T> Concat<T>(Array<T> left, Iter<T> right) =>
         Concat(left, right.ToArray());
 
-    public static T At<T>(MoonBitArray<T> array, int index)
+    public static T At<T>(Array<T> array, int index)
     {
         var len = array.Length;
         if (index < 0 || index >= len)
         {
-            throw new MoonBitPanic("panic");
+            throw new Panic("panic");
         }
 
         return array.buf[index];
     }
 
-    public static T UnsafeGet<T>(MoonBitArray<T> array, int index) => array.buf[index];
+    public static T UnsafeGet<T>(Array<T> array, int index) => array.buf[index];
 
-    public static MoonBitOption<T> Get<T>(MoonBitArray<T> array, int index)
+    public static Option<T> Get<T>(Array<T> array, int index)
     {
         var len = array.Length;
-        return index >= 0 && index < len ? MoonBitOption<T>.Some(array.buf[index]) : MoonBitOption<T>.None();
+        return index >= 0 && index < len ? Option<T>.Some(array.buf[index]) : Option<T>.None();
     }
 
-    public static MoonBitUnit Set<T>(MoonBitArray<T> array, int index, T value)
+    public static Unit Set<T>(Array<T> array, int index, T value)
     {
         var len = array.Length;
         if (index < 0 || index >= len)
         {
-            throw new MoonBitPanic("panic");
+            throw new Panic("panic");
         }
 
         array.buf[index] = value;
-        return MoonBitUnit.Value;
+        return Unit.Value;
     }
 
-    public static MoonBitUnit UnsafeSet<T>(MoonBitArray<T> array, int index, T value)
+    public static Unit UnsafeSet<T>(Array<T> array, int index, T value)
     {
         array.buf[index] = value;
-        return MoonBitUnit.Value;
+        return Unit.Value;
     }
 
-    public static MoonBitUnit Push<T>(MoonBitArray<T> array, T item)
+    public static Unit Push<T>(Array<T> array, T item)
     {
         EnsureCapacity(array, array.Length + 1);
         array.buf[array.Length] = item;
         array.Length += 1;
-        return MoonBitUnit.Value;
+        return Unit.Value;
     }
 
-    public static MoonBitOption<T> Pop<T>(MoonBitArray<T> array)
+    public static Option<T> Pop<T>(Array<T> array)
     {
         if (array.Length == 0)
         {
-            return MoonBitOption<T>.None();
+            return Option<T>.None();
         }
 
         var index = array.Length - 1;
         var item = array.buf[index];
         array.buf[index] = default!;
         array.Length = index;
-        return MoonBitOption<T>.Some(item);
+        return Option<T>.Some(item);
     }
 
-    public static MoonBitArray<T> Copy<T>(MoonBitArray<T> array)
+    public static Array<T> Copy<T>(Array<T> array)
     {
         var copy = new T[array.Length];
         System.Array.Copy(array.buf, copy, array.Length);
-        return new MoonBitArray<T>(copy, array.Length);
+        return new Array<T>(copy, array.Length);
     }
 
-    public static MoonBitUnit ReserveCapacity<T>(MoonBitArray<T> array, int capacity)
+    public static Unit ReserveCapacity<T>(Array<T> array, int capacity)
     {
         EnsureCapacity(array, capacity);
-        return MoonBitUnit.Value;
+        return Unit.Value;
     }
 
-    public static MoonBitUnit ShrinkToFit<T>(MoonBitArray<T> array)
+    public static Unit ShrinkToFit<T>(Array<T> array)
     {
         if (array.buf.Length != array.Length)
         {
             System.Array.Resize(ref array.buf, array.Length);
         }
 
-        return MoonBitUnit.Value;
+        return Unit.Value;
     }
 
-    public static MoonBitUnit UnsafeTruncateToLength<T>(MoonBitArray<T> array, int length)
+    public static Unit UnsafeTruncateToLength<T>(Array<T> array, int length)
     {
         if (length < array.Length)
         {
@@ -1028,10 +935,10 @@ public static class MoonBitArray
         }
 
         array.Length = length;
-        return MoonBitUnit.Value;
+        return Unit.Value;
     }
 
-    public static string JoinStrings(MoonBitArray<string> array, string separator)
+    public static string JoinStrings(Array<string> array, string separator)
     {
         if (array.Length == 0)
         {
@@ -1048,7 +955,7 @@ public static class MoonBitArray
         return builder.ToString();
     }
 
-    private static void EnsureCapacity<T>(MoonBitArray<T> array, int capacity)
+    private static void EnsureCapacity<T>(Array<T> array, int capacity)
     {
         if (array.buf.Length >= capacity)
         {
@@ -1065,11 +972,11 @@ public static class MoonBitArray
     }
 }
 
-public static class MoonBitIterArrayExtensions
+public static class IterArrayExtensions
 {
-    public static MoonBitArray<T> ToArray<T>(this MoonBitIter<T> iter)
+    public static Array<T> ToArray<T>(this Iter<T> iter)
     {
-        var result = new MoonBitArray<T>();
+        var result = new Array<T>();
         while (true)
         {
             var item = iter.Next();
@@ -1078,18 +985,18 @@ public static class MoonBitIterArrayExtensions
                 return result;
             }
 
-            MoonBitArray.Push(result, item.Value);
+            ArrayUtility.Push(result, item.Value);
         }
     }
 }
 
-public static class MoonBitArrayViewBounds
+public static class ArrayViewBounds
 {
     public static int CheckedOffset(int startOffset, int length, int index)
     {
         if ((uint)index >= (uint)length)
         {
-            throw new MoonBitPanic("index out of bounds");
+            throw new Panic("index out of bounds");
         }
 
         return startOffset + index;
@@ -1110,7 +1017,7 @@ public static class MoonBitArrayViewBounds
 
         if (start < 0 || actualEnd < start || actualEnd > length)
         {
-            throw new MoonBitPanic("View index out of bounds");
+            throw new Panic("View index out of bounds");
         }
 
         return (start, actualEnd - start);
@@ -1120,29 +1027,29 @@ public static class MoonBitArrayViewBounds
     {
         if (start < 0 || length < 0 || start + length > bufferLength)
         {
-            throw new MoonBitPanic("View index out of bounds");
+            throw new Panic("View index out of bounds");
         }
     }
 }
 
-public readonly struct MoonBitArrayView<T>
+public readonly struct ArrayView<T>
 {
     public T[] Buffer { get; }
     public int StartOffset { get; }
 
-    public MoonBitArrayView(MoonBitArray<T> array, int start = 0, int? end = null)
+    public ArrayView(Array<T> array, int start = 0, int? end = null)
     {
         Buffer = array.buf;
-        (StartOffset, Length) = MoonBitArrayViewBounds.ValidateRange(array.Length, start, end);
+        (StartOffset, Length) = ArrayViewBounds.ValidateRange(array.Length, start, end);
     }
 
-    public MoonBitArrayView(T[] array, int start = 0, int? end = null)
+    public ArrayView(T[] array, int start = 0, int? end = null)
     {
         Buffer = array;
-        (StartOffset, Length) = MoonBitArrayViewBounds.ValidateRange(array.Length, start, end);
+        (StartOffset, Length) = ArrayViewBounds.ValidateRange(array.Length, start, end);
     }
 
-    private MoonBitArrayView(T[] buffer, int start, int length, bool _)
+    private ArrayView(T[] buffer, int start, int length, bool _)
     {
         Buffer = buffer;
         StartOffset = start;
@@ -1156,40 +1063,40 @@ public readonly struct MoonBitArrayView<T>
     public T this[int index] => SourceGet(CheckedOffset(index));
     public object? GetObject(int index) => this[index];
 
-    public static implicit operator MoonBitArrayView<T>(MoonBitArray<T> array) => new(array);
-    public static implicit operator MoonBitArrayView<T>(T[] array) => new(array);
-    public static implicit operator MoonBitArrayView<T>(MoonBitMutArrayView<T> view) =>
+    public static implicit operator ArrayView<T>(Array<T> array) => new(array);
+    public static implicit operator ArrayView<T>(T[] array) => new(array);
+    public static implicit operator ArrayView<T>(MutArrayView<T> view) =>
         Make(view.Buffer, view.StartOffset, view.Length);
 
-    public static MoonBitArrayView<T> Make(T[] buffer, int start, int length)
+    public static ArrayView<T> Make(T[] buffer, int start, int length)
     {
-        MoonBitArrayViewBounds.ValidateAbsoluteRange(buffer.Length, start, length);
-        return new MoonBitArrayView<T>(buffer, start, length, true);
+        ArrayViewBounds.ValidateAbsoluteRange(buffer.Length, start, length);
+        return new ArrayView<T>(buffer, start, length, true);
     }
 
     private T SourceGet(int index) => Buffer[index];
     private int CheckedOffset(int index) =>
-        MoonBitArrayViewBounds.CheckedOffset(StartOffset, Length, index);
+        ArrayViewBounds.CheckedOffset(StartOffset, Length, index);
 }
 
-public readonly struct MoonBitMutArrayView<T>
+public readonly struct MutArrayView<T>
 {
     public T[] Buffer { get; }
     public int StartOffset { get; }
 
-    public MoonBitMutArrayView(MoonBitArray<T> array, int start = 0, int? end = null)
+    public MutArrayView(Array<T> array, int start = 0, int? end = null)
     {
         Buffer = array.buf;
-        (StartOffset, Length) = MoonBitArrayViewBounds.ValidateRange(array.Length, start, end);
+        (StartOffset, Length) = ArrayViewBounds.ValidateRange(array.Length, start, end);
     }
 
-    public MoonBitMutArrayView(T[] array, int start = 0, int? end = null)
+    public MutArrayView(T[] array, int start = 0, int? end = null)
     {
         Buffer = array;
-        (StartOffset, Length) = MoonBitArrayViewBounds.ValidateRange(array.Length, start, end);
+        (StartOffset, Length) = ArrayViewBounds.ValidateRange(array.Length, start, end);
     }
 
-    private MoonBitMutArrayView(T[] buffer, int start, int length, bool _)
+    private MutArrayView(T[] buffer, int start, int length, bool _)
     {
         Buffer = buffer;
         StartOffset = start;
@@ -1204,29 +1111,29 @@ public readonly struct MoonBitMutArrayView<T>
 
     public object? GetObject(int index) => this[index];
 
-    public static implicit operator MoonBitMutArrayView<T>(MoonBitArray<T> array) => new(array);
-    public static implicit operator MoonBitMutArrayView<T>(T[] array) => new(array);
+    public static implicit operator MutArrayView<T>(Array<T> array) => new(array);
+    public static implicit operator MutArrayView<T>(T[] array) => new(array);
 
-    public static MoonBitMutArrayView<T> Make(T[] buffer, int start, int length)
+    public static MutArrayView<T> Make(T[] buffer, int start, int length)
     {
-        MoonBitArrayViewBounds.ValidateAbsoluteRange(buffer.Length, start, length);
-        return new MoonBitMutArrayView<T>(buffer, start, length, true);
+        ArrayViewBounds.ValidateAbsoluteRange(buffer.Length, start, length);
+        return new MutArrayView<T>(buffer, start, length, true);
     }
 
     private T SourceGet(int index) => Buffer[index];
     private void SourceSet(int index, T value) => Buffer[index] = value;
 
     private int CheckedOffset(int index) =>
-        MoonBitArrayViewBounds.CheckedOffset(StartOffset, Length, index);
+        ArrayViewBounds.CheckedOffset(StartOffset, Length, index);
 }
 
-public readonly struct MoonBitBytesView
+public readonly struct BytesView
 {
-    public MoonBitBytesView(byte[] buffer, int start, int length)
+    public BytesView(byte[] buffer, int start, int length)
     {
         if (start < 0 || length < 0 || start + length > buffer.Length)
         {
-            throw new MoonBitPanic("View index out of bounds");
+            throw new Panic("View index out of bounds");
         }
 
         Buffer = buffer;
@@ -1244,14 +1151,14 @@ public readonly struct MoonBitBytesView
     {
         if ((uint)index >= (uint)Length)
         {
-            throw new MoonBitPanic($"index out of bounds: the len is from 0 to {Length} but the index is {index}");
+            throw new Panic($"index out of bounds: the len is from 0 to {Length} but the index is {index}");
         }
 
         return StartOffset + index;
     }
 }
 
-public static class MoonBitFixedArray
+public static class FixedArray
 {
     public static T[] Make<T>(int length, T value)
     {
@@ -1260,95 +1167,43 @@ public static class MoonBitFixedArray
         return items;
     }
 
-    public static MoonBitUnit Set<T>(T[] items, int index, T value)
+    public static Unit Set<T>(T[] items, int index, T value)
     {
         items[index] = value;
-        return MoonBitUnit.Value;
+        return Unit.Value;
     }
 
-    public static MoonBitUnit Set<T>(MoonBitOption<T>[] items, int index, T value)
+    public static Unit Set<T>(Option<T>[] items, int index, T value)
     {
-        items[index] = MoonBitOption<T>.Some(value);
-        return MoonBitUnit.Value;
+        items[index] = Option<T>.Some(value);
+        return Unit.Value;
     }
 }
 
-public static class MoonBitBitString
-{
-    public static ulong ExtractUnsigned(ReadOnlySpan<byte> data, int bitOffset, int width, bool littleEndian)
-    {
-        if ((uint)width > 64U || width == 0)
-        {
-            throw new MoonBitPanic("invalid bitstring width");
-        }
-
-        if (littleEndian)
-        {
-            if ((width & 7) != 0)
-            {
-                throw new MoonBitPanic("little-endian bitstring width must be byte-aligned");
-            }
-
-            ulong value = 0;
-            for (var i = 0; i < width / 8; i++)
-            {
-                value |= (ulong)data[(bitOffset / 8) + i] << (i * 8);
-            }
-
-            return value;
-        }
-
-        ulong result = 0;
-        for (var i = 0; i < width; i++)
-        {
-            var absolute = bitOffset + i;
-            var b = data[absolute / 8];
-            var bit = (b >> (7 - (absolute & 7))) & 1;
-            result = (result << 1) | (uint)bit;
-        }
-
-        return result;
-    }
-
-    public static long ExtractSigned(ReadOnlySpan<byte> data, int bitOffset, int width, bool littleEndian)
-    {
-        var unsigned = ExtractUnsigned(data, bitOffset, width, littleEndian);
-        var signBit = 1UL << (width - 1);
-        if ((unsigned & signBit) == 0)
-        {
-            return (long)unsigned;
-        }
-
-        return width == 64
-            ? unchecked((long)unsigned)
-            : (long)(unsigned - (1UL << width));
-    }
-}
-
-public sealed class MoonBitStringBuilder
+public sealed class StringBuilder
 {
     private readonly System.Text.StringBuilder _builder;
-    public MoonBitStringBuilder(int sizeHint = 0)
+    public StringBuilder(int sizeHint = 0)
     {
         _builder = sizeHint > 0 ? new System.Text.StringBuilder(sizeHint) : new System.Text.StringBuilder();
     }
 
-    public static implicit operator Logger(MoonBitStringBuilder builder) =>
-        new(builder, MoonBitStringBuilderAsLogger.Instance);
+    public static implicit operator Logger(StringBuilder builder) =>
+        new(builder, StringBuilderAsLogger.Instance);
 
-    public MoonBitUnit WriteString(string value)
+    public Unit WriteString(string value)
     {
         _builder.Append(value);
-        return MoonBitUnit.Value;
+        return Unit.Value;
     }
 
-    public MoonBitUnit WriteString(MoonBitStringView value)
+    public Unit WriteString(StringView value)
     {
         _builder.Append(value.AsSpan());
-        return MoonBitUnit.Value;
+        return Unit.Value;
     }
 
-    public MoonBitUnit WriteChar(int value)
+    public Unit WriteChar(int value)
     {
         if(value < 0xFFFF)
         {
@@ -1361,29 +1216,29 @@ public sealed class MoonBitStringBuilder
             var length = rune.EncodeToUtf16(buffer);
             _builder.Append(buffer.Slice(0, length));
         }
-        return MoonBitUnit.Value;
+        return Unit.Value;
     }
 
-    public MoonBitUnit WriteSubstring(string value, int start, int length)
+    public Unit WriteSubstring(string value, int start, int length)
     {
         _builder.Append(value, start, length);
-        return MoonBitUnit.Value;
+        return Unit.Value;
     }
 
-    public MoonBitUnit Reset()
+    public Unit Reset()
     {
         _builder.Clear();
-        return MoonBitUnit.Value;
+        return Unit.Value;
     }
 
     public override string ToString() => _builder.ToString();
 }
 
-public static class MoonBitStringExtensions
+public static class StringExtensions
 {
-    public static MoonBitStringView View(this string value) => new(value, 0, value.Length);
-    public static MoonBitStringView View(this string value, int start) => value.View(start, value.Length);
-    public static MoonBitStringView View(this string value, int start, int end)
+    public static StringView View(this string value) => new(value, 0, value.Length);
+    public static StringView View(this string value, int start) => value.View(start, value.Length);
+    public static StringView View(this string value, int start, int end)
     {
         if (start < 0)
         {
@@ -1403,24 +1258,24 @@ public static class MoonBitStringExtensions
     public static bool HasSuffix(this string value, string suffix) => value.EndsWith(suffix, StringComparison.Ordinal);
     public static bool IsEmpty(this string value) => value.Length == 0;
     public static string ReplaceAll(this string value, string oldValue, string newValue) => value.Replace(oldValue, newValue, StringComparison.Ordinal);
-    public static MoonBitStringView TrimMoonBit(this string value) => value.View().Trim();
+    public static StringView TrimMoonBit(this string value) => value.View().Trim();
     public static string ToLowerMoonBit(this string value) => value.ToLowerInvariant();
-    public static MoonBitOption<MoonBitStringView> BeforeMoonBit(this string value, string marker) => value.View().Before(marker);
-    public static MoonBitOption<MoonBitStringView> AfterMoonBit(this string value, string marker) => value.View().After(marker);
-    public static MoonBitOption<(MoonBitStringView, MoonBitStringView)> SplitOnceMoonBit(this string value, string marker) => value.View().SplitOnce(marker);
-    public static MoonBitIter<MoonBitStringView> SplitMoonBit(this string value, MoonBitStringView separator) => value.View().Split(separator);
+    public static Option<StringView> BeforeMoonBit(this string value, string marker) => value.View().Before(marker);
+    public static Option<StringView> AfterMoonBit(this string value, string marker) => value.View().After(marker);
+    public static Option<(StringView, StringView)> SplitOnceMoonBit(this string value, string marker) => value.View().SplitOnce(marker);
+    public static Iter<StringView> SplitMoonBit(this string value, StringView separator) => value.View().Split(separator);
 }
 
-public readonly record struct MoonBitStringView(string Data, int Start, int End)
+public readonly record struct StringView(string Data, int Start, int End)
 {
-    public static implicit operator MoonBitStringView(string value) => new(value, 0, value.Length);
+    public static implicit operator StringView(string value) => new(value, 0, value.Length);
     public int Length => End - Start;
     public int StartOffset => Start;
     public string Source => Data;
     public ReadOnlySpan<char> AsSpan() => Data.AsSpan(Start, Length);
 
     public ushort this[int index] => (ushort)Data[Start + index];
-    public MoonBitStringView Sub(int startOffset, int? endOffset = null)
+    public StringView Sub(int startOffset, int? endOffset = null)
     {
         var end = endOffset ?? Length;
         if (startOffset < 0)
@@ -1438,19 +1293,19 @@ public readonly record struct MoonBitStringView(string Data, int Start, int End)
             throw new ArgumentOutOfRangeException(nameof(startOffset), "Invalid index for View");
         }
 
-        return new MoonBitStringView(Data, Start + startOffset, Start + end);
+        return new StringView(Data, Start + startOffset, Start + end);
     }
 
     public string ToOwned() => ToString();
     public override string ToString() => Data.Substring(Start, Length);
-    public static bool operator ==(MoonBitStringView left, string right) => right is not null && left.AsSpan().SequenceEqual(right.AsSpan());
-    public static bool operator !=(MoonBitStringView left, string right) => !(left == right);
-    public static bool operator ==(string left, MoonBitStringView right) => left is not null && left.AsSpan().SequenceEqual(right.AsSpan());
-    public static bool operator !=(string left, MoonBitStringView right) => !(left == right);
+    public static bool operator ==(StringView left, string right) => right is not null && left.AsSpan().SequenceEqual(right.AsSpan());
+    public static bool operator !=(StringView left, string right) => !(left == right);
+    public static bool operator ==(string left, StringView right) => left is not null && left.AsSpan().SequenceEqual(right.AsSpan());
+    public static bool operator !=(string left, StringView right) => !(left == right);
     public bool ContainsOrdinal(string part) => AsSpan().Contains(part.AsSpan(), StringComparison.Ordinal);
     public bool HasPrefix(string prefix) => AsSpan().StartsWith(prefix.AsSpan(), StringComparison.Ordinal);
     public bool HasSuffix(string suffix) => AsSpan().EndsWith(suffix.AsSpan(), StringComparison.Ordinal);
-    public MoonBitStringView Trim()
+    public StringView Trim()
     {
         var start = Start;
         var end = End;
@@ -1464,65 +1319,65 @@ public readonly record struct MoonBitStringView(string Data, int Start, int End)
             end--;
         }
 
-        return new MoonBitStringView(Data, start, end);
+        return new StringView(Data, start, end);
     }
 
-    public MoonBitOption<MoonBitStringView> Before(string marker)
+    public Option<StringView> Before(string marker)
     {
         var index = Data.IndexOf(marker, Start, Length, StringComparison.Ordinal);
-        return index < 0 ? MoonBitOption<MoonBitStringView>.None() : MoonBitOption<MoonBitStringView>.Some(new MoonBitStringView(Data, Start, index));
+        return index < 0 ? Option<StringView>.None() : Option<StringView>.Some(new StringView(Data, Start, index));
     }
 
-    public MoonBitOption<MoonBitStringView> After(string marker)
+    public Option<StringView> After(string marker)
     {
         var index = Data.IndexOf(marker, Start, Length, StringComparison.Ordinal);
-        return index < 0 ? MoonBitOption<MoonBitStringView>.None() : MoonBitOption<MoonBitStringView>.Some(new MoonBitStringView(Data, index + marker.Length, End));
+        return index < 0 ? Option<StringView>.None() : Option<StringView>.Some(new StringView(Data, index + marker.Length, End));
     }
 
-    public MoonBitOption<(MoonBitStringView, MoonBitStringView)> SplitOnce(string marker)
+    public Option<(StringView, StringView)> SplitOnce(string marker)
     {
         var index = Data.IndexOf(marker, Start, Length, StringComparison.Ordinal);
-        return index < 0 ? MoonBitOption<(MoonBitStringView, MoonBitStringView)>.None() : MoonBitOption<(MoonBitStringView, MoonBitStringView)>.Some((new MoonBitStringView(Data, Start, index), new MoonBitStringView(Data, index + marker.Length, End)));
+        return index < 0 ? Option<(StringView, StringView)>.None() : Option<(StringView, StringView)>.Some((new StringView(Data, Start, index), new StringView(Data, index + marker.Length, End)));
     }
 
-    public MoonBitIter<MoonBitStringView> Split(MoonBitStringView separator)
+    public Iter<StringView> Split(StringView separator)
     {
         var source = this;
         var remaining = source;
         var index = 0;
         if (separator.Length == 0)
         {
-            return new MoonBitIter<MoonBitStringView>(() =>
+            return new Iter<StringView>(() =>
             {
                 if (index >= source.Length)
                 {
-                    return MoonBitOption<MoonBitStringView>.None();
+                    return Option<StringView>.None();
                 }
 
                 var item = source.Sub(index, index + 1);
                 index += 1;
-                return MoonBitOption<MoonBitStringView>.Some(item);
+                return Option<StringView>.Some(item);
             });
         }
 
-        return new MoonBitIter<MoonBitStringView>(() =>
+        return new Iter<StringView>(() =>
         {
             if (remaining.Start > remaining.End)
             {
-                return MoonBitOption<MoonBitStringView>.None();
+                return Option<StringView>.None();
             }
 
             var found = remaining.AsSpan().IndexOf(separator.AsSpan(), StringComparison.Ordinal);
             if (found < 0)
             {
                 var last = remaining;
-                remaining = new MoonBitStringView(source.Data, source.End + 1, source.End);
-                return MoonBitOption<MoonBitStringView>.Some(last);
+                remaining = new StringView(source.Data, source.End + 1, source.End);
+                return Option<StringView>.Some(last);
             }
 
             var item = remaining.Sub(0, found);
             remaining = remaining.Sub(found + separator.Length);
-            return MoonBitOption<MoonBitStringView>.Some(item);
+            return Option<StringView>.Some(item);
         });
     }
 }

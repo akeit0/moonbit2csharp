@@ -9,11 +9,11 @@ pub extern "csharp" fn[T] ArrayView::length(
 ///|
 pub extern "csharp" fn[X] ArrayView::iter(self : ArrayView[X]) -> Iter[X] =
   #|var index = 0;
-  #|return new MoonBitIter<X>(() =>
+  #|return new Iter<X>(() =>
   #|{
   #|    if (index >= self.Length)
   #|    {
-  #|        return MoonBitOption<X>.None();
+  #|        return Option<X>.None();
   #|    }
-  #|    return MoonBitOption<X>.Some(self.Buffer[self.StartOffset + index++]);
+  #|    return Option<X>.Some(self.Buffer[self.StartOffset + index++]);
   #|});

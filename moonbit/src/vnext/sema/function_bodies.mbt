@@ -43,6 +43,7 @@ fn bind_function_body(
   {
     symbol_id: fid,
     name: function_decl_name(function),
+    is_public: signature.is_public,
     type_params: type_param_defs(function.type_params),
     params,
     return_type: signature.return_type,
@@ -121,6 +122,7 @@ fn bind_external_function(
   {
     symbol_id: fid,
     name: function_decl_name(function),
+    is_public: signature.is_public,
     type_params: type_param_defs(function.type_params),
     params,
     return_type: signature.return_type,
@@ -269,6 +271,7 @@ fn bind_default_trait_impl_method_body(
       Some({
         symbol_id: function_id,
         name: impl_method.name,
+        is_public: signature.is_public,
         type_params: default_trait_impl_type_param_defs(
           impl_decl,
           trait_def.symbol.name,
@@ -494,6 +497,7 @@ fn bind_concrete_impl_method_body(
       Some({
         symbol_id: signature.function_id,
         name: impl_method.name,
+        is_public: signature.is_public,
         type_params: type_param_defs(impl_decl.type_params),
         params,
         return_type: signature.return_type,
@@ -769,7 +773,7 @@ fn bind_global(
   )
   let typing = @semantic.typing_context()
   let value = bind_expr(typing, context, index, [], global.value, type_, ast)
-  { symbol_id, name: global.name, type_, value, span: global.span }
+  { symbol_id, name: global.name, is_public: false, type_, value, span: global.span }
 }
 
 ///|

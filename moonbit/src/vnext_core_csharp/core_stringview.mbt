@@ -44,10 +44,10 @@ pub extern "csharp" fn StringView::repeat(
 ) -> StringView =
   #|if (n < 0)
   #|{
-  #|    throw new MoonBitPanic("invalid length");
+  #|    throw new Panic("invalid length");
   #|}
   #|var value = string.Concat(System.Linq.Enumerable.Repeat(self.ToString(), n));
-  #|return new MoonBitStringView(value, 0, value.Length);
+  #|return new StringView(value, 0, value.Length);
 
 ///|
 pub fn StringView::to_upper(self : StringView) -> StringView = "%stringview_to_upper"
@@ -89,8 +89,8 @@ pub extern "csharp" fn StringView::strip_prefix(
 ) -> StringView? =
   #|var prefixLength = prefix.Length;
   #|return self.AsSpan().StartsWith(prefix.AsSpan(), System.StringComparison.Ordinal)
-  #|    ? MoonBitOption<MoonBitStringView>.Some(new MoonBitStringView(self.Data, self.Start + prefixLength, self.End))
-  #|    : MoonBitOption<MoonBitStringView>.None();
+  #|    ? Option<StringView>.Some(new StringView(self.Data, self.Start + prefixLength, self.End))
+  #|    : Option<StringView>.None();
 
 ///|
 pub extern "csharp" fn StringView::strip_suffix(
@@ -99,8 +99,8 @@ pub extern "csharp" fn StringView::strip_suffix(
 ) -> StringView? =
   #|var suffixLength = suffix.Length;
   #|return self.AsSpan().EndsWith(suffix.AsSpan(), System.StringComparison.Ordinal)
-  #|    ? MoonBitOption<MoonBitStringView>.Some(new MoonBitStringView(self.Data, self.Start, self.End - suffixLength))
-  #|    : MoonBitOption<MoonBitStringView>.None();
+  #|    ? Option<StringView>.Some(new StringView(self.Data, self.Start, self.End - suffixLength))
+  #|    : Option<StringView>.None();
 
 ///|
 pub extern "csharp" fn StringView::escape(

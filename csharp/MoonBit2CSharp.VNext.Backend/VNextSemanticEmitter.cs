@@ -63,8 +63,8 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
         builder.Append("using System;").Append(options.NewLine);
         builder
             .Append("using ")
-            .Append(options.RuntimeNamespace)
-            .Append(";")
+            .Append(options.GeneratedNamespace)
+            .Append(".Runtime;")
             .Append(options.NewLine);
         foreach (var file in files)
         {
@@ -309,7 +309,7 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
     {
         var unit = CompilationUnit()
             .WithUsings(SingletonList(UsingDirective(ParseName("System"))))
-            .AddUsings(UsingDirective(ParseName(options.RuntimeNamespace)))
+            .AddUsings(UsingDirective(ParseName(options.GeneratedNamespace + ".Runtime")))
             .WithMembers(
                 SingletonList<MemberDeclarationSyntax>(
                     FileScopedNamespaceDeclaration(ParseName(namespaceName))
@@ -325,7 +325,75 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
             + options.NewLine
             + options.NewLine
             + unit.ToFullString().TrimEnd('\r', '\n');
+        code = QualifyRuntimeIdentifiers(code);
         return options.FinalNewLine ? code + options.NewLine : code;
+    }
+
+    private string QualifyRuntimeIdentifiers(string code)
+    {
+        code = code.Replace("Array.Empty", "global::System.Array.Empty");
+        foreach (
+            var (name, target) in new[]
+            {
+                ("ArrayUtility", "ArrayUtility"),
+                ("ArrayView", "ArrayView"),
+                ("BytesView", "BytesView"),
+                ("ConsoleUtility", "ConsoleUtility"),
+                ("FixedArray", "FixedArray"),
+                ("Intrinsics", "Intrinsics"),
+                ("Iter", "Iter"),
+                ("MutArrayView", "MutArrayView"),
+                ("Option", "Option"),
+                ("OptionEq", "OptionEq"),
+                ("Panic", "Panic"),
+                ("Result", "Result"),
+                ("StringBuilder", "StringBuilder"),
+                ("StringView", "StringView"),
+                ("Unit", "Unit"),
+                ("MoonBitArray", "Array"),
+                ("MoonBitArrayView", "ArrayView"),
+                ("MoonBitBytesView", "BytesView"),
+                ("MoonBitCompare", "CompareSupport"),
+                ("MoonBitConsole", "ConsoleUtility"),
+                ("MoonBitFixedArray", "FixedArray"),
+                ("MoonBitIntrinsics", "Intrinsics"),
+                ("MoonBitIter", "Iter"),
+                ("MoonBitMutArrayView", "MutArrayView"),
+                ("MoonBitOption", "Option"),
+                ("MoonBitOptionEq", "OptionEq"),
+                ("MoonBitOptionEqImpl", "OptionEqImpl"),
+                ("MoonBitPanic", "Panic"),
+                ("MoonBitResult", "Result"),
+                ("MoonBitStringBuilder", "StringBuilder"),
+                ("MoonBitStringView", "StringView"),
+                ("MoonBitUnit", "Unit"),
+                ("MoonBitEq", "BuiltinEq"),
+                ("global::MoonBit.Runtime.IShowImpl", "IShowImpl"),
+                ("global::MoonBit.Runtime.Logger", "Logger"),
+            }
+        )
+        {
+            if (name.StartsWith("global::", StringComparison.Ordinal))
+            {
+                code = code.Replace(
+                    name,
+                    "global::" + options.GeneratedNamespace + ".Runtime." + target
+                );
+                continue;
+            }
+
+            code = code.Replace(
+                "global::" + options.RuntimeNamespace + "." + name,
+                "global::" + options.GeneratedNamespace + ".Runtime." + target
+            );
+            code = System.Text.RegularExpressions.Regex.Replace(
+                code,
+                $@"(?<![\w.:]){System.Text.RegularExpressions.Regex.Escape(name)}\b",
+                "global::" + options.GeneratedNamespace + ".Runtime." + target
+            );
+        }
+
+        return code;
     }
 
     private static string FormatDiagnostic(JsonElement diagnostic)
@@ -1090,7 +1158,7 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
                 EmitType(global.GetProperty("type")),
                 ToPublicIdentifier(global.GetProperty("name").GetString() ?? "")
             )
-            .AddModifiers(Token(SyntaxKind.PublicKeyword), Token(SyntaxKind.StaticKeyword))
+            .AddModifiers(VisibilityModifier(global), Token(SyntaxKind.StaticKeyword))
             .WithAccessorList(
                 AccessorList(
                     SingletonList(
@@ -1145,7 +1213,7 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
         currentFunctionErrorType = previousFunctionErrorType;
         currentFunctionReturnType = previousFunctionReturnType;
         var declaration = MethodDeclaration(returnType, name)
-            .AddModifiers(Token(SyntaxKind.PublicKeyword), Token(SyntaxKind.StaticKeyword))
+            .AddModifiers(VisibilityModifier(function), Token(SyntaxKind.StaticKeyword))
             .WithParameterList(ParameterList(SeparatedList(parameters)))
             .WithBody(body);
         var constraints = typeParamInfos
@@ -1166,6 +1234,15 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
         return typeParams.Length == 0
             ? declaration
             : declaration.WithTypeParameterList(TypeParameterList(SeparatedList(typeParams)));
+    }
+
+    private static SyntaxToken VisibilityModifier(JsonElement member)
+    {
+        return
+            member.TryGetProperty("isPublic", out var isPublic)
+            && isPublic.ValueKind == JsonValueKind.True
+            ? Token(SyntaxKind.PublicKeyword)
+            : Token(SyntaxKind.InternalKeyword);
     }
 
     private bool ClassHasStaticTraitImplAdapter(IReadOnlyList<JsonElement> functions)
@@ -4130,7 +4207,7 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
         var elementTypeName = EmitType(elementType).NormalizeWhitespace().ToFullString();
         var elementEqEvidenceName = EqEvidenceName(elementType);
         var equality = ParseExpression(
-            $"{SupportTypeName("OptionEq")}.Equal<{elementTypeName}, {elementEqEvidenceName}>({left.NormalizeWhitespace()}, {right.NormalizeWhitespace()})"
+            $"{SupportTypeName("OptionEq")}.equal<{elementTypeName}, {elementEqEvidenceName}>({left.NormalizeWhitespace()}, {right.NormalizeWhitespace()})"
         );
         return (expr.GetProperty("op").GetString() ?? "") == "!="
             ? ParenthesizedExpression(
@@ -5012,7 +5089,7 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
                     .NormalizeWhitespace()
                     .ToFullString();
                 result = ParseExpression(
-                    $"MoonBitArray.Concat({result.NormalizeWhitespace().ToFullString()}, {spread})"
+                    $"ArrayUtility.Concat({result.NormalizeWhitespace().ToFullString()}, {spread})"
                 );
             }
             else
@@ -5057,7 +5134,7 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
         var segment =
             $"new MoonBitArray<{elementTypeName}>(new {elementTypeName}[] {{ {string.Join(", ", values)} }})";
         return ParseExpression(
-            $"MoonBitArray.Concat({current.NormalizeWhitespace().ToFullString()}, {segment})"
+            $"ArrayUtility.Concat({current.NormalizeWhitespace().ToFullString()}, {segment})"
         );
     }
 

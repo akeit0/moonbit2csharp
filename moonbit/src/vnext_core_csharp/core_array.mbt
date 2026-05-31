@@ -4,7 +4,7 @@ package "moonbitlang/core/builtin"
 pub extern "csharp" fn[T] Array::new(
   capacity? : Int = 0,
 ) -> Array[T] =
-  #|return new MoonBitArray<T>(capacity);
+  #|return new Array<T>(capacity);
 
 ///|
 pub extern "csharp" fn[T] Array::length(self : Array[T]) -> Int =
@@ -15,7 +15,7 @@ pub extern "csharp" fn[T] Array::push(
   self : Array[T],
   value : T,
 ) -> Unit =
-  #|return MoonBitArray.Push(self, value);
+  #|return ArrayUtility.Push(self, value);
 
 ///|
 pub extern "csharp" fn[T] Array::append(
@@ -23,28 +23,28 @@ pub extern "csharp" fn[T] Array::append(
   other : ArrayView[T],
 ) -> Unit =
   #|var required = self.Length + other.Length;
-  #|if (self.Buffer.Length < required)
+  #|if (self.buf.Length < required)
   #|{
-  #|    var capacity = self.Buffer.Length == 0 ? 4 : self.Buffer.Length * 2;
+  #|    var capacity = self.buf.Length == 0 ? 4 : self.buf.Length * 2;
   #|    while (capacity < required)
   #|    {
   #|        capacity *= 2;
   #|    }
-  #|    System.Array.Resize(ref self.Buffer, capacity);
+  #|    System.Array.Resize(ref self.buf, capacity);
   #|}
-  #|other.AsSpan().CopyTo(self.Buffer.AsSpan(self.Length));
+  #|other.AsSpan().CopyTo(self.buf.AsSpan(self.Length));
   #|self.Length += other.Length;
-  #|return MoonBitUnit.Value;
+  #|return Unit.Value;
 
 ///|
 pub extern "csharp" fn[T, U] Array::map(
   self : Array[T],
   f : (T) -> U raise?,
 ) -> Array[U] raise? =
-  #|var result = new MoonBitArray<U>(self.Length);
+  #|var result = new Array<U>(self.Length);
   #|for (var i = 0; i < self.Length; i++)
   #|{
-  #|    MoonBitArray.Push(result, f(self.Buffer[i]));
+  #|    ArrayUtility.Push(result, f(self.buf[i]));
   #|}
   #|return result;
 
@@ -53,7 +53,7 @@ pub extern "csharp" fn[T] Array::concat(
   self : Array[T],
   other : Array[T],
 ) -> Array[T] =
-  #|return MoonBitArray.Concat(self, other);
+  #|return ArrayUtility.Concat(self, other);
 
 ///|
 pub impl[T] Add for Array[T] with add(self, other) {
@@ -94,7 +94,7 @@ pub extern "csharp" fn[T] Array::all(
 ) -> Bool raise? =
   #|for (var i = 0; i < self.Length; i++)
   #|{
-  #|    if (!f(self.Buffer[i]))
+  #|    if (!f(self.buf[i]))
   #|    {
   #|        return false;
   #|    }
@@ -110,7 +110,7 @@ pub extern "csharp" fn[A] Array::join(
   #|var items = new string[self.Length];
   #|for (var i = 0; i < self.Length; i++)
   #|{
-  #|    items[i] = self.Buffer[i]?.ToString() ?? "";
+  #|    items[i] = self.buf[i]?.ToString() ?? "";
   #|}
   #|return string.Join(sep, items);
 

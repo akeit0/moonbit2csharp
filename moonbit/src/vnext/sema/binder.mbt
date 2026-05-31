@@ -704,6 +704,7 @@ fn signature_to_bound_function_stub(
   {
     symbol_id: signature.function_id,
     name: signature.name,
+    is_public: signature.is_public,
     type_params: signature_type_params(signature.type_params),
     params,
     return_type: signature.return_type,
@@ -774,7 +775,7 @@ pub fn bound_function_signature(
     effect: function.effect,
     aliases: [],
     intrinsic: None,
-    is_public: true,
+    is_public: function.is_public,
     span: function.span,
   }
 }

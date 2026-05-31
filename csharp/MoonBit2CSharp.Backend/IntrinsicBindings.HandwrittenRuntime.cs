@@ -103,33 +103,33 @@ public static partial class IntrinsicBindings
         yield return Direct(
             "%array.unsafe_get",
             ["_", "Int"],
-            (_, args, _) => ParseExpression($"MoonBitArray.UnsafeGet({args[0]}, {args[1]})")
+            (_, args, _) => ParseExpression($"ArrayUtility.UnsafeGet({args[0]}, {args[1]})")
         );
         yield return Direct(
             "%array.get",
             ["_", "Int"],
-            (_, args, _) => ParseExpression($"MoonBitArray.Get({args[0]}, {args[1]})")
+            (_, args, _) => ParseExpression($"ArrayUtility.Get({args[0]}, {args[1]})")
         );
         yield return Direct(
             "%array.unsafe_set",
             ["_", "Int", "_"],
             (_, args, _) =>
-                ParseExpression($"MoonBitArray.UnsafeSet({args[0]}, {args[1]}, {args[2]})")
+                ParseExpression($"ArrayUtility.UnsafeSet({args[0]}, {args[1]}, {args[2]})")
         );
         yield return Direct(
             "%array.set",
             ["_", "Int", "_"],
-            (_, args, _) => ParseExpression($"MoonBitArray.Set({args[0]}, {args[1]}, {args[2]})")
+            (_, args, _) => ParseExpression($"ArrayUtility.Set({args[0]}, {args[1]}, {args[2]})")
         );
         yield return Direct(
             "%array_is_empty",
             ["_"],
-            (_, args, _) => ParseExpression($"MoonBitArray.IsEmpty({args[0]})")
+            (_, args, _) => ParseExpression($"ArrayUtility.IsEmpty({args[0]})")
         );
         yield return Direct(
             "%array_copy",
             ["_"],
-            (_, args, _) => ParseExpression($"MoonBitArray.Copy({args[0]})")
+            (_, args, _) => ParseExpression($"ArrayUtility.Copy({args[0]})")
         );
         yield return Direct(
             "%array_make",
@@ -144,7 +144,7 @@ public static partial class IntrinsicBindings
         yield return Direct(
             "%array_pop",
             ["_"],
-            (_, args, _) => ParseExpression($"MoonBitArray.Pop({args[0]})")
+            (_, args, _) => ParseExpression($"ArrayUtility.Pop({args[0]})")
         );
         yield return Direct(
             "%array_last",

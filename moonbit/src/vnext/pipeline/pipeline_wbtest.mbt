@@ -641,7 +641,9 @@ test "vnext resolves generic println for bytes through Show evidence" {
       "\"functionId\":\"fn:pkg:moonbitlang/core/builtin:moonbitlang/core/builtin:println\"",
     ),
   )
-  assert_true(json.contains("\"typeArgs\":[{\"kind\":\"Builtin\",\"name\":\"Bytes\"}]"))
+  assert_true(
+    json.contains("\"typeArgs\":[{\"kind\":\"Builtin\",\"name\":\"Bytes\"}]"),
+  )
   assert_true(json.contains("\"traitEvidence\":[]"))
   assert_true(json.contains("\"diagnostics\":[]"))
 }
@@ -1117,7 +1119,11 @@ test "vnext resolves unary minus through operator intrinsics" {
 test "vnext infers generic function calls from arguments and expected return type" {
   let source = "fn[T] id(x:T)->T { x }\nfn call_int()->Int { id(1) }\nfn call_view()->StringView { id(\"x\") }\n"
   let json = compile_test_source_to_json(source, "demo.mbt", "Demo")
-  assert_true(json.contains("\"name\":\"id\",\"typeParams\":[{\"name\":\"T\""))
+  assert_true(
+    json.contains(
+      "\"name\":\"id\",\"isPublic\":false,\"typeParams\":[{\"name\":\"T\"",
+    ),
+  )
   assert_true(json.contains("\"functionId\":\"fn:pkg:Demo:Demo:id\""))
   assert_true(json.contains("\"name\":\"call_int\""))
   assert_true(json.contains("\"kind\":\"Builtin\",\"name\":\"Int\""))
@@ -1830,12 +1836,17 @@ test "vnext resolves array index get and set" {
   assert_true(json.contains("\"diagnostics\":[]"))
 }
 
+///|
 test "vnext resolves bytes literal receiver and index assignment" {
   let source = "fn main { let b = b\"hello?\"; let array = b.unsafe_to_bytesArray(); array[5] = 1.to_byte() }\nfn Bytes::unsafe_to_bytesArray(bytes : Bytes) -> FixedArray[Byte] = \"%identity\"\nfn Int::to_byte(self : Int) -> Byte = \"%i32_to_byte\"\n"
   let json = compile_test_source_to_json(source, "bytes_literal.mbt", "Demo")
   assert_true(json.contains("\"kind\":\"BytesLiteral\""))
   assert_true(json.contains("\"kind\":\"Builtin\",\"name\":\"Bytes\""))
-  assert_true(json.contains("\"functionId\":\"fn:pkg:Demo:Demo:Bytes::unsafe_to_bytesArray\""))
+  assert_true(
+    json.contains(
+      "\"functionId\":\"fn:pkg:Demo:Demo:Bytes::unsafe_to_bytesArray\"",
+    ),
+  )
   assert_true(json.contains("\"kind\":\"IndexAssign\""))
   assert_true(json.contains("\"diagnostics\":[]"))
 }

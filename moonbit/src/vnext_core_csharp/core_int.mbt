@@ -15,7 +15,7 @@ pub extern "csharp" fn Int::max(self : Int, other : Int) -> Int =
 pub extern "csharp" fn Int::next_power_of_two(self : Int) -> Int =
   #|if (self < 0)
   #|{
-  #|    throw new MoonBitPanic("panic");
+  #|    throw new Panic("panic");
   #|}
   #|if (self <= 1)
   #|{
