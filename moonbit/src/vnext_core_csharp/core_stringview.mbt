@@ -1,5 +1,6 @@
 package "moonbitlang/core/builtin"
 
+
 ///|
 pub impl Show for StringView with to_string(self) = "%stringview_to_string"
 
@@ -30,6 +31,7 @@ pub fn StringView::is_empty(self : StringView) -> Bool = "%stringview_is_empty"
 pub fn StringView::find(self : StringView, needle : StringView) -> Int? = "%stringview_find"
 
 ///|
+#alias("_[_:_]")
 pub fn StringView::view(
   self : StringView,
   start_offset? : Int = 0,

@@ -1,6 +1,7 @@
 package "moonbitlang/core/builtin"
 
 
+
 ///|
 pub fn String::is_empty(self : String) -> Bool = "%string_is_empty"
 
@@ -12,6 +13,7 @@ pub fn String::unsafe_substring(
 ) -> String = "%string.substring"
 
 ///|
+#alias("_[_:_]")
 pub extern "csharp" fn String::view(
   self : String,
   start_offset? : Int = 0,

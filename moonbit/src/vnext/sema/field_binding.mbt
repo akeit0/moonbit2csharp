@@ -223,9 +223,9 @@ fn bind_index_get(
       Some(bound_slice) => return bound_slice
       None => {
         context.error(
-          "VNX1905", "slice expressions are not supported yet", span,
+          "VNX1905", "cannot find slice implementation", span,
         )
-        return BoundExpr::Error("unsupported slice", error_type(), span)
+        return BoundExpr::Error("unresolved slice implementation", error_type(), span)
       }
     }
   }
@@ -286,25 +286,86 @@ fn bind_slice_view_call(
   span : SourceSpan,
   ast : Module,
 ) -> BoundExpr? {
-  let probe_target = bind_expr(
-    @semantic.typing_context(),
-    diagnostic_free_context(context),
-    index,
-    scope,
-    target,
-    error_type(),
-    ast,
-  )
-  let target_type = @ir.expr_type(probe_target)
-  if !@binding.type_equal(target_type, string_type()) &&
-    !@binding.type_equal(target_type, string_view_type()) {
+  let candidates = functions_with_alias(index, "_[_:_]")
+  if candidates.length() == 0 {
     return None
   }
-  let args : Array[@ast.CallArg] = []
+  for candidate in candidates {
+    match slice_alias_args(candidate, target, start_index, end_index) {
+      Some(args) =>
+        match
+          choose_function(
+            typing,
+            diagnostic_free_context(context),
+            [candidate],
+            scope,
+            index,
+            args,
+            error_type(),
+            span,
+            ast,
+          ) {
+          Some(_) =>
+            match
+              choose_function(
+                typing,
+                context,
+                [candidate],
+                scope,
+                index,
+                args,
+                error_type(),
+                span,
+                ast,
+              ) {
+              Some(probe) => {
+                let bound_args = bind_argument_plan(
+                  typing,
+                  context,
+                  index,
+                  scope,
+                  probe.argument_plan,
+                  ast,
+                )
+                return Some(
+                  BoundExpr::Call(
+                    probe.callable.function_id,
+                    probe.callable.type_args,
+                    bound_trait_evidence(context, probe.callable.trait_evidence),
+                    bound_args,
+                    probe.callable.function_intrinsic,
+                    probe.callable.return_type,
+                    span,
+                  ),
+                )
+              }
+              None => ()
+            }
+          None => ()
+        }
+      None => ()
+    }
+  }
+  None
+}
+
+///|
+fn slice_alias_args(
+  candidate : FunctionSignature,
+  target : Expr,
+  start_index : Expr?,
+  end_index : Expr?,
+) -> Array[CallArg]? {
+  if candidate.parameters.length() < 3 {
+    return None
+  }
+  let args : Array[CallArg] = [
+    { label: None, value: target, span: @ast.expr_span(target) },
+  ]
   match start_index {
     Some(value) =>
       args.push({
-        label: Some("start_offset"),
+        label: slice_alias_parameter_label(candidate.parameters[1]),
         value,
         span: @ast.expr_span(value),
       })
@@ -313,24 +374,26 @@ fn bind_slice_view_call(
   match end_index {
     Some(value) =>
       args.push({
-        label: Some("end_offset"),
+        label: slice_alias_parameter_label(candidate.parameters[2]),
         value,
         span: @ast.expr_span(value),
       })
     None => ()
   }
-  bind_receiver_function_call(
-    typing,
-    context,
-    index,
-    scope,
-    target,
-    "view",
-    args,
-    string_view_type(),
-    span,
-    ast,
-  )
+  Some(args)
+}
+
+///|
+fn slice_alias_parameter_label(parameter : ParameterDef) -> String? {
+  match parameter.label {
+    Some(label) => Some(label)
+    None =>
+      if parameter.optional || parameter.has_default {
+        Some(parameter.symbol.name)
+      } else {
+        None
+      }
+  }
 }
 
 ///|

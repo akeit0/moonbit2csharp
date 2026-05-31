@@ -678,6 +678,13 @@ public static class MoonBitSourceTranspiler
             "moonbitlang/core/builtin",
             Path.Combine(root, "moonbit", "src", "vnext_core_csharp", "core_stringview.mbt")
         );
+        AddDeclarationSource(
+            result,
+            "builtin",
+            "pkg:moonbitlang/core/builtin",
+            "moonbitlang/core/builtin",
+            Path.Combine(root, "moonbit", "builtin", "overrides", "core_bytesview_csharp.mbt")
+        );
         AddOfficialCorePackageDeclarationSources(
             result,
             "debug",
@@ -879,6 +886,13 @@ public static class MoonBitSourceTranspiler
             "pkg:moonbitlang/core/builtin",
             "moonbitlang/core/builtin",
             Path.Combine(root, "moonbit", "src", "vnext_core_csharp", "core_stringview.mbt")
+        );
+        AddDeclarationSource(
+            result,
+            "builtin",
+            "pkg:moonbitlang/core/builtin",
+            "moonbitlang/core/builtin",
+            Path.Combine(root, "moonbit", "builtin", "overrides", "core_bytesview_csharp.mbt")
         );
         AddDeclarationSource(
             result,

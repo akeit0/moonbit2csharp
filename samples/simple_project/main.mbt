@@ -3,7 +3,7 @@ fn main {
   println(b)
   let array = b.unsafe_to_bytesArray()
   array[5]='!'.to_int().to_byte()
-  println(b"hello?")
+  println(b"hello?"[4:])
 }
 
 

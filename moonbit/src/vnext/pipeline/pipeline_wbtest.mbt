@@ -2243,6 +2243,7 @@ test "vnext resolves open-ended string slice to stringview to_owned" {
   let core_source =
     #|pub extern "csharp" fn String::length(self : String) -> Int =
     #|  #|return default!;
+    #|#alias("_[_:_]")
     #|pub extern "csharp" fn String::view(self : String, start_offset? : Int, end_offset? : Int) -> StringView =
     #|  #|return default!;
     #|pub extern "csharp" fn StringView::to_owned(self : StringView) -> String =
@@ -2270,6 +2271,40 @@ test "vnext resolves open-ended string slice to stringview to_owned" {
   assert_true(
     json.contains(
       "\"functionId\":\"fn:pkg:moonbitlang/core/builtin:moonbitlang/core/builtin:String::view\"",
+    ),
+  )
+}
+
+///|
+test "vnext resolves open-ended bytes slice through slice alias" {
+  let source =
+    #|fn tail(bytes : Bytes) -> BytesView { bytes[5:] }
+  let core_source =
+    #|#alias("_[_:_]")
+    #|pub extern "csharp" fn Bytes::view(self : Bytes, start? : Int = 0, end? : Int) -> BytesView =
+    #|  #|return default!;
+  let json = compile_package_sources_with_declarations_to_json(
+    [{ file_path: "main.mbt", source }],
+    "Demo",
+    "import { \"moonbitlang/core/builtin\" as builtin }\n",
+    "moon.pkg",
+    [],
+    test_core_declaration_sources([
+      {
+        import_ref: {
+          alias_name: "builtin",
+          package_id: "pkg:moonbitlang/core/builtin",
+          module_path: "moonbitlang/core/builtin",
+        },
+        file_path: "core_bytesview.mbt",
+        source: core_source,
+      },
+    ]),
+  )
+  assert_true(json.contains("\"diagnostics\":[]"))
+  assert_true(
+    json.contains(
+      "\"functionId\":\"fn:pkg:moonbitlang/core/builtin:moonbitlang/core/builtin:Bytes::view\"",
     ),
   )
 }
