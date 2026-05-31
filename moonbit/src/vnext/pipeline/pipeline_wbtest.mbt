@@ -621,7 +621,7 @@ test "vnext skips top-level test blocks for executable module parsing" {
 test "vnext resolves prelude println as explicit extern csharp function" {
   let source = "fn main()->Unit { println(\"ok\") }\n"
   let json = compile_test_source_to_json(source, "demo.mbt", "Demo")
-  assert_false(json.contains("\"name\":\"println\""))
+  assert_true(json.contains("\"name\":\"println\""))
   assert_true(json.contains("\"selectedIntrinsic\":\"%println\""))
   assert_true(
     json.contains(

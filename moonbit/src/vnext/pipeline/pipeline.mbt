@@ -249,12 +249,6 @@ pub fn compile_package_sources_with_manifests_to_json_profiled(
       for symbol in imported_bound.symbols {
         push_symbol_unique(emitted_symbols, symbol)
       }
-      for function in imported_bound.function_stubs {
-        match function.external {
-          Some(_) => push_function_unique(emitted_functions, function)
-          None => ()
-        }
-      }
     }
   }
   let local_parse_start = profile_start(profiler)
@@ -1249,11 +1243,8 @@ fn collect_expr_called_function_ids(
       collect_expr_called_function_ids(first, index, result)
       collect_expr_called_function_ids(body, index, result)
     }
-    @ir.BoundExpr::Call(function_id, _, _, args, intrinsic, _, _) => {
-      match intrinsic {
-        Some(_) => ()
-        None => push_reachable_function_unique(result, index, function_id)
-      }
+    @ir.BoundExpr::Call(function_id, _, _, args, _, _, _) => {
+      push_reachable_function_unique(result, index, function_id)
       for arg in args {
         collect_expr_called_function_ids(arg, index, result)
       }

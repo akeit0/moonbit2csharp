@@ -40,6 +40,7 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
     private readonly Dictionary<string, (string FieldName, byte[] Bytes)> bytesLiteralCaches = new(
         StringComparer.Ordinal
     );
+    private readonly HashSet<string> requiredCoreBuiltinEvidence = new(StringComparer.Ordinal);
 
     private string currentFunctionErrorType = "object";
     private bool currentFunctionRaises;
@@ -108,6 +109,7 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
         staticTraitImplAdapterTypes.Clear();
         functionEffects.Clear();
         functionsBySymbolId.Clear();
+        requiredCoreBuiltinEvidence.Clear();
         using var document = JsonDocument.Parse(json);
         var root = document.RootElement;
         var diagnostics = root.GetProperty("diagnostics").EnumerateArray().ToArray();
@@ -168,6 +170,7 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
             .Where(type => UsedTypeDefinition(type, usedTypeIds, emitAllDeclarations))
             .ToArray();
         emitCoreBuiltinHasherFallback = !usedTypes.Any(IsConcreteCoreBuiltinHasherType);
+        CollectRequiredCoreBuiltinEvidence(usedTraitImpls, usedTraits, usedTypes);
         var classNames = emittedFunctions
             .Where(function => !IsDefaultTraitFunction(function))
             .Select(function =>
@@ -3524,12 +3527,98 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
                 or "Shr";
     }
 
+    private void CollectRequiredCoreBuiltinEvidence(
+        IReadOnlyList<JsonElement> usedTraitImpls,
+        IReadOnlyList<JsonElement> usedTraits,
+        IReadOnlyList<JsonElement> usedTypes
+    )
+    {
+        foreach (var trait in usedTraits)
+        {
+            var symbol = trait.GetProperty("symbol");
+            if ((symbol.GetProperty("packageId").GetString() ?? "") != "pkg:moonbitlang/core/builtin")
+                continue;
+
+            if ((symbol.GetProperty("name").GetString() ?? "") == "Hash")
+                requiredCoreBuiltinEvidence.Add("HashTrait");
+        }
+
+        foreach (var type in usedTypes)
+        {
+            var symbol = type.GetProperty("symbol");
+            if ((symbol.GetProperty("packageId").GetString() ?? "") != "pkg:moonbitlang/core/builtin")
+                continue;
+
+            if ((symbol.GetProperty("name").GetString() ?? "") == "Error")
+                requiredCoreBuiltinEvidence.Add("Error");
+        }
+
+        foreach (var impl in usedTraitImpls)
+        {
+            if (
+                !impl.TryGetProperty("trait", out var traitRef)
+                || !traitRef.TryGetProperty("symbol", out var traitSymbol)
+                || !impl.TryGetProperty("selfType", out var selfType)
+            )
+                continue;
+
+            var traitPackageId = traitSymbol.GetProperty("packageId").GetString() ?? "";
+            var traitName = traitSymbol.GetProperty("name").GetString() ?? "";
+            if (traitPackageId != "pkg:moonbitlang/core/builtin")
+                continue;
+
+            if (traitName == "Hash")
+                requiredCoreBuiltinEvidence.Add("HashTrait");
+
+            var builtinTypeName = BuiltinTypeName(selfType);
+            var evidenceName = CoreBuiltinEvidenceName(builtinTypeName, traitName);
+            if (evidenceName is not null)
+                requiredCoreBuiltinEvidence.Add(evidenceName);
+        }
+
+        if (requiredCoreBuiltinEvidence.Contains("StringShowImpl"))
+            requiredCoreBuiltinEvidence.Add("StringBuilderLoggerImpl");
+        if (requiredCoreBuiltinEvidence.Contains("StringViewShowImpl"))
+            requiredCoreBuiltinEvidence.Add("StringBuilderLoggerImpl");
+        if (requiredCoreBuiltinEvidence.Contains("CharShowImpl"))
+            requiredCoreBuiltinEvidence.Add("StringBuilderLoggerImpl");
+        if (requiredCoreBuiltinEvidence.Contains("IntShowImpl"))
+            requiredCoreBuiltinEvidence.Add("StringBuilderLoggerImpl");
+        if (requiredCoreBuiltinEvidence.Contains("BytesShowImpl"))
+            requiredCoreBuiltinEvidence.Add("StringBuilderLoggerImpl");
+        if (requiredCoreBuiltinEvidence.Contains("IntHashImpl"))
+            requiredCoreBuiltinEvidence.Add("HashTrait");
+        if (requiredCoreBuiltinEvidence.Contains("StringHashImpl"))
+            requiredCoreBuiltinEvidence.Add("HashTrait");
+    }
+
+    private bool CoreBuiltinEvidenceRequired(string name) => requiredCoreBuiltinEvidence.Contains(name);
+
+    private static string? CoreBuiltinEvidenceName(string builtinTypeName, string traitName)
+    {
+        return (builtinTypeName, traitName) switch
+        {
+            ("Int", "Eq") => "IntEqImpl",
+            ("String", "Eq") => "StringEqImpl",
+            ("Char", "Eq") => "CharEqImpl",
+            ("Int", "Hash") => "IntHashImpl",
+            ("String", "Hash") => "StringHashImpl",
+            ("StringBuilder", "Logger") => "StringBuilderLoggerImpl",
+            ("String", "Show") => "StringShowImpl",
+            ("StringView", "Show") => "StringViewShowImpl",
+            ("Char", "Show") => "CharShowImpl",
+            ("Int", "Show") => "IntShowImpl",
+            ("Bytes", "Show") => "BytesShowImpl",
+            _ => null,
+        };
+    }
+
     private IEnumerable<MemberDeclarationSyntax> EmitCoreBuiltinEvidenceMembers(string packageName)
     {
         if (packageName != "moonbitlang/core/builtin")
             yield break;
 
-        if (emitCoreBuiltinHasherFallback)
+        if (CoreBuiltinEvidenceRequired("HashTrait") && emitCoreBuiltinHasherFallback)
             yield return ParseMemberDeclaration(
                 """
                 public sealed class Hasher
@@ -3543,7 +3632,7 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
                 }
                 """
             )!;
-        if (traitSymbolIdsByName.ContainsKey("Show"))
+        if (CoreBuiltinEvidenceRequired("Error"))
             yield return ParseMemberDeclaration(
                 """
                 public sealed class Error
@@ -3570,59 +3659,63 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
                 }
                 """
             )!;
-        yield return ParseMemberDeclaration(
-            """
-            public readonly record struct HashObject(object Self, IHashImpl Impl);
-            """
-        )!;
-        yield return ParseMemberDeclaration(
-            """
-            public interface IHashImpl
-            {
-                MoonBitUnit hash_combine(object self, Hasher arg0);
-            }
-            """
-        )!;
-        yield return ParseMemberDeclaration(
-            """
-            public interface IHashImpl<T, TImpl>
-                where TImpl : IHashImpl<T, TImpl>
-            {
-                static abstract MoonBitUnit hash_combine(T self, Hasher arg0);
-            }
-            """
-        )!;
-        yield return ParseMemberDeclaration(
-            """
-            public static class HashTrait
-            {
-                public static MoonBitUnit hash_combine<T, TImpl>(T self, Hasher arg0)
-                    where TImpl : IHashImpl<T, TImpl> => TImpl.hash_combine(self, arg0);
-
-                public static int hash<T, TImpl>(T self)
+        if (CoreBuiltinEvidenceRequired("HashTrait"))
+        {
+            yield return ParseMemberDeclaration(
+                """
+                public readonly record struct HashObject(object Self, IHashImpl Impl);
+                """
+            )!;
+            yield return ParseMemberDeclaration(
+                """
+                public interface IHashImpl
+                {
+                    MoonBitUnit hash_combine(object self, Hasher arg0);
+                }
+                """
+            )!;
+            yield return ParseMemberDeclaration(
+                """
+                public interface IHashImpl<T, TImpl>
                     where TImpl : IHashImpl<T, TImpl>
                 {
-                    var hasher = new Hasher(2166136261u);
-                    TImpl.hash_combine(self, hasher);
-                    return unchecked((int)hasher.acc);
+                    static abstract MoonBitUnit hash_combine(T self, Hasher arg0);
                 }
-            }
-            """
-        )!;
-        yield return ParseMemberDeclaration(
-            """
-            public sealed class HashImplObject<T, TImpl> : IHashImpl where TImpl : IHashImpl<T, TImpl>
-            {
-                public static readonly HashImplObject<T, TImpl> Instance = new();
-                private HashImplObject()
+                """
+            )!;
+            yield return ParseMemberDeclaration(
+                """
+                public static class HashTrait
                 {
-                }
+                    public static MoonBitUnit hash_combine<T, TImpl>(T self, Hasher arg0)
+                        where TImpl : IHashImpl<T, TImpl> => TImpl.hash_combine(self, arg0);
 
-                public MoonBitUnit hash_combine(object self, Hasher arg0) => TImpl.hash_combine((T)self, arg0);
-            }
-            """
-        )!;
-        yield return ParseMemberDeclaration(
+                    public static int hash<T, TImpl>(T self)
+                        where TImpl : IHashImpl<T, TImpl>
+                    {
+                        var hasher = new Hasher(2166136261u);
+                        TImpl.hash_combine(self, hasher);
+                        return unchecked((int)hasher.acc);
+                    }
+                }
+                """
+            )!;
+            yield return ParseMemberDeclaration(
+                """
+                public sealed class HashImplObject<T, TImpl> : IHashImpl where TImpl : IHashImpl<T, TImpl>
+                {
+                    public static readonly HashImplObject<T, TImpl> Instance = new();
+                    private HashImplObject()
+                    {
+                    }
+
+                    public MoonBitUnit hash_combine(object self, Hasher arg0) => TImpl.hash_combine((T)self, arg0);
+                }
+                """
+            )!;
+        }
+        if (CoreBuiltinEvidenceRequired("IntEqImpl"))
+            yield return ParseMemberDeclaration(
             """
             public sealed class IntEqImpl : IEqImpl<int, IntEqImpl>
             {
@@ -3631,7 +3724,8 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
             }
             """
         )!;
-        yield return ParseMemberDeclaration(
+        if (CoreBuiltinEvidenceRequired("StringEqImpl"))
+            yield return ParseMemberDeclaration(
             """
             public sealed class StringEqImpl : IEqImpl<string, StringEqImpl>
             {
@@ -3640,7 +3734,8 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
             }
             """
         )!;
-        yield return ParseMemberDeclaration(
+        if (CoreBuiltinEvidenceRequired("CharEqImpl"))
+            yield return ParseMemberDeclaration(
             """
             public sealed class CharEqImpl : IEqImpl<int, CharEqImpl>
             {
@@ -3649,7 +3744,8 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
             }
             """
         )!;
-        yield return ParseMemberDeclaration(
+        if (CoreBuiltinEvidenceRequired("IntHashImpl"))
+            yield return ParseMemberDeclaration(
             """
             public sealed class IntHashImpl : IHashImpl<int, IntHashImpl>
             {
@@ -3661,7 +3757,8 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
             }
             """
         )!;
-        yield return ParseMemberDeclaration(
+        if (CoreBuiltinEvidenceRequired("StringHashImpl"))
+            yield return ParseMemberDeclaration(
             """
             public sealed class StringHashImpl : IHashImpl<string, StringHashImpl>
             {
@@ -3673,7 +3770,7 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
             }
             """
         )!;
-        if (traitSymbolIdsByName.ContainsKey("Logger") && traitSymbolIdsByName.ContainsKey("Show"))
+        if (CoreBuiltinEvidenceRequired("StringBuilderLoggerImpl"))
         {
             yield return ParseMemberDeclaration(
                 """
@@ -3687,6 +3784,8 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
                 }
                 """
             )!;
+        }
+        if (CoreBuiltinEvidenceRequired("StringShowImpl"))
             yield return ParseMemberDeclaration(
                 """
                 public sealed class StringShowImpl : global::MoonBit.Runtime.IShowImpl<string, StringShowImpl>
@@ -3696,6 +3795,7 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
                 }
                 """
             )!;
+        if (CoreBuiltinEvidenceRequired("StringViewShowImpl"))
             yield return ParseMemberDeclaration(
                 """
                 public sealed class StringViewShowImpl : global::MoonBit.Runtime.IShowImpl<MoonBitStringView, StringViewShowImpl>
@@ -3705,6 +3805,7 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
                 }
                 """
             )!;
+        if (CoreBuiltinEvidenceRequired("CharShowImpl"))
             yield return ParseMemberDeclaration(
                 """
                 public sealed class CharShowImpl : global::MoonBit.Runtime.IShowImpl<int, CharShowImpl>
@@ -3714,6 +3815,7 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
                 }
                 """
             )!;
+        if (CoreBuiltinEvidenceRequired("IntShowImpl"))
             yield return ParseMemberDeclaration(
                 """
                 public sealed class IntShowImpl : global::MoonBit.Runtime.IShowImpl<int, IntShowImpl>
@@ -3723,6 +3825,7 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
                 }
                 """
             )!;
+        if (CoreBuiltinEvidenceRequired("BytesShowImpl"))
             yield return ParseMemberDeclaration(
                 """
                 public sealed class BytesShowImpl : global::MoonBit.Runtime.IShowImpl<byte[], BytesShowImpl>
@@ -3752,7 +3855,6 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
                 }
                 """
             )!;
-        }
     }
 
     private IEnumerable<MemberDeclarationSyntax> EmitCoreDebugEvidenceMembers(string packageName)
@@ -3915,7 +4017,11 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
                 + ">";
         }
 
-        return (BuiltinTypeName(type), traitName) switch
+        var builtinTypeName = BuiltinTypeName(type);
+        if (CoreBuiltinEvidenceName(builtinTypeName, traitName) is { } coreBuiltinEvidenceName)
+            requiredCoreBuiltinEvidence.Add(coreBuiltinEvidenceName);
+
+        return (builtinTypeName, traitName) switch
         {
             ("Int", "Eq") =>
                 "global::Generated.MoonBit.Packages.moonbitlang.core.builtin.IntEqImpl",
