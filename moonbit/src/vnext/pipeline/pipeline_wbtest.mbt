@@ -2310,6 +2310,14 @@ test "vnext resolves open-ended bytes slice through slice alias" {
 }
 
 ///|
+test "vnext unresolved slice reports primary resolution diagnostic only" {
+  let source = #|fn bad(value : Int) -> Int { value[0:] }
+  let json = compile_test_source_to_json(source, "bad_slice.mbt", "Demo")
+  assert_true(json.contains("\"message\":\"cannot find slice implementation\""))
+  assert_false(json.contains("\"executable IR contains error expression\""))
+}
+
+///|
 test "vnext nested local function binds without parsing parameter ids" {
   let source =
     #|fn outer() -> Int {

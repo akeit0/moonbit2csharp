@@ -59,13 +59,3 @@ extern "csharp" fn BytesView::view(
   #|     throw new Panic("Invalid index for View");
   #| }
   #| return new BytesView(self.Buffer, self.StartOffset + actualStart, actualEnd - actualStart);
-
-///|
-pub fn Bytes::to_array(self : Bytes) -> Array[Byte] {
-  Array::makei(self.length(), fn(i) { self.unsafe_get(i) })
-}
-
-///|
-pub fn BytesView::to_array(self : BytesView) -> Array[Byte] {
-  Array::makei(self.length(), fn(i) { self.unsafe_get(i) })
-}

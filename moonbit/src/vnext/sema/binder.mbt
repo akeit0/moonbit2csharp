@@ -289,7 +289,7 @@ pub fn bind_module_with_package_id_and_default_arguments(
     default_arguments: context.default_arguments,
     diagnostics: context.diagnostics,
   }
-  @semantic.validate_executable_module(module_)
+  validate_executable_module_if_clean(module_)
   module_
 }
 
@@ -439,7 +439,7 @@ pub fn bind_selected_functions_from_session(
     default_arguments: session.context.default_arguments,
     diagnostics: session.context.diagnostics,
   }
-  @semantic.validate_executable_module(module_)
+  validate_executable_module_if_clean(module_)
   module_
 }
 
@@ -535,8 +535,25 @@ pub fn bind_selected_globals_from_session(
     default_arguments: session.context.default_arguments,
     diagnostics: session.context.diagnostics,
   }
-  @semantic.validate_executable_module(module_)
+  validate_executable_module_if_clean(module_)
   module_
+}
+
+///|
+fn validate_executable_module_if_clean(module_ : BoundModule) -> Unit {
+  if !has_error_diagnostic(module_.diagnostics) {
+    @semantic.validate_executable_module(module_)
+  }
+}
+
+///|
+fn has_error_diagnostic(diagnostics : Array[Diagnostic]) -> Bool {
+  for diagnostic in diagnostics {
+    if diagnostic.severity == "error" {
+      return true
+    }
+  }
+  false
 }
 
 ///|
