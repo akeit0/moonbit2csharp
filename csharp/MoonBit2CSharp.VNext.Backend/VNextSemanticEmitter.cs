@@ -2626,6 +2626,10 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
         {
             EmitMatchAsStatement(expr, statements);
         }
+        else if (kind == "Guard")
+        {
+            EmitGuardAsStatement(expr, statements);
+        }
         else if (kind == "ForRange")
         {
             statements.Add(EmitForRange(expr));
