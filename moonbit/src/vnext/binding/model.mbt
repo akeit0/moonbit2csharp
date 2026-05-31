@@ -431,19 +431,8 @@ pub fn map_type(key : TypeRef, value : TypeRef) -> TypeRef {
 }
 
 ///|
-pub fn iter_type(element : TypeRef) -> TypeRef {
-  TypeRef::Apply(TypeConstructorRef::Builtin("Iter"), [element])
-}
-
-///|
-pub fn iter2_type(first : TypeRef, second : TypeRef) -> TypeRef {
-  TypeRef::Apply(TypeConstructorRef::Builtin("Iter2"), [first, second])
-}
-
-///|
 pub fn iter_item_type(type_ : TypeRef) -> TypeRef? {
   match type_ {
-    TypeRef::Apply(TypeConstructorRef::Builtin("Iter"), [item]) => Some(item)
     TypeRef::Declared(symbol, [item]) =>
       if is_core_builtin_type_symbol(symbol, "Iter") {
         Some(item)
@@ -457,8 +446,6 @@ pub fn iter_item_type(type_ : TypeRef) -> TypeRef? {
 ///|
 pub fn iter2_item_types(type_ : TypeRef) -> (TypeRef, TypeRef)? {
   match type_ {
-    TypeRef::Apply(TypeConstructorRef::Builtin("Iter2"), [first, second]) =>
-      Some((first, second))
     TypeRef::Declared(symbol, [first, second]) =>
       if is_core_builtin_type_symbol(symbol, "Iter2") {
         Some((first, second))

@@ -1,7 +1,5 @@
 package "moonbitlang/core/builtin"
 
-///|
-pub fn String::split(self : String, sep : StringView) -> Iter[StringView] = "%string_split"
 
 ///|
 pub fn String::is_empty(self : String) -> Bool = "%string_is_empty"

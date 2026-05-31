@@ -669,7 +669,7 @@ public static class MoonBitSourceTranspiler
             "builtin",
             "pkg:moonbitlang/core/builtin",
             "moonbitlang/core/builtin",
-            Path.Combine(root, "moonbit", "src", "vnext_core_csharp", "core_iter.mbt")
+            Path.Combine(root, "moonbit", "builtin", "overrides", "core_iterable.mbt")
         );
         AddDeclarationSource(
             result,
@@ -754,6 +754,11 @@ public static class MoonBitSourceTranspiler
                 modulePath == "moonbitlang/core/builtin"
                 && Path.GetFileName(path)
                     .StartsWith("stringbuilder", StringComparison.OrdinalIgnoreCase)
+            )
+                continue;
+            if (
+                modulePath == "moonbitlang/core/builtin"
+                && Path.GetFileName(path).Equals("iterator.mbt", StringComparison.OrdinalIgnoreCase)
             )
                 continue;
             AddDeclarationSource(result, alias, "pkg:" + modulePath, modulePath, path);
@@ -859,7 +864,7 @@ public static class MoonBitSourceTranspiler
             "builtin",
             "pkg:moonbitlang/core/builtin",
             "moonbitlang/core/builtin",
-            Path.Combine(root, "moonbit", "src", "vnext_core_csharp", "core_iter.mbt")
+            Path.Combine(root, "moonbit", "builtin", "overrides", "core_iterable.mbt")
         );
         AddDeclarationSource(
             result,

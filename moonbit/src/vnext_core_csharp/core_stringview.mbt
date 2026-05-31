@@ -13,6 +13,17 @@ pub impl Eq for StringView with not_equal(self, other) = "%stringview_ne"
 pub fn StringView::to_owned(self : StringView) -> String = "%stringview_to_string"
 
 ///|
+pub extern "csharp" fn StringView::length(self : StringView) -> Int =
+  #|return self.Length;
+
+///|
+pub extern "csharp" fn StringView::unsafe_get(
+  self : StringView,
+  index : Int,
+) -> UInt16 =
+  #|return (ushort)self.Data[self.Start + index];
+
+///|
 pub fn StringView::is_empty(self : StringView) -> Bool = "%stringview_is_empty"
 
 ///|

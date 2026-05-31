@@ -2,8 +2,6 @@
 #nullable enable
 #pragma warning disable CS8509, CS8846
 
-using System;
-using System.Collections.Generic;
 
 namespace __MOONBIT_RUNTIME_NAMESPACE__;
 
@@ -12,7 +10,7 @@ public readonly record struct Unit
     public static readonly Unit Value = new();
 }
 
-public sealed class Panic : Exception
+public sealed class Panic : System.Exception
 {
     public Panic(string message = "panic") : base(message)
     {
@@ -38,7 +36,7 @@ public readonly struct Option<T>
 
     public bool IsSome { get; }
     public bool IsNone => !IsSome;
-    public T Value => IsSome ? value! : throw new InvalidOperationException("called Option::unwrap() on None");
+    public T Value => IsSome ? value! : throw new System.InvalidOperationException("called Option::unwrap() on None");
 
     public T Unwrap() => Value;
     public T UnwrapOr(T fallback) => IsSome ? value! : fallback;
@@ -163,7 +161,7 @@ public sealed class ShowImplObject<T, TImpl> : IShowImpl where TImpl : IShowImpl
 
 public static class ShowSupport
 {
-    public static string QuoteString(string value) => "\"" + value.Replace("\\", "\\\\", StringComparison.Ordinal).Replace("\"", "\\\"", StringComparison.Ordinal) + "\"";
+    public static string QuoteString(string value) => "\"" + value.Replace("\\", "\\\\", System.StringComparison.Ordinal).Replace("\"", "\\\"", System.StringComparison.Ordinal) + "\"";
 
     public static string ToMoonBitStringViaOutput<T, TShowImpl>(T value)
         where TShowImpl : IShowImpl<T, TShowImpl>
@@ -173,7 +171,7 @@ public static class ShowSupport
         return logger.ToString();
     }
 
-    private static Unit WriteSpan<T, TShowImpl>(Logger logger, ReadOnlySpan<T> values, string prefix = "[", string suffix = "]", string sep = ", ", bool trailing = false)
+    private static Unit WriteSpan<T, TShowImpl>(Logger logger, System.ReadOnlySpan<T> values, string prefix = "[", string suffix = "]", string sep = ", ", bool trailing = false)
         where TShowImpl : IShowImpl<T, TShowImpl>
     {
         logger.WriteString(prefix);
@@ -364,7 +362,7 @@ public static class ConsoleUtility
 {
     public static Unit println<T, TShow>(T value) where TShow : IShowImpl<T, TShow>
     {
-        Console.WriteLine(TShow.ToString(value));
+        System.Console.WriteLine(TShow.ToString(value));
         return Unit.Value;
     }
 
@@ -372,20 +370,6 @@ public static class ConsoleUtility
 
 public static partial class Intrinsics
 {
-    public static Iter<T> ArrayIter<T>(Array<T> self)
-    {
-        var i = 0;
-        return new Iter<T>(() =>
-        {
-            if (i >= self.Length)
-            {
-                return Option<T>.None();
-            }
-
-            return Option<T>.Some(self.buf[i++]);
-        });
-    }
-
     public static T ArrayRemove<T>(Array<T> self, int index)
     {
         if ((uint)index >= (uint)self.Length)
@@ -418,7 +402,7 @@ public static partial class Intrinsics
             : Option<T>.Some(self.buf[self.Length - 1]);
     }
 
-    public static Array<T> ArrayFilter<T>(Array<T> self, Func<T, bool> predicate)
+    public static Array<T> ArrayFilter<T>(Array<T> self, System.Func<T, bool> predicate)
     {
         var result = new Array<T>();
         for (var i = 0; i < self.Length; i++)
@@ -433,21 +417,21 @@ public static partial class Intrinsics
         return result;
     }
 
-    public static Unit ArraySortBy<T>(Array<T> self, Func<T, T, int> compare)
+    public static Unit ArraySortBy<T>(Array<T> self, System.Func<T, T, int> compare)
     {
-        System.Array.Sort(self.buf, 0, self.Length, Comparer<T>.Create((left, right) => compare(left, right)));
+        System.Array.Sort(self.buf, 0, self.Length, System.Collections.Generic.Comparer<T>.Create((left, right) => compare(left, right)));
         return Unit.Value;
     }
 
     public static Unit PrintlnString(string value)
     {
-        Console.WriteLine(value);
+        System.Console.WriteLine(value);
         return Unit.Value;
     }
 
     public static Option<int> StringViewFind(StringView self, StringView needle)
     {
-        var index = self.AsSpan().IndexOf(needle.AsSpan(), StringComparison.Ordinal);
+        var index = self.AsSpan().IndexOf(needle.AsSpan(), System.StringComparison.Ordinal);
         return index < 0 ? Option<int>.None() : Option<int>.Some(index);
     }
 
@@ -491,7 +475,7 @@ public static partial class Intrinsics
 
     public static Array<int> StringToArray(StringView self)
     {
-        var values = new List<int>();
+        var values = new System.Collections.Generic.List<int>();
         var index = self.Start;
         while (index < self.End)
         {
@@ -600,10 +584,10 @@ public static class CompareSupport
     {
         if (left is string leftString && right is string rightString)
         {
-            return string.Compare(leftString, rightString, StringComparison.Ordinal);
+            return string.Compare(leftString, rightString, System.StringComparison.Ordinal);
         }
 
-        return Comparer<T>.Default.Compare(left, right);
+        return System.Collections.Generic.Comparer<T>.Default.Compare(left, right);
     }
 }
 
@@ -672,7 +656,7 @@ public static class BuiltinEq
 
     public readonly struct StringEqImpl : IEqImpl<string, StringEqImpl>
     {
-        public static bool equal(string left, string right) => string.Equals(left, right, StringComparison.Ordinal);
+        public static bool equal(string left, string right) => string.Equals(left, right, System.StringComparison.Ordinal);
     }
 
     public readonly struct DoubleEqImpl : IEqImpl<double, DoubleEqImpl>
@@ -704,14 +688,21 @@ public static class BuiltinEq
 
 public sealed class Iter<T>
 {
-    private readonly Func<Option<T>> next;
+    public System.Func<Option<T>> f;
+    public Option<int> size_hint;
 
-    public Iter(Func<Option<T>> next)
+    public Iter(System.Func<Option<T>> f)
     {
-        this.next = next;
+        this.f = f;
+        size_hint = Option<int>.None();
     }
 
-    public Option<T> Next() => next();
+    public Iter(System.Func<Option<T>> f, Option<int> size_hint)
+    {
+        this.f = f;
+        this.size_hint = size_hint;
+    }
+
 }
 
 public static partial class Intrinsics
@@ -785,7 +776,7 @@ public sealed class Array<T>
         Length = 0;
     }
 
-    public Array(ReadOnlySpan<T> items)
+    public Array(System.ReadOnlySpan<T> items)
     {
         buf = items.ToArray();
         Length = buf.Length;
@@ -805,7 +796,7 @@ public sealed class Array<T>
 
     public T this[int index] { get => ArrayUtility.At(this, index); set => ArrayUtility.Set(this, index, value); }
 
-    public ReadOnlySpan<T> AsSpan() => buf.AsSpan(0, Length);
+    public System.ReadOnlySpan<T> AsSpan() => buf.AsSpan(0, Length);
 
     public static Array<T> MakeUninit(int length) => new(new T[length], length);
 
@@ -822,7 +813,7 @@ public sealed class Array<T>
 
 public static class ArrayUtility
 {
-    public static Array<T> FromSpan<T>(ReadOnlySpan<T> items) => new(items);
+    public static Array<T> FromSpan<T>(System.ReadOnlySpan<T> items) => new(items);
     public static Array<T> FromArray<T>(T[] items) => new(items.AsSpan());
     public static bool IsEmpty<T>(Array<T> array) => array.Length == 0;
 
@@ -979,7 +970,7 @@ public static class IterArrayExtensions
         var result = new Array<T>();
         while (true)
         {
-            var item = iter.Next();
+            var item = iter.f();
             if (item.IsNone)
             {
                 return result;
@@ -1058,7 +1049,7 @@ public readonly struct ArrayView<T>
 
     public int Length { get; }
 
-    public ReadOnlySpan<T> AsSpan() => Buffer.AsSpan(StartOffset, Length);
+    public System.ReadOnlySpan<T> AsSpan() => Buffer.AsSpan(StartOffset, Length);
 
     public T this[int index] => SourceGet(CheckedOffset(index));
     public object? GetObject(int index) => this[index];
@@ -1105,7 +1096,7 @@ public readonly struct MutArrayView<T>
 
     public int Length { get; }
 
-    public Span<T> AsSpan() => Buffer.AsSpan(StartOffset, Length);
+    public System.Span<T> AsSpan() => Buffer.AsSpan(StartOffset, Length);
 
     public T this[int index] { get => SourceGet(CheckedOffset(index)); set => SourceSet(CheckedOffset(index), value); }
 
@@ -1144,7 +1135,7 @@ public readonly struct BytesView
     public byte[] Buffer { get; }
     public int StartOffset { get; }
     public int Length { get; }
-    public ReadOnlySpan<byte> Span => Buffer.AsSpan(StartOffset, Length);
+    public System.ReadOnlySpan<byte> Span => Buffer.AsSpan(StartOffset, Length);
     public byte this[int index] => Buffer[CheckedOffset(index)];
 
     private int CheckedOffset(int index)
@@ -1212,7 +1203,7 @@ public sealed class StringBuilder
         else
         {
             var rune = new System.Text.Rune(value);
-            Span<char> buffer = stackalloc char[4];
+            System.Span<char> buffer = stackalloc char[4];
             var length = rune.EncodeToUtf16(buffer);
             _builder.Append(buffer.Slice(0, length));
         }
@@ -1253,11 +1244,11 @@ public static class StringExtensions
         return new(value, start, end);
     }
 
-    public static bool ContainsOrdinal(this string value, string part) => value.Contains(part, StringComparison.Ordinal);
-    public static bool HasPrefix(this string value, string prefix) => value.StartsWith(prefix, StringComparison.Ordinal);
-    public static bool HasSuffix(this string value, string suffix) => value.EndsWith(suffix, StringComparison.Ordinal);
+    public static bool ContainsOrdinal(this string value, string part) => value.Contains(part, System.StringComparison.Ordinal);
+    public static bool HasPrefix(this string value, string prefix) => value.StartsWith(prefix, System.StringComparison.Ordinal);
+    public static bool HasSuffix(this string value, string suffix) => value.EndsWith(suffix, System.StringComparison.Ordinal);
     public static bool IsEmpty(this string value) => value.Length == 0;
-    public static string ReplaceAll(this string value, string oldValue, string newValue) => value.Replace(oldValue, newValue, StringComparison.Ordinal);
+    public static string ReplaceAll(this string value, string oldValue, string newValue) => value.Replace(oldValue, newValue, System.StringComparison.Ordinal);
     public static StringView TrimMoonBit(this string value) => value.View().Trim();
     public static string ToLowerMoonBit(this string value) => value.ToLowerInvariant();
     public static Option<StringView> BeforeMoonBit(this string value, string marker) => value.View().Before(marker);
@@ -1272,7 +1263,7 @@ public readonly record struct StringView(string Data, int Start, int End)
     public int Length => End - Start;
     public int StartOffset => Start;
     public string Source => Data;
-    public ReadOnlySpan<char> AsSpan() => Data.AsSpan(Start, Length);
+    public System.ReadOnlySpan<char> AsSpan() => Data.AsSpan(Start, Length);
 
     public ushort this[int index] => (ushort)Data[Start + index];
     public StringView Sub(int startOffset, int? endOffset = null)
@@ -1302,9 +1293,9 @@ public readonly record struct StringView(string Data, int Start, int End)
     public static bool operator !=(StringView left, string right) => !(left == right);
     public static bool operator ==(string left, StringView right) => left is not null && left.AsSpan().SequenceEqual(right.AsSpan());
     public static bool operator !=(string left, StringView right) => !(left == right);
-    public bool ContainsOrdinal(string part) => AsSpan().Contains(part.AsSpan(), StringComparison.Ordinal);
-    public bool HasPrefix(string prefix) => AsSpan().StartsWith(prefix.AsSpan(), StringComparison.Ordinal);
-    public bool HasSuffix(string suffix) => AsSpan().EndsWith(suffix.AsSpan(), StringComparison.Ordinal);
+    public bool ContainsOrdinal(string part) => AsSpan().Contains(part.AsSpan(), System.StringComparison.Ordinal);
+    public bool HasPrefix(string prefix) => AsSpan().StartsWith(prefix.AsSpan(), System.StringComparison.Ordinal);
+    public bool HasSuffix(string suffix) => AsSpan().EndsWith(suffix.AsSpan(), System.StringComparison.Ordinal);
     public StringView Trim()
     {
         var start = Start;
@@ -1324,19 +1315,19 @@ public readonly record struct StringView(string Data, int Start, int End)
 
     public Option<StringView> Before(string marker)
     {
-        var index = Data.IndexOf(marker, Start, Length, StringComparison.Ordinal);
+        var index = Data.IndexOf(marker, Start, Length, System.StringComparison.Ordinal);
         return index < 0 ? Option<StringView>.None() : Option<StringView>.Some(new StringView(Data, Start, index));
     }
 
     public Option<StringView> After(string marker)
     {
-        var index = Data.IndexOf(marker, Start, Length, StringComparison.Ordinal);
+        var index = Data.IndexOf(marker, Start, Length, System.StringComparison.Ordinal);
         return index < 0 ? Option<StringView>.None() : Option<StringView>.Some(new StringView(Data, index + marker.Length, End));
     }
 
     public Option<(StringView, StringView)> SplitOnce(string marker)
     {
-        var index = Data.IndexOf(marker, Start, Length, StringComparison.Ordinal);
+        var index = Data.IndexOf(marker, Start, Length, System.StringComparison.Ordinal);
         return index < 0 ? Option<(StringView, StringView)>.None() : Option<(StringView, StringView)>.Some((new StringView(Data, Start, index), new StringView(Data, index + marker.Length, End)));
     }
 
@@ -1367,7 +1358,7 @@ public readonly record struct StringView(string Data, int Start, int End)
                 return Option<StringView>.None();
             }
 
-            var found = remaining.AsSpan().IndexOf(separator.AsSpan(), StringComparison.Ordinal);
+            var found = remaining.AsSpan().IndexOf(separator.AsSpan(), System.StringComparison.Ordinal);
             if (found < 0)
             {
                 var last = remaining;

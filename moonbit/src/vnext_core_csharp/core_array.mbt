@@ -1,14 +1,17 @@
 package "moonbitlang/core/builtin"
 
+
 ///|
 pub extern "csharp" fn[T] Array::new(
   capacity? : Int = 0,
 ) -> Array[T] =
   #|return new Array<T>(capacity);
 
+
 ///|
 pub extern "csharp" fn[T] Array::length(self : Array[T]) -> Int =
   #|return self.Length;
+
 
 ///|
 pub extern "csharp" fn[T] Array::push(
@@ -16,6 +19,7 @@ pub extern "csharp" fn[T] Array::push(
   value : T,
 ) -> Unit =
   #|return ArrayUtility.Push(self, value);
+
 
 ///|
 pub extern "csharp" fn[T] Array::append(
@@ -36,6 +40,7 @@ pub extern "csharp" fn[T] Array::append(
   #|self.Length += other.Length;
   #|return Unit.Value;
 
+
 ///|
 pub extern "csharp" fn[T, U] Array::map(
   self : Array[T],
@@ -48,6 +53,7 @@ pub extern "csharp" fn[T, U] Array::map(
   #|}
   #|return result;
 
+
 ///|
 pub extern "csharp" fn[T] Array::concat(
   self : Array[T],
@@ -55,13 +61,11 @@ pub extern "csharp" fn[T] Array::concat(
 ) -> Array[T] =
   #|return ArrayUtility.Concat(self, other);
 
+
 ///|
 pub impl[T] Add for Array[T] with add(self, other) {
   Array::concat(self, other)
 }
-
-///|
-pub fn[T] Array::iter(self : Array[T]) -> Iter[T] = "%array_iter"
 
 ///|
 pub fn[T] Array::is_empty(self : Array[T]) -> Bool = "%array_is_empty"
@@ -101,6 +105,7 @@ pub extern "csharp" fn[T] Array::all(
   #|}
   #|return true;
 
+
 ///|
 pub extern "csharp" fn[A] Array::join(
   self : Array[A],
@@ -113,6 +118,7 @@ pub extern "csharp" fn[A] Array::join(
   #|    items[i] = self.buf[i]?.ToString() ?? "";
   #|}
   #|return string.Join(sep, items);
+
 
 ///|
 pub fn[T] Array::sort_by(self : Array[T], cmp : (T, T) -> Int) -> Unit = "%array_sort_by"

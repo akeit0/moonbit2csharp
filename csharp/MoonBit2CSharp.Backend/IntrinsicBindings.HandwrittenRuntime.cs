@@ -80,27 +80,6 @@ public static partial class IntrinsicBindings
             (_, args, _) => ParseExpression($"{args[0]}[{args[1]}] = {args[2]}")
         );
         yield return Direct(
-            "%iter_new",
-            ["_", "Int"],
-            (_, args, returnType) =>
-                ParseExpression($"new {returnType.NormalizeWhitespace()}({args[0]})")
-        );
-        yield return Direct(
-            "%iter_next",
-            ["_"],
-            (_, args, _) => ParseExpression($"{args[0]}.Next()")
-        );
-        yield return Direct(
-            "%iter_size_hint",
-            ["_"],
-            (_, _, _) => ParseExpression("MoonBitOption<int>.None()")
-        );
-        yield return Direct(
-            "%array_iter",
-            ["_"],
-            (_, args, returnType) => EmitArrayIter(args[0], returnType)
-        );
-        yield return Direct(
             "%array.unsafe_get",
             ["_", "Int"],
             (_, args, _) => ParseExpression($"ArrayUtility.UnsafeGet({args[0]}, {args[1]})")
@@ -400,23 +379,5 @@ public static partial class IntrinsicBindings
             (_, args, _) =>
                 ParseExpression($"MoonBitIntrinsics.StringViewTrimEnd({args[0]}, {args[1]})")
         );
-    }
-
-    private static ExpressionSyntax EmitArrayIter(string arrayExpression, TypeSyntax returnType)
-    {
-        var elementType = returnType switch
-        {
-            GenericNameSyntax generic when generic.TypeArgumentList.Arguments.Count == 1 => generic
-                .TypeArgumentList.Arguments[0]
-                .NormalizeWhitespace()
-                .ToFullString(),
-            QualifiedNameSyntax { Right: GenericNameSyntax generic }
-                when generic.TypeArgumentList.Arguments.Count == 1 => generic
-                .TypeArgumentList.Arguments[0]
-                .NormalizeWhitespace()
-                .ToFullString(),
-            _ => "object",
-        };
-        return ParseExpression($"MoonBitIntrinsics.ArrayIter<{elementType}>({arrayExpression})");
     }
 }

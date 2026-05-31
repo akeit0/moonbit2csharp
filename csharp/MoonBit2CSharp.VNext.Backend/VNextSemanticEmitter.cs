@@ -341,7 +341,6 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
                 ("ConsoleUtility", "ConsoleUtility"),
                 ("FixedArray", "FixedArray"),
                 ("Intrinsics", "Intrinsics"),
-                ("Iter", "Iter"),
                 ("MutArrayView", "MutArrayView"),
                 ("Option", "Option"),
                 ("OptionEq", "OptionEq"),
@@ -357,7 +356,6 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
                 ("MoonBitConsole", "ConsoleUtility"),
                 ("MoonBitFixedArray", "FixedArray"),
                 ("MoonBitIntrinsics", "Intrinsics"),
-                ("MoonBitIter", "Iter"),
                 ("MoonBitMutArrayView", "MutArrayView"),
                 ("MoonBitOption", "Option"),
                 ("MoonBitOptionEq", "OptionEq"),
@@ -2410,7 +2408,7 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
             MemberAccessExpression(
                 SyntaxKind.SimpleMemberAccessExpression,
                 IdentifierName(iteratorName),
-                IdentifierName("Next")
+                IdentifierName("f")
             )
         );
     }

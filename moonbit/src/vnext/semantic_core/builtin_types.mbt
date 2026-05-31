@@ -43,10 +43,6 @@ pub fn builtin_unary_type_constructor(name : String) -> ((TypeRef) -> TypeRef)? 
         TypeRef::Apply(TypeConstructorRef::Builtin("UninitializedArray"), [item])
       })
     "Option" => Some(@binding.option_type)
-    "Iter" =>
-      Some(fn(item) {
-        TypeRef::Apply(TypeConstructorRef::Builtin("Iter"), [item])
-      })
     "Ref" =>
       Some(fn(item) {
         TypeRef::Apply(TypeConstructorRef::Builtin("Ref"), [item])

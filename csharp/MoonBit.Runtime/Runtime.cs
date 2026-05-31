@@ -378,20 +378,6 @@ public static class MoonBitConsole
 
 public static partial class MoonBitIntrinsics
 {
-    public static MoonBitIter<T> ArrayIter<T>(MoonBitArray<T> self)
-    {
-        var i = 0;
-        return new MoonBitIter<T>(() =>
-        {
-            if (i >= self.Length)
-            {
-                return MoonBitOption<T>.None();
-            }
-
-            return MoonBitOption<T>.Some(self.buf[i++]);
-        });
-    }
-
     public static T ArrayRemove<T>(MoonBitArray<T> self, int index)
     {
         if ((uint)index >= (uint)self.Length)

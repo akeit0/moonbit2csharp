@@ -615,7 +615,14 @@ public sealed partial class VNextSemanticEmitter
                 PrefixUnaryExpression(
                     SyntaxKind.LogicalNotExpression,
                     ParenthesizedExpression(
-                        ParseExpression(IsPatternCondition(targetName, targetType, pattern))
+                        ParseExpression(
+                            IsPatternCondition(
+                                targetName,
+                                targetType,
+                                pattern,
+                                suppressBindings: true
+                            )
+                        )
                     )
                 ),
                 Block(elseStatements)
@@ -631,7 +638,12 @@ public sealed partial class VNextSemanticEmitter
         statements.AddRange(((BlockSyntax)ParseStatement("{ " + bindingText + " }")).Statements);
     }
 
-    private string IsPatternCondition(string target, JsonElement targetType, JsonElement pattern)
+    private string IsPatternCondition(
+        string target,
+        JsonElement targetType,
+        JsonElement pattern,
+        bool suppressBindings = false
+    )
     {
         if (pattern.GetProperty("kind").GetString() == "Or")
             return "("
@@ -640,12 +652,20 @@ public sealed partial class VNextSemanticEmitter
                     pattern
                         .GetProperty("alternatives")
                         .EnumerateArray()
-                        .Select(alternative => IsPatternCondition(target, targetType, alternative))
+                        .Select(alternative =>
+                            IsPatternCondition(target, targetType, alternative, suppressBindings)
+                        )
                 )
                 + ")";
 
         if (!IsPayloadEnumPattern(targetType, pattern))
-            return target + " is " + MatchTestPatternExpression(targetType, pattern);
+            return target
+                + " is "
+                + (
+                    suppressBindings
+                        ? MatchConditionPatternExpression(targetType, pattern)
+                        : MatchTestPatternExpression(targetType, pattern)
+                );
 
         var targetTypeName = EmitType(targetType).NormalizeWhitespace().ToFullString();
         var variantName = EnumVariantMemberName(

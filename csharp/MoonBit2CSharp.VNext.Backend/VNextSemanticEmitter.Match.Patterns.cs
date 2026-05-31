@@ -746,6 +746,70 @@ public sealed partial class VNextSemanticEmitter
         }
     }
 
+    private string MatchConditionPatternExpression(JsonElement targetType, JsonElement pattern)
+    {
+        var kind = pattern.GetProperty("kind").GetString();
+        switch (kind)
+        {
+            case "Binding":
+                return "_";
+            case "Tuple":
+                return "("
+                    + string.Join(
+                        ", ",
+                        pattern
+                            .GetProperty("items")
+                            .EnumerateArray()
+                            .Select(
+                                (item, index) =>
+                                    MatchConditionPatternExpression(
+                                        TupleItemType(targetType, index),
+                                        item
+                                    )
+                            )
+                    )
+                    + ")";
+            case "Array":
+            {
+                var itemType = ArrayElementType(targetType);
+                var itemPatterns = pattern
+                    .GetProperty("items")
+                    .EnumerateArray()
+                    .Select(item => MatchConditionPatternExpression(itemType, item))
+                    .ToList();
+                if (HasArrayRest(pattern))
+                    itemPatterns.Add("..");
+                itemPatterns.AddRange(
+                    ArrayPatternSuffix(pattern)
+                        .Select(item => MatchConditionPatternExpression(itemType, item))
+                );
+                return "[" + string.Join(", ", itemPatterns) + "]";
+            }
+            case "OptionSome":
+            {
+                var payloadPattern = MatchConditionPatternExpression(
+                    OptionElementType(targetType),
+                    pattern.GetProperty("payload")
+                );
+                return payloadPattern == "_"
+                    ? "{ IsSome: true }"
+                    : "{ IsSome: true, Value: " + payloadPattern + " }";
+            }
+            case "Or":
+                return string.Join(
+                    " or ",
+                    pattern
+                        .GetProperty("alternatives")
+                        .EnumerateArray()
+                        .Select(alternative =>
+                            MatchConditionPatternExpression(targetType, alternative)
+                        )
+                );
+            default:
+                return MatchPatternExpression(targetType, pattern);
+        }
+    }
+
     private string MatchStatementCasePatternExpression(JsonElement targetType, JsonElement pattern)
     {
         var kind = pattern.GetProperty("kind").GetString();

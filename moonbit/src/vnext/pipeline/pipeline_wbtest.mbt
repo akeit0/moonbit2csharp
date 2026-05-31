@@ -390,7 +390,7 @@ test "vnext lowers for-in loops with value and index bindings" {
 ///|
 test "vnext resolves for-in through iter methods" {
   let source = "fn chars(s:String)->Unit { for c in s { let _ = c }; for part in s.split(\"\\n\") { let _ = part } }\n"
-  let core_source = "pub extern \"csharp\" fn String::iter(self : String) -> Iter[Char] =\n  #|return default!;\npub extern \"csharp\" fn String::split(self : String, sep : StringView) -> Iter[StringView] =\n  #|return default!;\n"
+  let core_source = "struct Iter[X] { f : () -> X? }\npub extern \"csharp\" fn String::iter(self : String) -> Iter[Char] =\n  #|return default!;\npub extern \"csharp\" fn String::split(self : String, sep : StringView) -> Iter[StringView] =\n  #|return default!;\n"
   let json = compile_package_sources_with_declarations_to_json(
     [{ file_path: "demo.mbt", source }],
     "Demo",
@@ -1248,7 +1248,7 @@ test "vnext resolves iter receiver methods across declared and builtin core type
     test_core_declaration_sources([
       {
         import_ref: test_core_import_ref(),
-        file_path: "core_iter.mbt",
+        file_path: "core_iterable.mbt",
         source: core_source,
       },
     ]),
@@ -1288,7 +1288,7 @@ test "vnext accepts iter spread in array literals" {
     test_core_declaration_sources([
       {
         import_ref: test_core_import_ref(),
-        file_path: "core_iter.mbt",
+        file_path: "core_iterable.mbt",
         source: core_source,
       },
     ]),
