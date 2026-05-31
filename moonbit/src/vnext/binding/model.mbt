@@ -630,7 +630,8 @@ fn constructor_equal(
   match (left, right) {
     (Builtin(a), Builtin(b)) => a == b
     (Declared(a), Declared(b)) => a.id == b.id
-    (Declared(symbol), Builtin(name)) => is_core_builtin_type_symbol(symbol, name)
+    (Declared(symbol), Builtin(name)) =>
+      is_core_builtin_type_symbol(symbol, name)
     (Builtin(name), Declared(symbol)) =>
       is_core_builtin_type_symbol(symbol, name)
     (TypeParameter(a, _), TypeParameter(b, _)) => a == b

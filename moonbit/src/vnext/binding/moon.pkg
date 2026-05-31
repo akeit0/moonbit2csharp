@@ -1,4 +1,4 @@
 import {
-  "moonbit2csharp/frontend/vnext/ast" @ast,
-  "moonbit2csharp/frontend/vnext/common" @common,
+  "moonbit2csharp/frontend/vnext/ast",
+  "moonbit2csharp/frontend/vnext/common",
 }

@@ -378,7 +378,7 @@ pub fn bind_selected_functions_from_session(
   let functions : Array[BoundFunction] = []
   for fid in selected_function_ids {
     match session.source_functions_by_id.get(fid) {
-      Some(function) => {
+      Some(function) =>
         match function.external {
           Some(extern_decl) =>
             match extern_decl.body {
@@ -417,7 +417,6 @@ pub fn bind_selected_functions_from_session(
               )
             }
         }
-      }
       None => ()
     }
   }
@@ -520,9 +519,9 @@ pub fn bind_selected_globals_from_session(
   for gid in selected_global_ids {
     match session.source_globals_by_id.get(gid) {
       Some(global) =>
-      globals.push(
-        bind_global(session.context, session.index, session.ast, global),
-      )
+        globals.push(
+          bind_global(session.context, session.index, session.ast, global),
+        )
       None => ()
     }
   }

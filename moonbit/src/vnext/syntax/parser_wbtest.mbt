@@ -222,7 +222,8 @@ test "vnext parser accepts local functions and while nobreak" {
 
 ///|
 test "vnext parser keeps function boundary after valued for tuple let" {
-  let source = #|pub fn[K : Hash + Eq] Set::add(self : Set[K], key : K) -> Unit {
+  let source =
+    #|pub fn[K : Hash + Eq] Set::add(self : Set[K], key : K) -> Unit {
     #|  self.add_with_hash(key, key.hash())
     #|}
     #|

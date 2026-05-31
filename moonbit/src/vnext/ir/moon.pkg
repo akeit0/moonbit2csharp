@@ -1,4 +1,4 @@
 import {
-  "moonbit2csharp/frontend/vnext/common" @common,
-  "moonbit2csharp/frontend/vnext/binding" @binding,
+  "moonbit2csharp/frontend/vnext/common",
+  "moonbit2csharp/frontend/vnext/binding",
 }

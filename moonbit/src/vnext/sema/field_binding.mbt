@@ -222,10 +222,12 @@ fn bind_index_get(
       ) {
       Some(bound_slice) => return bound_slice
       None => {
-        context.error(
-          "VNX1905", "cannot find slice implementation", span,
+        context.error("VNX1905", "cannot find slice implementation", span)
+        return BoundExpr::Error(
+          "unresolved slice implementation",
+          error_type(),
+          span,
         )
-        return BoundExpr::Error("unresolved slice implementation", error_type(), span)
       }
     }
   }
@@ -532,12 +534,16 @@ fn functions_with_alias(
 fn index_item_type(target_type : TypeRef) -> TypeRef? {
   match @binding.type_constructor_name(target_type) {
     Some((name, [item_type])) =>
-      if name is ("Array" | "FixedArray" | "ArrayView") { Some(item_type) } else { None }
+      if name is ("Array" | "FixedArray" | "ArrayView") {
+        Some(item_type)
+      } else {
+        None
+      }
     _ =>
       match target_type {
-    TypeRef::Builtin("String") | TypeRef::Builtin("StringView") =>
-      Some(@binding.char_code_unit_type())
-    _ => None
+        TypeRef::Builtin("String") | TypeRef::Builtin("StringView") =>
+          Some(@binding.char_code_unit_type())
+        _ => None
       }
   }
 }

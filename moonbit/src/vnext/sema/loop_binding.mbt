@@ -364,8 +364,7 @@ fn bind_for_loop(
   let previous_loop_break_expected_types = context.loop_break_expected_types
   context.loop_depth = previous_loop_depth + 1
   context.loop_break_expected_types = push_loop_break_expected_type(
-    previous_loop_break_expected_types,
-    expected,
+    previous_loop_break_expected_types, expected,
   )
   let bound_body = bind_expr(
     typing,

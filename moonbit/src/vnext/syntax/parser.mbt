@@ -305,7 +305,14 @@ fn Parser::parse_struct(self : Parser) -> @ast.StructDecl {
   if self.current().kind == TokenKind::LParen {
     let fields = self.parse_tuple_struct_fields()
     let derives = self.parse_derive_clause()
-    return { name: name.text, type_params, fields, derives, valtype, span: start.span }
+    return {
+      name: name.text,
+      type_params,
+      fields,
+      derives,
+      valtype,
+      span: start.span,
+    }
   }
   ignore(self.expect(TokenKind::LBrace))
   let fields : Array[@ast.StructField] = []
@@ -726,8 +733,8 @@ fn Parser::parse_impl_method(self : Parser) -> @ast.ImplMethodDecl {
         return_type,
         body: Some(@ast.Expr::Missing(name.span)),
         intrinsic: None,
-          span: name.span,
-        }
+        span: name.span,
+      }
     }
     return {
       name: name.text,

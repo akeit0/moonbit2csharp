@@ -1242,7 +1242,8 @@ fn add_operator_trait_impl_method(
   let trait_def = operator_trait_definition_or_fallback(
     index, binding, method_name, span,
   )
-  guard find_trait_method_signature(trait_def, method_name) is Some(trait_method) else {
+  guard find_trait_method_signature(trait_def, method_name)
+    is Some(trait_method) else {
     index.error(
       "VNX2202",
       "impl method is not declared by trait: " + method_name,

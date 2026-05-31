@@ -147,9 +147,7 @@ fn normalize_array_spread_expr(
     Some(("Iter", [item])) =>
       BoundExpr::Call(
         @binding.function_id(
-          "pkg:moonbitlang/core/builtin",
-          "moonbitlang/core/builtin",
-          "Iter::to_array",
+          "pkg:moonbitlang/core/builtin", "moonbitlang/core/builtin", "Iter::to_array",
         ),
         [item],
         [],

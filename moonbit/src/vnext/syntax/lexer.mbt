@@ -190,6 +190,7 @@ fn Lexer::attribute_ahead(self : Lexer) -> Bool {
   is_ident_start(self.source[self.pos + 1])
 }
 
+///|
 fn Lexer::scan_attribute_line(self : Lexer) -> Unit {
   let start = self.pos
   let start_col = self.col
@@ -354,25 +355,29 @@ fn Lexer::scan_punctuation_or_bad(self : Lexer) -> Unit {
     '>' => Some(self.greater_token())
     '<' => Some(self.less_token())
     ':' =>
-      Some(self.two_char_token(
-        ':',
-        TokenKind::ColonColon,
-        "::",
-        TokenKind::Colon,
-        ":",
-      ))
+      Some(
+        self.two_char_token(
+          ':',
+          TokenKind::ColonColon,
+          "::",
+          TokenKind::Colon,
+          ":",
+        ),
+      )
     '=' => Some(self.equal_token())
     '-' => Some(self.minus_token())
     '&' => Some(self.amp_token())
     '|' => Some(self.pipe_token())
     '!' =>
-      Some(self.two_char_token(
-        '=',
-        TokenKind::BangEq,
-        "!=",
-        TokenKind::Exclamation,
-        "!",
-      ))
+      Some(
+        self.two_char_token(
+          '=',
+          TokenKind::BangEq,
+          "!=",
+          TokenKind::Exclamation,
+          "!",
+        ),
+      )
     ';' => Some(token(TokenKind::Semicolon, ";"))
     ',' => Some(token(TokenKind::Comma, ","))
     '@' => Some(token(TokenKind::At, "@"))
@@ -383,45 +388,55 @@ fn Lexer::scan_punctuation_or_bad(self : Lexer) -> Unit {
     '{' => Some(token(TokenKind::LBrace, "{"))
     '}' => Some(token(TokenKind::RBrace, "}"))
     '+' =>
-      Some(self.two_char_token(
-        '=',
-        TokenKind::AugmentedAssign,
-        "+=",
-        TokenKind::Plus,
-        "+",
-      ))
+      Some(
+        self.two_char_token(
+          '=',
+          TokenKind::AugmentedAssign,
+          "+=",
+          TokenKind::Plus,
+          "+",
+        ),
+      )
     '*' =>
-      Some(self.two_char_token(
-        '=',
-        TokenKind::AugmentedAssign,
-        "*=",
-        TokenKind::Star,
-        "*",
-      ))
+      Some(
+        self.two_char_token(
+          '=',
+          TokenKind::AugmentedAssign,
+          "*=",
+          TokenKind::Star,
+          "*",
+        ),
+      )
     '/' =>
-      Some(self.two_char_token(
-        '=',
-        TokenKind::AugmentedAssign,
-        "/=",
-        TokenKind::Slash,
-        "/",
-      ))
+      Some(
+        self.two_char_token(
+          '=',
+          TokenKind::AugmentedAssign,
+          "/=",
+          TokenKind::Slash,
+          "/",
+        ),
+      )
     '%' =>
-      Some(self.two_char_token(
-        '=',
-        TokenKind::AugmentedAssign,
-        "%=",
-        TokenKind::Percent,
-        "%",
-      ))
+      Some(
+        self.two_char_token(
+          '=',
+          TokenKind::AugmentedAssign,
+          "%=",
+          TokenKind::Percent,
+          "%",
+        ),
+      )
     '^' =>
-      Some(self.two_char_token(
-        '=',
-        TokenKind::AugmentedAssign,
-        "^=",
-        TokenKind::Caret,
-        "^",
-      ))
+      Some(
+        self.two_char_token(
+          '=',
+          TokenKind::AugmentedAssign,
+          "^=",
+          TokenKind::Caret,
+          "^",
+        ),
+      )
     '?' => Some(token(TokenKind::Question, "?"))
     '~' => Some(token(TokenKind::Tilde, "~"))
     '_' => Some(token(TokenKind::Underscore, "_"))

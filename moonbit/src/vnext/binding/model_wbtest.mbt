@@ -1,3 +1,4 @@
+///|
 test "binding context copies imported type definitions" {
   let span = @common.source_span("dep.mbt", 0, 0, 1, 1)
   let imported_symbol : TypeSymbolRef = {
@@ -13,10 +14,7 @@ test "binding context copies imported type definitions" {
     name: "Local",
   }
   let imported_types : Array[TypeDefinition] = [
-    TypeDefinition::Opaque({
-      symbol: imported_symbol,
-      type_params: [],
-    }),
+    TypeDefinition::Opaque({ symbol: imported_symbol, type_params: [] }),
   ]
   let context = binding_context_with_imports(
     "demo",
@@ -28,10 +26,7 @@ test "binding context copies imported type definitions" {
     [],
   )
   context.types.push(
-    TypeDefinition::Opaque({
-      symbol: local_symbol,
-      type_params: [],
-    }),
+    TypeDefinition::Opaque({ symbol: local_symbol, type_params: [] }),
   )
   assert_eq(imported_types.length(), 1)
   assert_eq(context.types.length(), 2)
