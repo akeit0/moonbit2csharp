@@ -1,5 +1,6 @@
 using System.Text;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 
 namespace MoonBit2CSharp.Backend;
 
@@ -79,12 +80,7 @@ public static class CSharpProjectFiles
 
     public static string ProjectNameFromMoonMod(string moonModPath)
     {
-        using var doc = JsonDocument.Parse(File.ReadAllText(moonModPath));
-        var name =
-            doc.RootElement.TryGetProperty("name", out var nameElement)
-            && nameElement.ValueKind == JsonValueKind.String
-                ? nameElement.GetString()
-                : null;
+        var name = MoonModFieldValue(moonModPath, "name");
         var leaf = string.IsNullOrWhiteSpace(name)
             ? Path.GetFileName(Path.GetDirectoryName(moonModPath))
             : name.Split('/', '\\').LastOrDefault();
@@ -92,6 +88,28 @@ public static class CSharpProjectFiles
             string.IsNullOrWhiteSpace(leaf) ? "MoonBitProject" : leaf!
         );
         return safeName == "" ? "MoonBitProject" : safeName;
+    }
+
+    private static string? MoonModFieldValue(string moonModPath, string fieldName)
+    {
+        if (Path.GetExtension(moonModPath).Equals(".json", StringComparison.OrdinalIgnoreCase))
+        {
+            using var doc = JsonDocument.Parse(File.ReadAllText(moonModPath));
+            return
+                doc.RootElement.TryGetProperty(fieldName, out var element)
+                && element.ValueKind == JsonValueKind.String
+                ? element.GetString()
+                : null;
+        }
+
+        var source = File.ReadAllText(moonModPath);
+        var escapedName = Regex.Escape(fieldName);
+        var match = Regex.Match(
+            source,
+            @"(?m)^[\t ]*" + escapedName + @"[\t ]*=\s*""(?<value>(?:\\.|[^""])*?)""",
+            RegexOptions.Compiled
+        );
+        return match.Success ? Regex.Unescape(match.Groups["value"].Value) : null;
     }
 
     private static string SanitizeProjectName(string name)

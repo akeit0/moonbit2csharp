@@ -148,6 +148,8 @@ static MoonBitRunProjectResult PrepareGeneratedProject(
     if (inputPaths.Count == 0)
         inputPaths.Add(Directory.GetCurrentDirectory());
 
+    RunMoonCheckForInputs(inputPaths, moonModPath);
+
     return MoonBitRunProject.Prepare(
         new(inputPaths.Select(Path.GetFullPath).ToArray())
         {
@@ -250,7 +252,7 @@ static int RunProject(string[] args)
     if (inputPaths.Count == 0)
     {
         Console.Error.WriteLine(
-            "project mode requires at least one .mbt, .mbtx, .ir.json, directory, or moon.mod.json input"
+            "project mode requires at least one .mbt, .mbtx, .ir.json, directory, or moon.mod/moon.mod.json input"
         );
         return 2;
     }
@@ -260,7 +262,7 @@ static int RunProject(string[] args)
         if (moonModPath != "")
             continue;
 
-        if (Path.GetFileName(input).Equals("moon.mod.json", StringComparison.OrdinalIgnoreCase))
+        if (IsMoonModFile(input))
         {
             moonModPath = Path.GetFullPath(input);
             continue;
@@ -270,6 +272,8 @@ static int RunProject(string[] args)
         if (discoveredMoonMod is not null)
             moonModPath = discoveredMoonMod;
     }
+
+    RunMoonCheckForInputs(inputPaths, moonModPath);
 
     var result = MoonBitSourceTranspiler.WriteProject(
         new(outputDir, inputPaths.Select(Path.GetFullPath).ToList())
@@ -342,17 +346,85 @@ static int RunDotnetCommand(string projectPath, IReadOnlyList<string> arguments)
     return process.ExitCode;
 }
 
+static void RunMoonCheckForInputs(IReadOnlyList<string> inputPaths, string explicitMoonModPath)
+{
+    var moonProjectPath = ResolveMoonCheckPath(inputPaths, explicitMoonModPath);
+    if (moonProjectPath is null)
+        return;
+
+    var startInfo = new ProcessStartInfo(FindMoonCommand())
+    {
+        UseShellExecute = false,
+        WorkingDirectory = moonProjectPath,
+    };
+    startInfo.ArgumentList.Add("check");
+
+    using var process =
+        Process.Start(startInfo) ?? throw new InvalidOperationException("failed to start moon");
+    process.WaitForExit();
+    if (process.ExitCode is not 0)
+        throw new InvalidOperationException($"moon check failed for {moonProjectPath}");
+}
+
+static string FindMoonCommand()
+{
+    var userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+    var moonPath = Path.Combine(
+        userProfile,
+        ".moon",
+        "bin",
+        OperatingSystem.IsWindows() ? "moon.exe" : "moon"
+    );
+    return File.Exists(moonPath) ? moonPath : "moon";
+}
+
+static string? ResolveMoonCheckPath(IReadOnlyList<string> inputPaths, string explicitMoonModPath)
+{
+    if (!string.IsNullOrWhiteSpace(explicitMoonModPath))
+    {
+        var explicitPath = Path.GetFullPath(explicitMoonModPath);
+        if (File.Exists(explicitPath))
+            return Path.GetDirectoryName(explicitPath);
+        if (Directory.Exists(explicitPath))
+            return explicitPath;
+        var explicitDirectory = Path.GetDirectoryName(explicitPath);
+        if (!string.IsNullOrWhiteSpace(explicitDirectory))
+            return explicitDirectory;
+        return null;
+    }
+
+    foreach (var input in inputPaths)
+    {
+        if (IsMoonModFile(input))
+            return Path.GetDirectoryName(Path.GetFullPath(input));
+
+        var discoveredMoonMod = MoonBitSourceTranspiler.FindMoonMod(input);
+        if (!string.IsNullOrWhiteSpace(discoveredMoonMod))
+            return Path.GetDirectoryName(Path.GetFullPath(discoveredMoonMod!));
+    }
+
+    return null;
+}
+
+static bool IsMoonModFile(string input)
+{
+    return Path.GetFileName(input).Equals("moon.mod.json", StringComparison.OrdinalIgnoreCase)
+        || Path.GetFileName(input).Equals("moon.mod", StringComparison.OrdinalIgnoreCase);
+}
+
 static int PrintUsage()
 {
     Console.Error.WriteLine(
         "usage: MoonBit2CSharp.Cli [--pascal-case] <input.mbt|input.mbtx> [output.cs]"
     );
-    Console.Error.WriteLine("   or: MoonBit2CSharp.Cli build [input.mbt|directory|moon.mod.json]");
     Console.Error.WriteLine(
-        "   or: MoonBit2CSharp.Cli run [input.mbt|directory|moon.mod.json] [-- app args...]"
+        "   or: MoonBit2CSharp.Cli build [input.mbt|directory|moon.mod|moon.mod.json]"
     );
     Console.Error.WriteLine(
-        "   or: MoonBit2CSharp.Cli --project <output-dir> [--single-file <name.cs>] [--csproj <name>|--no-csproj] [--moon-mod <moon.mod.json>] [--exe] [--reference-runtime] [--runtime-project <path>] [--project-reference <path>] [--namespace <namespace>] [--runtime-namespace <namespace>] [--using <namespace>] [--cache-dir <dir>|--no-cache] [--include-main-packages] [--pascal-case] <inputs...>"
+        "   or: MoonBit2CSharp.Cli run [input.mbt|directory|moon.mod|moon.mod.json] [-- app args...]"
+    );
+    Console.Error.WriteLine(
+        "   or: MoonBit2CSharp.Cli --project <output-dir> [--single-file <name.cs>] [--csproj <name>|--no-csproj] [--moon-mod <moon.mod|moon.mod.json>] [--exe] [--reference-runtime] [--runtime-project <path>] [--project-reference <path>] [--namespace <namespace>] [--runtime-namespace <namespace>] [--using <namespace>] [--cache-dir <dir>|--no-cache] [--include-main-packages] [--pascal-case] <inputs...>"
     );
     return 1;
 }

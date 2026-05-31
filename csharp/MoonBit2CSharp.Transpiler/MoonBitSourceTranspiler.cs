@@ -190,6 +190,8 @@ public static class MoonBitSourceTranspiler
         "uint64",
     ];
 
+    private static readonly string[] MoonModFileNames = ["moon.mod", "moon.mod.json"];
+
     // static readonly Lazy<IReadOnlyList<SyntaxModule>> BuiltinDeclarationModules = new(
     //     LoadBuiltinDeclarationModules
     // );
@@ -230,6 +232,45 @@ public static class MoonBitSourceTranspiler
             OperatingSystem.IsWindows() ? "moon.exe" : "moon"
         );
         return File.Exists(moonPath) ? moonPath : "moon";
+    }
+
+    private static bool IsMoonModFileName(string path)
+    {
+        return MoonModFileNames.Contains(Path.GetFileName(path), StringComparer.OrdinalIgnoreCase);
+    }
+
+    private static string? FindMoonModInDirectory(string directory)
+    {
+        foreach (var moonModFileName in MoonModFileNames)
+        {
+            var candidate = Path.Combine(directory, moonModFileName);
+            if (File.Exists(candidate))
+                return candidate;
+        }
+
+        return null;
+    }
+
+    private static string? MoonModFieldValue(string moonModPath, string fieldName)
+    {
+        if (Path.GetExtension(moonModPath).Equals(".json", StringComparison.OrdinalIgnoreCase))
+        {
+            using var doc = JsonDocument.Parse(File.ReadAllText(moonModPath));
+            return
+                doc.RootElement.TryGetProperty(fieldName, out var propertyElement)
+                && propertyElement.ValueKind == JsonValueKind.String
+                ? propertyElement.GetString()
+                : null;
+        }
+
+        var source = File.ReadAllText(moonModPath);
+        var escapedName = Regex.Escape(fieldName);
+        var match = Regex.Match(
+            source,
+            @"(?m)^[\t ]*" + escapedName + @"[\t ]*=\s*""(?<value>(?:\\.|[^\""])*)""",
+            RegexOptions.Compiled
+        );
+        return match.Success ? Regex.Unescape(match.Groups["value"].Value) : null;
     }
 
     private static string RepositoryRoot()
@@ -1199,8 +1240,8 @@ public static class MoonBitSourceTranspiler
         var dir = Directory.Exists(path) ? path : Path.GetDirectoryName(path);
         while (!string.IsNullOrWhiteSpace(dir))
         {
-            var candidate = Path.Combine(dir, "moon.mod.json");
-            if (File.Exists(candidate))
+            var candidate = FindMoonModInDirectory(dir);
+            if (candidate is not null)
                 return candidate;
 
             dir = Directory.GetParent(dir)?.FullName;
@@ -1413,7 +1454,7 @@ public static class MoonBitSourceTranspiler
         bool includeMainPackages
     )
     {
-        if (Path.GetFileName(inputPath).Equals("moon.mod.json", StringComparison.OrdinalIgnoreCase))
+        if (IsMoonModFileName(inputPath))
             return InputPackageRoots(Path.GetDirectoryName(inputPath)!, includeMainPackages);
 
         if (!Directory.Exists(inputPath))
@@ -1476,10 +1517,7 @@ public static class MoonBitSourceTranspiler
     {
         if (File.Exists(inputPath))
         {
-            if (
-                Path.GetFileName(inputPath)
-                    .Equals("moon.mod.json", StringComparison.OrdinalIgnoreCase)
-            )
+            if (IsMoonModFileName(inputPath))
                 inputPath = Path.GetDirectoryName(inputPath)!;
             else
                 return false;
@@ -1558,8 +1596,7 @@ public static class MoonBitSourceTranspiler
             var candidateModule = Path.Combine(
                 new[] { mooncakesRoot }.Concat(parts.Take(modulePartCount)).ToArray()
             );
-            var moonMod = Path.Combine(candidateModule, "moon.mod.json");
-            if (!File.Exists(moonMod))
+            if (FindMoonModInDirectory(candidateModule) is null)
                 continue;
 
             var sourceRoot = MoonModuleSourceRoot(candidateModule);
@@ -1578,8 +1615,8 @@ public static class MoonBitSourceTranspiler
 
     private static string? ResolveSameModulePackageRoot(string moduleRoot, string importPath)
     {
-        var moonModPath = Path.Combine(moduleRoot, "moon.mod.json");
-        if (!File.Exists(moonModPath))
+        var moonModPath = FindMoonModInDirectory(moduleRoot);
+        if (moonModPath is null)
             return null;
 
         var moduleName = MoonModuleNameFromMoonMod(moonModPath);
@@ -2072,8 +2109,8 @@ public static class MoonBitSourceTranspiler
         dir = new(Path.GetFullPath(packageRoot));
         while (dir is not null && dir.Name != ".mooncakes")
         {
-            var candidate = Path.Combine(dir.FullName, "moon.mod.json");
-            if (File.Exists(candidate))
+            var candidate = FindMoonModInDirectory(dir.FullName);
+            if (candidate is not null)
                 return candidate;
 
             dir = dir.Parent;
@@ -2098,27 +2135,18 @@ public static class MoonBitSourceTranspiler
 
     private static string? MoonModuleNameFromMoonMod(string moonModPath)
     {
-        using var doc = JsonDocument.Parse(File.ReadAllText(moonModPath));
-        return
-            doc.RootElement.TryGetProperty("name", out var nameElement)
-            && nameElement.ValueKind == JsonValueKind.String
-            ? nameElement.GetString()
-            : null;
+        return MoonModFieldValue(moonModPath, "name");
     }
 
     private static string MoonModuleSourceRoot(string moduleRoot)
     {
-        var moonModPath = Path.Combine(moduleRoot, "moon.mod.json");
-        if (!File.Exists(moonModPath))
+        var moonModPath = FindMoonModInDirectory(moduleRoot);
+        if (moonModPath is null)
             return moduleRoot;
 
-        using var doc = JsonDocument.Parse(File.ReadAllText(moonModPath));
-        if (
-            doc.RootElement.TryGetProperty("source", out var sourceElement)
-            && sourceElement.ValueKind == JsonValueKind.String
-            && !string.IsNullOrWhiteSpace(sourceElement.GetString())
-        )
-            return Path.GetFullPath(Path.Combine(moduleRoot, sourceElement.GetString()!));
+        var source = MoonModFieldValue(moonModPath, "source");
+        if (!string.IsNullOrWhiteSpace(source))
+            return Path.GetFullPath(Path.Combine(moduleRoot, source));
 
         var src = Path.Combine(moduleRoot, "src");
         return Directory.Exists(src) ? Path.GetFullPath(src) : moduleRoot;
