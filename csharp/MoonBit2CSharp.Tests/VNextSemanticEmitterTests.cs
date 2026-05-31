@@ -3893,6 +3893,56 @@ public sealed partial class VNextSemanticEmitterTests
         }
         """;
 
+    [Fact]
+    public void IgnoreIntrinsicEvaluatesArgumentAndYieldsUnit()
+    {
+        var intType = """{ "kind": "Builtin", "name": "Int" }""";
+        var unitType = """{ "kind": "Builtin", "name": "Unit" }""";
+        var json = ModuleJson(
+            $$"""
+            {
+              "kind": "Function",
+              "symbolId": "fn:Demo:g",
+              "name": "g",
+              "typeParams": [],
+              "params": [],
+              "returnType": {{intType}},
+              "body": { "kind": "IntLiteral", "value": "1", "type": {{intType}} }
+            },
+            {
+              "kind": "Function",
+              "symbolId": "fn:Demo:f",
+              "name": "f",
+              "typeParams": [],
+              "params": [],
+              "returnType": {{unitType}},
+              "body": {
+                "kind": "Call",
+                "functionId": "fn:pkg:moonbitlang/core/builtin:moonbitlang/core/builtin:ignore",
+                "typeArgs": [{{intType}}],
+                "traitEvidence": [],
+                "args": [
+                  {
+                    "kind": "Call",
+                    "functionId": "fn:Demo:g",
+                    "typeArgs": [],
+                    "traitEvidence": [],
+                    "args": [],
+                    "type": {{intType}}
+                  }
+                ],
+                "selectedIntrinsic": "%ignore",
+                "type": {{unitType}}
+              }
+            }
+            """
+        );
+
+        var code = VNextBackend.Emit(json);
+
+        Assert.Contains("Intrinsics.Ignore(g())", code, StringComparison.Ordinal);
+    }
+
     private static string ModuleJson(string functions)
     {
         return $$"""

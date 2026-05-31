@@ -81,6 +81,7 @@ internal static class VNextRuntimeSupportRenderer
         ["ArrayLast"] = ["Array", "Option"],
         ["ArrayFilter"] = ["Array", "ArrayUtility"],
         ["ArraySortBy"] = ["Array", "Unit"],
+        ["Ignore"] = ["Unit"],
         ["PrintlnString"] = ["Unit"],
         ["StringViewFind"] = ["StringView", "Option"],
         ["StringViewView"] = ["StringView", "Option"],

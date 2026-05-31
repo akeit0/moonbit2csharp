@@ -16,6 +16,11 @@ public static partial class IntrinsicBindings
                 )
         );
         yield return Direct(
+            "%ignore",
+            ["_"],
+            (_, args, _) => ParseExpression($"MoonBitIntrinsics.Ignore({args[0]})")
+        );
+        yield return Direct(
             "%bytes_make",
             ["Int", "Byte"],
             (_, args, _) =>

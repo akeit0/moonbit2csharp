@@ -184,6 +184,8 @@ public static class ConsoleUtility
 
 public static partial class Intrinsics
 {
+    public static Unit Ignore<T>(T value) => Unit.Value;
+
     public static T ArrayRemove<T>(Array<T> self, int index)
     {
         if ((uint)index >= (uint)self.Length)
