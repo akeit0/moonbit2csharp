@@ -160,11 +160,12 @@ fn bind_all_impl_method_bodies(
   selected_function_ids : Array[String],
 ) -> Array[BoundFunction] {
   let functions : Array[BoundFunction] = []
+  let selected_function_id_set = string_set(selected_function_ids)
   for impl_decl in ast.impls {
     for impl_method in impl_decl.methods {
       match
         bind_one_impl_method_body(
-          context, index, ast, impl_decl, impl_method, selected_function_ids,
+          context, index, ast, impl_decl, impl_method, selected_function_id_set,
         ) {
         Some(function) => functions.push(function)
         None => ()
@@ -181,7 +182,7 @@ fn bind_one_impl_method_body(
   ast : Module,
   impl_decl : ImplDecl,
   impl_method : @ast.ImplMethodDecl,
-  selected_function_ids : Array[String],
+  selected_function_ids : Set[String],
 ) -> BoundFunction? {
   if is_default_trait_impl_decl(impl_decl) {
     bind_default_trait_impl_method_body(
@@ -201,7 +202,7 @@ fn bind_default_trait_impl_method_body(
   ast : Module,
   impl_decl : ImplDecl,
   impl_method : @ast.ImplMethodDecl,
-  selected_function_ids : Array[String],
+  selected_function_ids : Set[String],
 ) -> BoundFunction? {
   match impl_method.body {
     None => None
@@ -220,7 +221,7 @@ fn bind_default_trait_impl_method_body(
         impl_method.name,
       )
       if selected_function_ids.length() > 0 &&
-        !contains_string(selected_function_ids, function_id) {
+        !selected_function_ids.contains(function_id) {
         return None
       }
       let signature = match @semantic.find_function(index, function_id) {
@@ -339,7 +340,7 @@ fn bind_concrete_impl_method_body(
   ast : Module,
   impl_decl : ImplDecl,
   impl_method : @ast.ImplMethodDecl,
-  selected_function_ids : Array[String],
+  selected_function_ids : Set[String],
 ) -> BoundFunction? {
   match impl_method.body {
     None => return None
@@ -390,7 +391,7 @@ fn bind_concrete_impl_method_body(
           self_type,
           impl_method.name,
         )
-        if contains_string(selected_function_ids, declared_function_id) {
+        if selected_function_ids.contains(declared_function_id) {
           Some(find_function(index, declared_function_id))
         } else {
           None
@@ -421,13 +422,10 @@ fn bind_concrete_impl_method_body(
                         trait_def,
                         self_type,
                         impl_method.name,
-                        [],
+                        Set([]),
                       ) {
                       Some(found) =>
-                        if contains_string(
-                            selected_function_ids,
-                            found.function_id,
-                          ) ||
+                        if selected_function_ids.contains(found.function_id) ||
                           (
                             !found.function_id.has_prefix("default-trait:") &&
                             selected_includes_default_trait_method(
@@ -449,7 +447,7 @@ fn bind_concrete_impl_method_body(
           }
       }
       if selected_function_ids.length() > 0 &&
-        !contains_string(selected_function_ids, signature.function_id) {
+        !selected_function_ids.contains(signature.function_id) {
         if !signature.function_id.has_prefix("default-trait:") &&
           selected_includes_default_trait_method(
             selected_function_ids,
@@ -515,16 +513,16 @@ fn find_selected_concrete_impl_method_signature(
   index : DeclarationIndex,
   self_type : TypeRef,
   method_name : String,
-  selected_function_ids : Array[String],
+  selected_function_ids : Set[String],
 ) -> FunctionSignature? {
   let mut default_match : FunctionSignature? = None
-  for impl_def in index.impls {
+  for impl_def in @semantic.find_impls_by_method_name(index, method_name) {
     if !@binding.type_equal(impl_def.self_type, self_type) {
       continue
     }
     for impl_method in impl_def.methods {
       if impl_method.name == method_name &&
-        contains_string(selected_function_ids, impl_method.function_id) {
+        selected_function_ids.contains(impl_method.function_id) {
         match impl_method.body {
           @semantic.ImplMethodBody::DefaultMethod =>
             if default_match is None {
@@ -542,12 +540,11 @@ fn find_selected_concrete_impl_method_signature(
 
 ///|
 fn selected_includes_default_trait_method(
-  selected_function_ids : Array[String],
+  selected_function_ids : Set[String],
   trait_id : String,
   method_name : String,
 ) -> Bool {
-  contains_string(
-    selected_function_ids,
+  selected_function_ids.contains(
     @semantic.default_trait_method_function_id(trait_id, method_name),
   )
 }
@@ -567,20 +564,22 @@ fn find_impl_method_function_signature(
   method_name : String,
 ) -> FunctionSignature? {
   let mut default_method : FunctionSignature? = None
-  for impl_def in index.impls {
-    if impl_def.trait_ref.trait_.id == trait_def.symbol.id &&
-      @binding.type_equal(impl_def.self_type, self_type) {
-      for impl_method in impl_def.methods {
-        if impl_method.name == method_name {
-          match impl_method.body {
-            @semantic.ImplMethodBody::DefaultMethod =>
-              if default_method is None {
-                default_method = Some(
-                  find_function(index, impl_method.function_id),
-                )
-              }
-            _ => return Some(find_function(index, impl_method.function_id))
-          }
+  for
+    impl_def in @semantic.find_impls_by_trait_self(
+      index,
+      trait_def.symbol.id,
+      self_type,
+    ) {
+    for impl_method in impl_def.methods {
+      if impl_method.name == method_name {
+        match impl_method.body {
+          @semantic.ImplMethodBody::DefaultMethod =>
+            if default_method is None {
+              default_method = Some(
+                find_function(index, impl_method.function_id),
+              )
+            }
+          _ => return Some(find_function(index, impl_method.function_id))
         }
       }
     }
@@ -594,7 +593,7 @@ fn find_impl_method_body_signature(
   trait_def : @semantic.TraitDefinition,
   self_type : TypeRef,
   method_name : String,
-  selected_function_ids : Array[String],
+  selected_function_ids : Set[String],
 ) -> FunctionSignature? {
   match
     find_concrete_impl_method_function_signature(
@@ -602,7 +601,7 @@ fn find_impl_method_body_signature(
     ) {
     Some(concrete) =>
       if selected_function_ids.length() == 0 ||
-        contains_string(selected_function_ids, concrete.function_id) ||
+        selected_function_ids.contains(concrete.function_id) ||
         selected_includes_default_trait_method(
           selected_function_ids,
           trait_def.symbol.id,
@@ -613,14 +612,15 @@ fn find_impl_method_body_signature(
     None => ()
   }
   if selected_function_ids.length() > 0 {
-    for impl_def in index.impls {
-      if impl_def.trait_ref.trait_.id != trait_def.symbol.id ||
-        !@binding.type_equal(impl_def.self_type, self_type) {
-        continue
-      }
+    for
+      impl_def in @semantic.find_impls_by_trait_self(
+        index,
+        trait_def.symbol.id,
+        self_type,
+      ) {
       for impl_method in impl_def.methods {
         if impl_method.name == method_name &&
-          contains_string(selected_function_ids, impl_method.function_id) {
+          selected_function_ids.contains(impl_method.function_id) {
           return Some(find_function(index, impl_method.function_id))
         }
       }
@@ -637,11 +637,12 @@ fn find_concrete_impl_method_function_signature(
   self_type : TypeRef,
   method_name : String,
 ) -> FunctionSignature? {
-  for impl_def in index.impls {
-    if impl_def.trait_ref.trait_.id != trait_def.symbol.id ||
-      !@binding.type_equal(impl_def.self_type, self_type) {
-      continue
-    }
+  for
+    impl_def in @semantic.find_impls_by_trait_self(
+      index,
+      trait_def.symbol.id,
+      self_type,
+    ) {
     for impl_method in impl_def.methods {
       if impl_method.name == method_name &&
         !(impl_method.body is @semantic.ImplMethodBody::DefaultMethod) {
@@ -698,6 +699,15 @@ fn type_param_names(type_params : Array[@ast.TypeParamSyntax]) -> Array[String] 
     names.push(param.name)
   }
   names
+}
+
+///|
+fn string_set(items : Array[String]) -> Set[String] {
+  let result : Set[String] = Set([])
+  for item in items {
+    result.add(item)
+  }
+  result
 }
 
 ///|
@@ -773,7 +783,14 @@ fn bind_global(
   )
   let typing = @semantic.typing_context()
   let value = bind_expr(typing, context, index, [], global.value, type_, ast)
-  { symbol_id, name: global.name, is_public: false, type_, value, span: global.span }
+  {
+    symbol_id,
+    name: global.name,
+    is_public: false,
+    type_,
+    value,
+    span: global.span,
+  }
 }
 
 ///|

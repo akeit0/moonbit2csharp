@@ -209,6 +209,10 @@ pub(all) struct DeclarationIndex {
   trait_methods_by_name : Map[String, Array[TraitMethodLookupEntry]]
   trait_methods_by_key : Map[String, TraitMethodLookupEntry]
   impls : Array[ImplDefinition]
+  impl_slot_by_id : Map[String, Int]
+  impl_indices_by_trait_id : Map[String, Array[Int]]
+  impl_indices_by_self_type_key : Map[String, Array[Int]]
+  impl_indices_by_method_name : Map[String, Array[Int]]
   impl_method_function_ids : @set.Set[String]
   operator_impls : Array[OperatorImplEntry]
   operator_impls_by_key : Map[String, OperatorCandidate]
@@ -246,6 +250,10 @@ pub fn declaration_index(
     trait_methods_by_name: Map([]),
     trait_methods_by_key: Map([]),
     impls: [],
+    impl_slot_by_id: Map([]),
+    impl_indices_by_trait_id: Map([]),
+    impl_indices_by_self_type_key: Map([]),
+    impl_indices_by_method_name: Map([]),
     impl_method_function_ids: @set.Set::default(),
     operator_impls: [],
     operator_impls_by_key: Map([]),

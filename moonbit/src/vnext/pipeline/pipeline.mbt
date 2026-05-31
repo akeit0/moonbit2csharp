@@ -394,7 +394,7 @@ fn complete_reachable_declaration_source_functions(
           for selected_function_id in selected {
             let diagnostic_start = session.diagnostics.length()
             let bind_start = profile_start(profiler)
-            processed_reachable.add(selected_function_id)
+            ignore(set_try_add(processed_reachable, selected_function_id))
             let bound = @sema.bind_selected_functions_from_session(
               session.binding_session,
               [selected_function_id],
@@ -414,8 +414,7 @@ fn complete_reachable_declaration_source_functions(
                 diagnostics.push(diagnostic)
               }
               for function in bound.functions {
-                if !emitted_function_ids.contains(function.symbol_id) {
-                  emitted_function_ids.add(function.symbol_id)
+                if set_try_add(emitted_function_ids, function.symbol_id) {
                   emitted_functions.push(function)
                   collect_function_called_function_ids(
                     function, reachability_index, reachable,
@@ -455,8 +454,7 @@ fn complete_reachable_declaration_source_functions(
             diagnostics.push(diagnostic)
           }
           for global in bound.globals {
-            if !emitted_global_ids.contains(global.symbol_id) {
-              emitted_global_ids.add(global.symbol_id)
+            if set_try_add(emitted_global_ids, global.symbol_id) {
               emitted_globals.push(global)
               collect_expr_called_function_ids(
                 global.value,
@@ -884,7 +882,8 @@ fn push_reachable_function_by_package(
 ) -> Unit {
   match result.by_package.get(function_ref.package_id) {
     Some(function_ids) => function_ids.push(function_ref.function_id)
-    None => result.by_package[function_ref.package_id] = [function_ref.function_id]
+    None =>
+      result.by_package[function_ref.package_id] = [function_ref.function_id]
   }
 }
 
@@ -978,6 +977,14 @@ fn selected_reachable_global_ids(
   selected
 }
 
+///|
+fn set_try_add(set : Set[String], item : String) -> Bool {
+  let before = set.length()
+  set.add(item)
+  set.length() != before
+}
+
+///|
 fn collect_module_called_function_ids(
   module_ : @ir.BoundModule,
   index : ReachabilityIndex,

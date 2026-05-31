@@ -724,7 +724,7 @@ fn declare_derived_operator_impl(
     source: ImplEvidenceSource::ConcreteImpl("derive"),
   }
   let method_body = ImplMethodBody::DefaultMethod
-  index.impls.push({
+  add_or_merge_impl(index, {
     impl_id: evidence.evidence_id,
     trait_ref: evidence.trait_ref,
     self_type,
@@ -1002,15 +1002,20 @@ fn declare_default_operator_methods_for_trait(
 
 ///|
 fn add_or_merge_impl(index : DeclarationIndex, impl_ : ImplDefinition) -> Unit {
-  for i in 0..<index.impls.length() {
-    if index.impls[i].impl_id == impl_.impl_id {
+  match index.impl_slot_by_id.get(impl_.impl_id) {
+    Some(i) => {
       for impl_method in impl_.methods {
         merge_impl_method(index.impls[i].methods, impl_method)
+        add_impl_method_slot_index(index, impl_method.name, i)
       }
       return
     }
+    None => ()
   }
   index.impls.push(impl_)
+  let slot = index.impls.length() - 1
+  index.impl_slot_by_id[impl_.impl_id] = slot
+  add_impl_slot_indexes(index, slot)
 }
 
 ///|
@@ -1061,11 +1066,7 @@ fn impl_index_has_concrete_method(
   self_type : TypeRef,
   method_name : String,
 ) -> Bool {
-  for impl_def in index.impls {
-    if impl_def.trait_ref.trait_.id != trait_id ||
-      !@binding.type_equal(impl_def.self_type, self_type) {
-      continue
-    }
+  for impl_def in find_impls_by_trait_self(index, trait_id, self_type) {
     for impl_method in impl_def.methods {
       if impl_method.name == method_name &&
         !(impl_method.body is ImplMethodBody::DefaultMethod) {
@@ -1309,7 +1310,7 @@ fn add_operator_trait_impl_method(
   add_default_trait_methods(
     index, trait_def, self_type, method_name, span, methods,
   )
-  index.impls.push({
+  add_or_merge_impl(index, {
     impl_id: evidence.evidence_id,
     trait_ref: evidence.trait_ref,
     self_type,
@@ -1704,11 +1705,9 @@ pub fn add_imported_impls(
 
 ///|
 fn add_imported_impl(index : DeclarationIndex, impl_ : ImplDefinition) -> Unit {
-  let mut existing_index = -1
-  for i in 0..<index.impls.length() {
-    if index.impls[i].impl_id == impl_.impl_id {
-      existing_index = i
-    }
+  let mut existing_index = match index.impl_slot_by_id.get(impl_.impl_id) {
+    Some(slot) => slot
+    None => -1
   }
   if existing_index < 0 {
     index.impls.push({
@@ -1720,9 +1719,12 @@ fn add_imported_impl(index : DeclarationIndex, impl_ : ImplDefinition) -> Unit {
       span: impl_.span,
     })
     existing_index = index.impls.length() - 1
+    index.impl_slot_by_id[impl_.impl_id] = existing_index
+    add_impl_slot_indexes(index, existing_index)
   }
   for impl_method in impl_.methods {
     merge_impl_method(index.impls[existing_index].methods, impl_method)
+    add_impl_method_slot_index(index, impl_method.name, existing_index)
     add_impl_method_function_index(index, impl_method.function_id)
     add_imported_operator_impl(index, impl_, impl_method)
   }
@@ -2128,8 +2130,7 @@ fn push_visible_function_once(
   seen : @set.Set[String],
   function : FunctionSignature,
 ) -> Unit {
-  if !seen.contains(function.function_id) {
-    seen.add(function.function_id)
+  if set_try_add(seen, function.function_id) {
     result.push(function)
   }
 }
@@ -2501,6 +2502,61 @@ pub fn find_trait_method(
 }
 
 ///|
+pub fn find_impls_by_trait_self(
+  index : DeclarationIndex,
+  trait_id : String,
+  self_type : TypeRef,
+) -> Array[ImplDefinition] {
+  let result : Array[ImplDefinition] = []
+  match index.impl_indices_by_trait_id.get(trait_id) {
+    Some(slots) =>
+      for slot in slots {
+        let impl_ = index.impls[slot]
+        if @binding.type_equal(impl_.self_type, self_type) {
+          result.push(impl_)
+        }
+      }
+    None => ()
+  }
+  result
+}
+
+///|
+pub fn find_impls_by_self_type(
+  index : DeclarationIndex,
+  self_type : TypeRef,
+) -> Array[ImplDefinition] {
+  let result : Array[ImplDefinition] = []
+  match index.impl_indices_by_self_type_key.get(type_lookup_key(self_type)) {
+    Some(slots) =>
+      for slot in slots {
+        let impl_ = index.impls[slot]
+        if @binding.type_equal(impl_.self_type, self_type) {
+          result.push(impl_)
+        }
+      }
+    None => ()
+  }
+  result
+}
+
+///|
+pub fn find_impls_by_method_name(
+  index : DeclarationIndex,
+  method_name : String,
+) -> Array[ImplDefinition] {
+  let result : Array[ImplDefinition] = []
+  match index.impl_indices_by_method_name.get(method_name) {
+    Some(slots) =>
+      for slot in slots {
+        result.push(index.impls[slot])
+      }
+    None => ()
+  }
+  result
+}
+
+///|
 pub fn find_concrete_trait_method_candidate(
   index : DeclarationIndex,
   receiver_type : TypeRef,
@@ -2508,7 +2564,7 @@ pub fn find_concrete_trait_method_candidate(
   trait_id : String?,
 ) -> ConcreteTraitMethodCandidate? {
   let mut found : ConcreteTraitMethodCandidate? = None
-  for impl_ in index.impls {
+  for impl_ in find_impls_by_method_name(index, method_name) {
     if trait_id is Some(expected_trait_id) &&
       impl_.trait_ref.trait_.id != expected_trait_id {
       continue
@@ -2851,7 +2907,62 @@ fn add_impl_method_function_index(
   index : DeclarationIndex,
   function_id : String,
 ) -> Unit {
+  let before = index.impl_method_function_ids.length()
   index.impl_method_function_ids.add(function_id)
+  ignore(index.impl_method_function_ids.length() != before)
+}
+
+///|
+fn add_impl_slot_indexes(index : DeclarationIndex, slot : Int) -> Unit {
+  let impl_ = index.impls[slot]
+  add_impl_slot_index(
+    index.impl_indices_by_trait_id,
+    impl_.trait_ref.trait_.id,
+    slot,
+  )
+  add_impl_slot_index(
+    index.impl_indices_by_self_type_key,
+    type_lookup_key(impl_.self_type),
+    slot,
+  )
+  for impl_method in impl_.methods {
+    add_impl_method_slot_index(index, impl_method.name, slot)
+  }
+}
+
+///|
+fn add_impl_method_slot_index(
+  index : DeclarationIndex,
+  method_name : String,
+  slot : Int,
+) -> Unit {
+  add_impl_slot_index(index.impl_indices_by_method_name, method_name, slot)
+}
+
+///|
+fn add_impl_slot_index(
+  map : Map[String, Array[Int]],
+  key : String,
+  slot : Int,
+) -> Unit {
+  match map.get(key) {
+    Some(slots) => {
+      for existing in slots {
+        if existing == slot {
+          return
+        }
+      }
+      slots.push(slot)
+    }
+    None => map[key] = [slot]
+  }
+}
+
+///|
+fn set_try_add(set : @set.Set[String], item : String) -> Bool {
+  let before = set.length()
+  set.add(item)
+  set.length() != before
 }
 
 ///|

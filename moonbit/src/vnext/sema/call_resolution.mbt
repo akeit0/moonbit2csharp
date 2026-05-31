@@ -448,17 +448,19 @@ fn find_impl_evidence_for_trait(
   trait_def : @semantic.TraitDefinition,
   self_type : TypeRef,
 ) -> @semantic.ImplEvidence? {
-  for impl_ in index.impls {
-    if impl_.trait_ref.trait_.id == trait_def.symbol.id &&
-      @binding.type_equal(impl_.self_type, self_type) {
-      return Some({
-        evidence_id: impl_.impl_id,
-        trait_ref: impl_.trait_ref,
-        self_type: impl_.self_type,
-        type_args: [],
-        source: impl_.source,
-      })
-    }
+  for
+    impl_ in @semantic.find_impls_by_trait_self(
+      index,
+      trait_def.symbol.id,
+      self_type,
+    ) {
+    return Some({
+      evidence_id: impl_.impl_id,
+      trait_ref: impl_.trait_ref,
+      self_type: impl_.self_type,
+      type_args: [],
+      source: impl_.source,
+    })
   }
   None
 }
@@ -558,12 +560,14 @@ fn mark_used_trait_object_conversion(
         @semantic.typing_context(),
         actual,
       )
-      for impl_ in index.impls {
-        if impl_.trait_ref.trait_.id == trait_ref.trait_.id &&
-          @binding.type_equal(impl_.self_type, actual) {
-          mark_used_trait_impl(context, trait_ref, actual)
-          return
-        }
+      for
+        _impl in @semantic.find_impls_by_trait_self(
+          index,
+          trait_ref.trait_.id,
+          actual,
+        ) {
+        mark_used_trait_impl(context, trait_ref, actual)
+        return
       }
     }
     _ => ()
