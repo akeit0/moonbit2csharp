@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Text.RegularExpressions;
 using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
 
 namespace MoonBit2CSharp.Backend;
@@ -127,10 +128,7 @@ public static partial class IntrinsicBindings
                 StringComparison.Ordinal
             );
 
-        if (
-            result.Contains('{', StringComparison.Ordinal)
-            || result.Contains('}', StringComparison.Ordinal)
-        )
+        if (Regex.IsMatch(result, @"\{\d+\}"))
             throw new InvalidOperationException(
                 $"intrinsic adapter template for {externalName} contains unresolved placeholders: {template}"
             );

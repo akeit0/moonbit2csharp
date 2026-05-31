@@ -141,6 +141,8 @@ public static partial class IntrinsicBindings
         expression = LiteralExpression(SyntaxKind.DefaultLiteralExpression);
         if (!BindingsByExternalName.TryGetValue(externalName, out var binding))
             return false;
+        if (binding.ParameterTypes.Count != arguments.Count)
+            return false;
 
         if (binding.Method is { } method)
         {
