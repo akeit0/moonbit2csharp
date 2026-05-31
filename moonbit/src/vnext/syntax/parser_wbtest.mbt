@@ -221,6 +221,45 @@ test "vnext parser accepts local functions and while nobreak" {
 }
 
 ///|
+test "vnext parser keeps function boundary after valued for tuple let" {
+  let source = #|pub fn[K : Hash + Eq] Set::add(self : Set[K], key : K) -> Unit {
+    #|  self.add_with_hash(key, key.hash())
+    #|}
+    #|
+    #|///|
+    #|fn[K : Eq] Set::add_with_hash(self : Set[K], key : K, hash : Int) -> Unit {
+    #|  let (idx, psl) = for psl = 0, idx = hash & self.capacity_mask {
+    #|    match self.entries[idx] {
+    #|      None => break (idx, psl)
+    #|      Some(curr_entry) => {
+    #|        if curr_entry.hash == hash && curr_entry.key == key {
+    #|          return
+    #|        }
+    #|        if psl > curr_entry.psl {
+    #|          self.push_away(idx, curr_entry)
+    #|          break (idx, psl)
+    #|        }
+    #|        continue psl + 1, (idx + 1) & self.capacity_mask
+    #|      }
+    #|    }
+    #|  }
+    #|  let entry = { prev: self.tail, next: None, psl, key, hash }
+    #|  self.add_entry_to_tail(idx, entry)
+    #|}
+    #|
+    #|///|
+    #|fn[K] Set::push_away(self : Set[K], idx : Int, entry : Entry[K]) -> Unit {
+    #|  return
+    #|}
+  let result = parse_source(@text.source_file("set.mbt", source))
+  assert_eq(result.diagnostics.length(), 0)
+  assert_eq(result.module_.functions.length(), 3)
+  assert_eq(result.module_.functions[0].name, "add")
+  assert_eq(result.module_.functions[1].name, "add_with_hash")
+  assert_eq(result.module_.functions[2].name, "push_away")
+}
+
+///|
 test "vnext parser accepts is expression inside boolean operators" {
   let source = "fn f(self : Int) -> Bool { if self is (0..=0xD7FF) || self is (0xE000..=0x10FFFF) { true } else { false } }\n"
   let result = parse_source(@text.source_file("is_bool.mbt", source))

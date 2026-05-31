@@ -1,3 +1,4 @@
+using System.Reflection;
 using MoonBit.Runtime;
 using MoonBit2CSharp.VNext.Backend;
 using Xunit;
@@ -83,6 +84,85 @@ public sealed partial class VNextSemanticEmitterTests
 
         Assert.Equal(1, type.GetMethod("rank")!.Invoke(null, [Enum.Parse(relation, "Smaller")]));
         Assert.Equal(2, type.GetMethod("rank")!.Invoke(null, [Enum.Parse(relation, "Greater")]));
+    }
+
+    [Fact]
+    public void EmitsDiscardFallbackForFullyNamedEnumSwitchExpression()
+    {
+        var intType = """{ "kind": "Builtin", "name": "Int" }""";
+        var relationType = """
+            {
+              "kind": "Declared",
+              "symbol": { "id": "type:pkg:Demo:Demo:Relation", "packageId": "pkg:Demo", "modulePath": "Demo", "name": "Relation" },
+              "args": []
+            }
+            """;
+        var relationParam =
+            $$"""{ "kind": "Name", "symbolId": "param:fn:Demo:rank:r", "name": "r", "type": {{relationType}} }""";
+        var json = $$"""
+            {
+              "schema": "moonbit2csharp.vnext.semantic-ir/0.1",
+              "module": { "name": "Demo" },
+              "symbols": [],
+              "types": [
+                {
+                  "kind": "Enum",
+                  "symbol": { "id": "type:pkg:Demo:Demo:Relation", "packageId": "pkg:Demo", "modulePath": "Demo", "name": "Relation" },
+                  "typeParams": [],
+                  "variants": [
+                    { "id": "type:pkg:Demo:Demo:Relation:variant:Smaller", "name": "Smaller", "payloads": [] },
+                    { "id": "type:pkg:Demo:Demo:Relation:variant:Greater", "name": "Greater", "payloads": [] }
+                  ]
+                }
+              ],
+              "traits": [],
+              "functions": [
+                {
+                  "kind": "Function",
+                  "symbolId": "fn:Demo:rank",
+                  "name": "rank",
+                  "typeParams": [],
+                  "params": [
+                    { "symbolId": "param:fn:Demo:rank:r", "name": "r", "type": {{relationType}} }
+                  ],
+                  "returnType": {{intType}},
+                  "body": {
+                    "kind": "Match",
+                    "target": {{relationParam}},
+                    "arms": [
+                      {
+                        "pattern": {
+                          "kind": "EnumCase",
+                          "typeId": "type:pkg:Demo:Demo:Relation",
+                          "variantId": "type:pkg:Demo:Demo:Relation:variant:Smaller",
+                          "name": "Smaller",
+                          "payloads": []
+                        },
+                        "body": { "kind": "IntLiteral", "value": "1", "type": {{intType}} }
+                      },
+                      {
+                        "pattern": {
+                          "kind": "EnumCase",
+                          "typeId": "type:pkg:Demo:Demo:Relation",
+                          "variantId": "type:pkg:Demo:Demo:Relation:variant:Greater",
+                          "name": "Greater",
+                          "payloads": []
+                        },
+                        "body": { "kind": "IntLiteral", "value": "2", "type": {{intType}} }
+                      }
+                    ],
+                    "type": {{intType}}
+                  }
+                }
+              ],
+              "globals": [],
+              "diagnostics": []
+            }
+            """;
+
+        var code = VNextBackend.Emit(json);
+        Assert.Contains("_ => throw new System.Diagnostics.UnreachableException()", code);
+        Compile(code, "namespace Generated.MoonBit.Runtime { }");
     }
 
     [Fact]
@@ -352,27 +432,43 @@ public sealed partial class VNextSemanticEmitterTests
         Assert.Contains("System.Runtime.CompilerServices.Unsafe.As<", code);
         Assert.Contains("Lst.ConsVariant>", code);
         Assert.DoesNotContain("System.Func", code);
-        var assembly = Compile(code);
-        var module = assembly.GetType("Generated.MoonBit.Demo", true)!;
+        var assembly = Compile(code, "namespace Generated.MoonBit.Runtime { }");
+        var module = GeneratedType(assembly, "Demo", "Demo");
         var lst = GeneratedType(assembly, "Lst", "Demo");
         var nil = lst.GetField("Nil")!.GetValue(null);
         var cons = lst.GetMethod("Cons")!.Invoke(null, [7, nil]);
         var consOne = lst.GetMethod("Cons")!.Invoke(null, [1, nil]);
         var consZero = lst.GetMethod("Cons")!.Invoke(null, [0, nil]);
+        var head = module.GetMethod(
+            "head",
+            BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static
+        )!;
+        var headGuarded = module.GetMethod(
+            "head_guarded",
+            BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static
+        )!;
+        var classify = module.GetMethod(
+            "classify",
+            BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static
+        )!;
+        var classifyLocal = module.GetMethod(
+            "classify_local",
+            BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static
+        )!;
 
-        Assert.Equal(7, module.GetMethod("head")!.Invoke(null, [cons]));
-        Assert.Equal(10, module.GetMethod("head")!.Invoke(null, [consOne]));
-        Assert.Equal(0, module.GetMethod("head")!.Invoke(null, [nil]));
-        Assert.Equal(99, module.GetMethod("head_guarded")!.Invoke(null, [cons, true]));
-        Assert.Equal(7, module.GetMethod("head_guarded")!.Invoke(null, [cons, false]));
-        Assert.Equal(99, module.GetMethod("head_guarded")!.Invoke(null, [nil, true]));
-        Assert.Equal(0, module.GetMethod("head_guarded")!.Invoke(null, [nil, false]));
-        Assert.Equal(42, module.GetMethod("classify")!.Invoke(null, [nil]));
-        Assert.Equal(42, module.GetMethod("classify")!.Invoke(null, [consZero]));
-        Assert.Equal(7, module.GetMethod("classify")!.Invoke(null, [cons]));
-        Assert.Equal(42, module.GetMethod("classify_local")!.Invoke(null, [nil]));
-        Assert.Equal(42, module.GetMethod("classify_local")!.Invoke(null, [consZero]));
-        Assert.Equal(7, module.GetMethod("classify_local")!.Invoke(null, [cons]));
+        Assert.Equal(7, head.Invoke(null, [cons]));
+        Assert.Equal(10, head.Invoke(null, [consOne]));
+        Assert.Equal(0, head.Invoke(null, [nil]));
+        Assert.Equal(99, headGuarded.Invoke(null, [cons, true]));
+        Assert.Equal(7, headGuarded.Invoke(null, [cons, false]));
+        Assert.Equal(99, headGuarded.Invoke(null, [nil, true]));
+        Assert.Equal(0, headGuarded.Invoke(null, [nil, false]));
+        Assert.Equal(42, classify.Invoke(null, [nil]));
+        Assert.Equal(42, classify.Invoke(null, [consZero]));
+        Assert.Equal(7, classify.Invoke(null, [cons]));
+        Assert.Equal(42, classifyLocal.Invoke(null, [nil]));
+        Assert.Equal(42, classifyLocal.Invoke(null, [consZero]));
+        Assert.Equal(7, classifyLocal.Invoke(null, [cons]));
     }
 
     [Fact]
@@ -428,6 +524,7 @@ public sealed partial class VNextSemanticEmitterTests
         Assert.Contains("default:", code);
         Assert.DoesNotContain("case var _:", code);
         Assert.DoesNotContain("non-exhaustive MoonBit match", code);
+        Assert.DoesNotContain("UnreachableException", code);
         Assert.Equal(1, code.Split("switch (").Length - 1);
         Assert.DoesNotContain("System.Func", code);
         var assembly = Compile(code);
@@ -1194,6 +1291,119 @@ public sealed partial class VNextSemanticEmitterTests
         Assert.Equal(false, module.GetMethod("is_one")!.Invoke(null, [2]));
         Assert.Equal(true, module.GetMethod("is_single")!.Invoke(null, [new[] { 7 }]));
         Assert.Equal(false, module.GetMethod("is_single")!.Invoke(null, [new[] { 7, 8 }]));
+    }
+
+    [Fact]
+    public void EmitsNestedBinaryPatternTestsWithPreservedPrecedence()
+    {
+        var boolType = """{ "kind": "Builtin", "name": "Bool" }""";
+        var tokenKindType = """
+            {
+              "kind": "Declared",
+              "symbol": {
+                "id": "type:pkg:Demo:Demo:TokenKind",
+                "packageId": "pkg:Demo",
+                "modulePath": "Demo",
+                "name": "TokenKind"
+              },
+              "args": []
+            }
+            """;
+        var firstParam =
+            $$"""{ "kind": "Name", "symbolId": "param:fn:Demo:is_struct:first", "name": "first", "type": {{tokenKindType}} }""";
+        var secondParam =
+            $$"""{ "kind": "Name", "symbolId": "param:fn:Demo:is_struct:second", "name": "second", "type": {{tokenKindType}} }""";
+        var json = $$"""
+            {
+              "schema": "moonbit2csharp.vnext.semantic-ir/0.1",
+              "module": { "name": "Demo" },
+              "symbols": [],
+              "types": [
+                {
+                  "kind": "Enum",
+                  "symbol": {
+                    "id": "type:pkg:Demo:Demo:TokenKind",
+                    "packageId": "pkg:Demo",
+                    "modulePath": "Demo",
+                    "name": "TokenKind"
+                  },
+                  "typeParams": [],
+                  "variants": [
+                    { "id": "type:pkg:Demo:Demo:TokenKind:variant:Identifier", "name": "Identifier", "payloads": [] },
+                    { "id": "type:pkg:Demo:Demo:TokenKind:variant:Colon", "name": "Colon", "payloads": [] },
+                    { "id": "type:pkg:Demo:Demo:TokenKind:variant:Comma", "name": "Comma", "payloads": [] },
+                    { "id": "type:pkg:Demo:Demo:TokenKind:variant:RBrace", "name": "RBrace", "payloads": [] }
+                  ]
+                }
+              ],
+              "traits": [],
+              "functions": [
+                {
+                  "kind": "Function",
+                  "symbolId": "fn:Demo:is_struct",
+                  "name": "is_struct",
+                  "typeParams": [],
+                  "params": [
+                    { "symbolId": "param:fn:Demo:is_struct:first", "name": "first", "type": {{tokenKindType}} },
+                    { "symbolId": "param:fn:Demo:is_struct:second", "name": "second", "type": {{tokenKindType}} }
+                  ],
+                  "returnType": {{boolType}},
+                  "body": {
+                    "kind": "Binary",
+                    "op": "&&",
+                    "left": {
+                      "kind": "IsPattern",
+                      "target": {{firstParam}},
+                      "pattern": {
+                        "kind": "EnumCase",
+                        "typeId": "type:pkg:Demo:Demo:TokenKind",
+                        "name": "Identifier",
+                        "payloads": []
+                      },
+                      "type": {{boolType}}
+                    },
+                    "right": {
+                      "kind": "IsPattern",
+                      "target": {{secondParam}},
+                      "pattern": {
+                        "kind": "Or",
+                        "alternatives": [
+                          { "kind": "EnumCase", "typeId": "type:pkg:Demo:Demo:TokenKind", "name": "Colon", "payloads": [] },
+                          { "kind": "EnumCase", "typeId": "type:pkg:Demo:Demo:TokenKind", "name": "Comma", "payloads": [] },
+                          { "kind": "EnumCase", "typeId": "type:pkg:Demo:Demo:TokenKind", "name": "RBrace", "payloads": [] }
+                        ]
+                      },
+                      "type": {{boolType}}
+                    },
+                    "type": {{boolType}}
+                  }
+                }
+              ],
+              "globals": [],
+              "diagnostics": []
+            }
+            """;
+
+        var code = VNextBackend.Emit(json);
+        var assembly = Compile(code, "namespace Generated.MoonBit.Runtime { }");
+        var tokenKind = assembly.GetTypes().Single(type => type.Name == "TokenKind");
+        var method = assembly
+            .GetTypes()
+            .Select(type =>
+                type.GetMethod(
+                    "is_struct",
+                    BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static
+                )
+            )
+            .First(method => method is not null)!;
+
+        var identifier = Enum.Parse(tokenKind, "Identifier");
+        var colon = Enum.Parse(tokenKind, "Colon");
+        var rBrace = Enum.Parse(tokenKind, "RBrace");
+
+        Assert.Equal(true, method.Invoke(null, [identifier, colon]));
+        Assert.Equal(true, method.Invoke(null, [identifier, rBrace]));
+        Assert.Equal(false, method.Invoke(null, [colon, rBrace]));
     }
 
     [Fact]

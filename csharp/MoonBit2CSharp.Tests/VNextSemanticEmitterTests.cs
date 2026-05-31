@@ -3940,7 +3940,7 @@ public sealed partial class VNextSemanticEmitterTests
 
         var code = VNextBackend.Emit(json);
 
-        Assert.Contains("Intrinsics.Ignore(g())", code, StringComparison.Ordinal);
+        Assert.Contains("Ignore(Demo.g())", code, StringComparison.Ordinal);
     }
 
     private static string ModuleJson(string functions)

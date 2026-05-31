@@ -277,7 +277,7 @@ pub fn binding_context_with_imports(
     imports,
     current_type_params: [],
     symbols: [],
-    types: imported_types,
+    types: imported_types.copy(),
     functions: [],
     imported_functions,
     imported_globals,

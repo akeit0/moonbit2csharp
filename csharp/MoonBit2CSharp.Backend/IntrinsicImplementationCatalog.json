@@ -1,7 +1,6 @@
 {
   "version": "moonbit2csharp-intrinsic-implementation-metadata-v1",
   "bindings": [
-    { "externalName": "%ignore", "parameterTypes": ["_"], "expression": { "kind": "Unit" } },
     { "externalName": "%identity", "parameterTypes": ["_"], "expression": { "kind": "Argument", "argumentIndex": 0 } },
     { "externalName": "%refeq", "parameterTypes": ["_", "_"], "expression": { "kind": "Template", "template": "object.ReferenceEquals({0}, {1})" } },
     { "externalName": "%println", "parameterTypes": ["String"], "method": { "methodName": "PrintlnString", "returnType": "MoonBitUnit", "signature": "string value", "body": "        System.Console.WriteLine(value);\n        return MoonBitUnit.Value;" } },
@@ -190,7 +189,6 @@
     { "externalName": "%u32.popcnt", "parameterTypes": ["UInt"], "expression": { "kind": "Template", "template": "System.Numerics.BitOperations.PopCount({0})" } }
   ],
   "rules": [
-    { "match": "%ignore", "mode": "GeneratedAdapter", "runtimeFeatures": ["Unit"], "semanticTestFamily": "adapter-unit" },
     { "match": "%identity", "mode": "GeneratedAdapter", "runtimeFeatures": [], "semanticTestFamily": "identity-reinterpret" },
     { "match": "%refeq", "mode": "FrameworkCall", "runtimeFeatures": [], "semanticTestFamily": "reference-identity" },
     { "match": "%panic", "mode": "HandwrittenRuntime", "runtimeFeatures": ["Panic"], "semanticTestFamily": "panic-control" },

@@ -4163,10 +4163,17 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
                     "||" => SyntaxKind.LogicalOrExpression,
                     _ => throw new NotSupportedException(UnsupportedBinaryOperatorMessage(expr)),
                 },
-                left,
-                right
+                ParenthesizeBinaryOperand(left),
+                ParenthesizeBinaryOperand(right)
             )
         );
+    }
+
+    private static ExpressionSyntax ParenthesizeBinaryOperand(ExpressionSyntax expression)
+    {
+        return expression is BinaryExpressionSyntax or ConditionalExpressionSyntax
+            ? ParenthesizedExpression(expression)
+            : expression;
     }
 
     private bool TryEmitSelectedBinaryFunction(
@@ -4254,7 +4261,11 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
         )
             return false;
 
-        result = BinaryExpression(kind, left, right);
+        result = BinaryExpression(
+            kind,
+            ParenthesizeBinaryOperand(left),
+            ParenthesizeBinaryOperand(right)
+        );
         return true;
     }
 

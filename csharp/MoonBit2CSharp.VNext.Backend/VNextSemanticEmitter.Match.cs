@@ -21,17 +21,36 @@ public sealed partial class VNextSemanticEmitter
         return ParseExpression(
             target
                 + " switch { "
-                + string.Join(
-                    ", ",
-                    arms.Select(arm =>
-                        MatchPatternExpression(targetType, arm.GetProperty("pattern"))
-                        + MatchArmCondition(arm)
-                        + " => "
-                        + EmitExpr(arm.GetProperty("body")).NormalizeWhitespace().ToFullString()
-                    )
-                )
+                + string.Join(", ", SwitchExpressionArms(targetType, arms))
                 + " }"
         );
+    }
+
+    private IEnumerable<string> SwitchExpressionArms(JsonElement targetType, JsonElement[] arms)
+    {
+        foreach (var arm in arms)
+        {
+            yield return MatchPatternExpression(targetType, arm.GetProperty("pattern"))
+                + MatchArmCondition(arm)
+                + " => "
+                + EmitExpr(arm.GetProperty("body")).NormalizeWhitespace().ToFullString();
+        }
+
+        if (!SwitchExpressionEndsWithDiscardArm(arms))
+            yield return "_ => throw new System.Diagnostics.UnreachableException()";
+    }
+
+    private static bool SwitchExpressionEndsWithDiscardArm(JsonElement[] arms)
+    {
+        if (arms.Length == 0)
+            return false;
+
+        var finalArm = arms[^1];
+        if (finalArm.TryGetProperty("condition", out _))
+            return false;
+
+        return finalArm.GetProperty("pattern").GetProperty("kind").GetString()
+            is "Wildcard" or "Binding";
     }
 
     private ExpressionSyntax EmitMatchImmediatelyInvokedFunction(JsonElement expr)
@@ -465,7 +484,8 @@ public sealed partial class VNextSemanticEmitter
 
         builder.Append("}");
         statements.Add(ParseStatement(builder.ToString()));
-        statements.Add(ParseStatement(UnreachableStatementText()));
+        if (!UseDefaultBranchForFinalArm(targetType, arms, arms.Length - 1))
+            statements.Add(ParseStatement(UnreachableStatementText()));
     }
 
     private static string UnreachableStatementText()

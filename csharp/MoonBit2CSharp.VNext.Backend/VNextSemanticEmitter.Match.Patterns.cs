@@ -577,9 +577,10 @@ public sealed partial class VNextSemanticEmitter
                 foreach (var item in pattern.GetProperty("items").EnumerateArray())
                     if (!CanEmitSwitchPatternExpression(itemType.Value, item))
                         return false;
-                return !pattern.TryGetProperty("rest", out var rest)
-                    || rest.ValueKind == JsonValueKind.Null
-                    || CanEmitSwitchPatternExpression(targetType, rest);
+                foreach (var item in ArrayPatternSuffix(pattern))
+                    if (!CanEmitSwitchPatternExpression(itemType.Value, item))
+                        return false;
+                return true;
             }
 
             case "Or":

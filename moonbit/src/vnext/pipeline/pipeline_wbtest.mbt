@@ -430,6 +430,16 @@ test "vnext lowers valued functional loop break and continue arguments" {
 }
 
 ///|
+test "vnext binds tuple destructuring from functional loop result" {
+  let source = "fn probe(hash:Int)->Int {\n  let (idx, psl) = for psl = 0, idx = hash {\n    if psl > 1 { break (idx, psl) } else { continue psl + 1, idx + 1 }\n  }\n  idx + psl\n}\n"
+  let json = compile_test_source_to_json(source, "demo.mbt", "Demo")
+  assert_true(json.contains("\"kind\":\"ForLoop\""))
+  assert_true(json.contains("\"kind\":\"TupleLiteral\""))
+  assert_true(json.contains("\"kind\":\"TupleGet\""))
+  assert_true(json.contains("\"diagnostics\":[]"))
+}
+
+///|
 test "vnext lowers explicit return as control IR" {
   let source = "fn keep(x:Int)->Int { if x > 0 { return x } else { return 0 } }\n"
   let json = compile_test_source_to_json(source, "demo.mbt", "Demo")
