@@ -122,6 +122,8 @@ pub(all) struct PackageBindingSession {
   package_id : String
   context : BindingContext
   index : DeclarationIndex
+  source_functions_by_id : Map[String, Function]
+  source_globals_by_id : Map[String, GlobalLet]
   diagnostics : Array[Diagnostic]
 }
 
@@ -356,7 +358,16 @@ pub fn package_binding_session_with_default_arguments(
   collect_functions(context, index, ast)
   collect_globals(context, index, ast)
   collect_impls(context, index, ast)
-  { ast, module_name, package_id, context, index, diagnostics }
+  {
+    ast,
+    module_name,
+    package_id,
+    context,
+    index,
+    source_functions_by_id: source_function_index(ast, package_id, module_name),
+    source_globals_by_id: source_global_index(ast, package_id, module_name),
+    diagnostics,
+  }
 }
 
 ///|
@@ -365,51 +376,49 @@ pub fn bind_selected_functions_from_session(
   selected_function_ids : Array[String],
 ) -> BoundModule {
   let functions : Array[BoundFunction] = []
-  for function in session.ast.functions {
-    let fid = function_id(
-      session.package_id,
-      session.module_name,
-      function_decl_name(function),
-    )
-    if contains_string(selected_function_ids, fid) {
-      match function.external {
-        Some(extern_decl) =>
-          match extern_decl.body {
-            Some(body) =>
-              functions.push(
-                bind_external_function(
-                  session.context,
-                  session.index,
-                  function,
-                  extern_decl.target,
-                  body,
-                ),
-              )
-            None =>
-              if extern_decl.target == "interface" {
+  for fid in selected_function_ids {
+    match session.source_functions_by_id.get(fid) {
+      Some(function) => {
+        match function.external {
+          Some(extern_decl) =>
+            match extern_decl.body {
+              Some(body) =>
                 functions.push(
                   bind_external_function(
                     session.context,
                     session.index,
                     function,
-                    "interface",
-                    "",
+                    extern_decl.target,
+                    body,
                   ),
                 )
-              }
-          }
-        None =>
-          if function.intrinsic is None {
-            functions.push(
-              bind_function_body(
-                session.context,
-                session.index,
-                session.ast,
-                function,
-              ),
-            )
-          }
+              None =>
+                if extern_decl.target == "interface" {
+                  functions.push(
+                    bind_external_function(
+                      session.context,
+                      session.index,
+                      function,
+                      "interface",
+                      "",
+                    ),
+                  )
+                }
+            }
+          None =>
+            if function.intrinsic is None {
+              functions.push(
+                bind_function_body(
+                  session.context,
+                  session.index,
+                  session.ast,
+                  function,
+                ),
+              )
+            }
+        }
       }
+      None => ()
     }
   }
   append_bound_functions(
@@ -450,14 +459,19 @@ fn bind_missing_selected_impl_method_bodies(
   selected_function_ids : Array[String],
 ) -> Array[BoundFunction] {
   let missing : Array[String] = []
+  let existing_function_ids : Set[String] = Set([])
+  for function in existing_functions {
+    existing_function_ids.add(function.symbol_id)
+  }
   for function_id in selected_function_ids {
-    if !has_bound_function(existing_functions, function_id) {
+    if !existing_function_ids.contains(function_id) {
       missing.push(function_id)
     }
   }
   if missing.length() == 0 {
     return []
   }
+  let missing_set = binder_string_set(missing)
   let diagnostics : Array[Diagnostic] = []
   let context : BindingContext = {
     module_name: session.context.module_name,
@@ -489,24 +503,11 @@ fn bind_missing_selected_impl_method_bodies(
       session.ast,
       missing,
     ) {
-    if contains_string(missing, function.symbol_id) {
+    if missing_set.contains(function.symbol_id) {
       result.push(function)
     }
   }
   result
-}
-
-///|
-fn has_bound_function(
-  functions : Array[BoundFunction],
-  function_id : String,
-) -> Bool {
-  for function in functions {
-    if function.symbol_id == function_id {
-      return true
-    }
-  }
-  false
 }
 
 ///|
@@ -515,12 +516,13 @@ pub fn bind_selected_globals_from_session(
   selected_global_ids : Array[String],
 ) -> BoundModule {
   let globals : Array[BoundGlobal] = []
-  for global in session.ast.globals {
-    let gid = global_id(session.package_id, session.module_name, global.name)
-    if contains_string(selected_global_ids, gid) {
+  for gid in selected_global_ids {
+    match session.source_globals_by_id.get(gid) {
+      Some(global) =>
       globals.push(
         bind_global(session.context, session.index, session.ast, global),
       )
+      None => ()
     }
   }
   let module_ : BoundModule = {
@@ -557,13 +559,38 @@ fn has_error_diagnostic(diagnostics : Array[Diagnostic]) -> Bool {
 }
 
 ///|
-fn contains_string(items : Array[String], value : String) -> Bool {
+fn binder_string_set(items : Array[String]) -> Set[String] {
+  let result : Set[String] = Set([])
   for item in items {
-    if item == value {
-      return true
-    }
+    result.add(item)
   }
-  false
+  result
+}
+
+///|
+fn source_function_index(
+  ast : Module,
+  package_id : String,
+  module_name : String,
+) -> Map[String, Function] {
+  let result : Map[String, Function] = Map([])
+  for function in ast.functions {
+    result[function_id(package_id, module_name, function_decl_name(function))] = function
+  }
+  result
+}
+
+///|
+fn source_global_index(
+  ast : Module,
+  package_id : String,
+  module_name : String,
+) -> Map[String, GlobalLet] {
+  let result : Map[String, GlobalLet] = Map([])
+  for global in ast.globals {
+    result[global_id(package_id, module_name, global.name)] = global
+  }
+  result
 }
 
 ///|

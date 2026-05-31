@@ -391,44 +391,44 @@ fn complete_reachable_declaration_source_functions(
       )
       if selected.length() > 0 {
         if session.has_implementation {
+          let diagnostic_start = session.diagnostics.length()
+          let bind_start = profile_start(profiler)
           for selected_function_id in selected {
-            let diagnostic_start = session.diagnostics.length()
-            let bind_start = profile_start(profiler)
             ignore(set_try_add(processed_reachable, selected_function_id))
-            let bound = @sema.bind_selected_functions_from_session(
-              session.binding_session,
-              [selected_function_id],
-            )
-            profile_event_with_count(
-              profiler,
-              "reachable.bind-function:" + selected_function_id,
-              bind_start,
-              bound.functions.length(),
-            )
-            let new_diagnostics = diagnostics_after(
-              session.diagnostics,
-              diagnostic_start,
-            )
-            if !has_error_diagnostics(new_diagnostics) {
-              for diagnostic in new_diagnostics {
-                diagnostics.push(diagnostic)
+          }
+          let bound = @sema.bind_selected_functions_from_session(
+            session.binding_session,
+            selected,
+          )
+          profile_event_with_count(
+            profiler,
+            "reachable.bind-functions:" + session.import_ref.package_id,
+            bind_start,
+            bound.functions.length(),
+          )
+          let new_diagnostics = diagnostics_after(
+            session.diagnostics,
+            diagnostic_start,
+          )
+          if !has_error_diagnostics(new_diagnostics) {
+            for diagnostic in new_diagnostics {
+              diagnostics.push(diagnostic)
+            }
+            for function in bound.functions {
+              if set_try_add(emitted_function_ids, function.symbol_id) {
+                emitted_functions.push(function)
+                collect_function_called_function_ids(
+                  function, reachability_index, reachable,
+                )
+                collect_function_referenced_global_ids(
+                  function, reachability_index, reachable_globals,
+                )
+                changed = true
               }
-              for function in bound.functions {
-                if set_try_add(emitted_function_ids, function.symbol_id) {
-                  emitted_functions.push(function)
-                  collect_function_called_function_ids(
-                    function, reachability_index, reachable,
-                  )
-                  collect_function_referenced_global_ids(
-                    function, reachability_index, reachable_globals,
-                  )
-                  changed = true
-                }
-              }
-            } else {
-              for diagnostic in new_diagnostics {
-                diagnostics.push(diagnostic)
-              }
+            }
+          } else {
+            for diagnostic in new_diagnostics {
+              diagnostics.push(diagnostic)
             }
           }
         }
