@@ -42,26 +42,32 @@ catch (Exception ex)
 
 static int RunGeneratedProject(string[] args)
 {
-    var result = PrepareGeneratedProject(args, "run", true, out var appArgs);
-    return RunDotnetProject(result.ProjectPath, appArgs);
+    var result = PrepareGeneratedProject(args, "run", true, out var appArgs, out var release);
+    return RunDotnetProject(
+        result.ProjectPath,
+        appArgs,
+        result.CacheHit && DotnetBuildOutputExists(result.ProjectPath, release),
+        release
+    );
 }
 
 static int BuildGeneratedProject(string[] args)
 {
-    var result = PrepareGeneratedProject(args, "build", false, out _);
+    var result = PrepareGeneratedProject(args, "build", false, out _, out var release);
     Console.Error.WriteLine(
         result.CacheHit
             ? $"generated: {result.OutputDirectory} (cache hit)"
             : $"generated: {result.OutputDirectory}"
     );
-    return BuildDotnetProject(result.ProjectPath);
+    return BuildDotnetProject(result.ProjectPath, release);
 }
 
 static MoonBitRunProjectResult PrepareGeneratedProject(
     string[] args,
     string commandName,
     bool allowAppArgs,
-    out string[] appArgs
+    out string[] appArgs,
+    out bool release
 )
 {
     var separator = Array.IndexOf(args, "--");
@@ -82,6 +88,7 @@ static MoonBitRunProjectResult PrepareGeneratedProject(
     var runtimeNamespace = "MoonBit2CSharp.Runtime";
     var cacheDirectory = "";
     var cacheEnabled = true;
+    release = false;
     var additionalUsings = new List<string>();
     var additionalProjectReferences = new List<string>();
     var inputPaths = new List<string>();
@@ -128,6 +135,9 @@ static MoonBitRunProjectResult PrepareGeneratedProject(
                 break;
             case "--no-cache":
                 cacheEnabled = false;
+                break;
+            case "--release":
+                release = true;
                 break;
             case "--using":
                 additionalUsings.Add(RequireValue(commandArgs, ref i, "--using"));
@@ -308,24 +318,67 @@ static string RequireValue(string[] args, ref int index, string option)
     return args[++index];
 }
 
-static int RunDotnetProject(string projectPath, IReadOnlyList<string> appArgs)
+static int RunDotnetProject(
+    string projectPath,
+    IReadOnlyList<string> appArgs,
+    bool noBuild,
+    bool release
+)
 {
-    var arguments = new List<string>
+    var arguments = new List<string> { "run", "--project", Path.GetFullPath(projectPath) };
+    if (release)
     {
-        "run",
-        "--project",
-        Path.GetFullPath(projectPath),
-        "--",
-        "moonbit2csharp-run",
-    };
+        arguments.Add("-c");
+        arguments.Add("Release");
+    }
+    if (noBuild)
+        arguments.Add("--no-build");
+    arguments.Add("--");
+    arguments.Add("moonbit2csharp-run");
     arguments.AddRange(appArgs);
 
     return RunDotnetCommand(projectPath, arguments);
 }
 
-static int BuildDotnetProject(string projectPath)
+static int BuildDotnetProject(string projectPath, bool release)
 {
-    return RunDotnetCommand(projectPath, ["build", Path.GetFullPath(projectPath)]);
+    var arguments = new List<string> { "build", Path.GetFullPath(projectPath) };
+    if (release)
+    {
+        arguments.Add("-c");
+        arguments.Add("Release");
+    }
+
+    return RunDotnetCommand(projectPath, arguments);
+}
+
+static bool DotnetBuildOutputExists(string projectPath, bool release)
+{
+    var fullProjectPath = Path.GetFullPath(projectPath);
+    var projectDirectory = Path.GetDirectoryName(fullProjectPath);
+    if (string.IsNullOrWhiteSpace(projectDirectory))
+        return false;
+
+    var projectName = Path.GetFileNameWithoutExtension(fullProjectPath);
+    var configuration = release ? "Release" : "Debug";
+    var configurationDirectory = Path.Combine(projectDirectory, "bin", configuration);
+    if (!Directory.Exists(configurationDirectory))
+        return false;
+
+    return Directory
+            .EnumerateFiles(
+                configurationDirectory,
+                projectName + ".exe",
+                SearchOption.AllDirectories
+            )
+            .Any()
+        || Directory
+            .EnumerateFiles(
+                configurationDirectory,
+                projectName + ".dll",
+                SearchOption.AllDirectories
+            )
+            .Any();
 }
 
 static int RunDotnetCommand(string projectPath, IReadOnlyList<string> arguments)
@@ -416,10 +469,10 @@ static int PrintUsage()
         "usage: MoonBit2CSharp.Cli [--pascal-case] <input.mbt|input.mbtx> [output.cs]"
     );
     Console.Error.WriteLine(
-        "   or: MoonBit2CSharp.Cli build [input.mbt|directory|moon.mod|moon.mod.json]"
+        "   or: MoonBit2CSharp.Cli build [--release] [input.mbt|directory|moon.mod|moon.mod.json]"
     );
     Console.Error.WriteLine(
-        "   or: MoonBit2CSharp.Cli run [input.mbt|directory|moon.mod|moon.mod.json] [-- app args...]"
+        "   or: MoonBit2CSharp.Cli run [--release] [input.mbt|directory|moon.mod|moon.mod.json] [-- app args...]"
     );
     Console.Error.WriteLine(
         "   or: MoonBit2CSharp.Cli --project <output-dir> [--single-file <name.cs>] [--csproj <name>|--no-csproj] [--moon-mod <moon.mod|moon.mod.json>] [--exe] [--reference-runtime] [--runtime-project <path>] [--project-reference <path>] [--namespace <namespace>] [--runtime-namespace <namespace>] [--using <namespace>] [--cache-dir <dir>|--no-cache] [--include-main-packages] [--pascal-case] <inputs...>"
