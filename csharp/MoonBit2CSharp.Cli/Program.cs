@@ -148,8 +148,6 @@ static MoonBitRunProjectResult PrepareGeneratedProject(
     if (inputPaths.Count == 0)
         inputPaths.Add(Directory.GetCurrentDirectory());
 
-    RunMoonCheckForInputs(inputPaths, moonModPath);
-
     return MoonBitRunProject.Prepare(
         new(inputPaths.Select(Path.GetFullPath).ToArray())
         {
