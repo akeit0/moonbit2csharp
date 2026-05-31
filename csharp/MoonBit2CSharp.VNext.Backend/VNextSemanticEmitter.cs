@@ -4995,6 +4995,14 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
         }
     }
 
+    private IEnumerable<string> UsedDerivedTraitImplTypeIds(string traitName)
+    {
+        var prefix = traitName + "|";
+        foreach (var key in usedDerivedTraitImplKeys)
+            if (key.StartsWith(prefix, StringComparison.Ordinal))
+                yield return key[prefix.Length..];
+    }
+
     private static string UsedDerivedTraitImplKey(string typeId, string traitName)
     {
         return traitName + "|" + typeId;
@@ -5006,7 +5014,7 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
         while (changed)
         {
             changed = false;
-            foreach (var typeId in UsedDerivedTraitImplTypeIds().ToArray())
+            foreach (var typeId in UsedDerivedTraitImplTypeIds(traitName).ToArray())
             {
                 if (!typeDefinitions.TryGetValue(typeId, out var definition))
                     continue;
