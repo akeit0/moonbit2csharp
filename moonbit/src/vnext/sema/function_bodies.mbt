@@ -44,7 +44,7 @@ fn bind_function_body(
     symbol_id: fid,
     name: function_decl_name(function),
     is_public: signature.is_public,
-    type_params: type_param_defs(function.type_params),
+    type_params: type_param_constraints(function.type_params),
     params,
     return_type: signature.return_type,
     effect: signature.effect,
@@ -123,7 +123,7 @@ fn bind_external_function(
     symbol_id: fid,
     name: function_decl_name(function),
     is_public: signature.is_public,
-    type_params: type_param_defs(function.type_params),
+    type_params: type_param_constraints(function.type_params),
     params,
     return_type: signature.return_type,
     effect: signature.effect,
@@ -294,16 +294,11 @@ fn bind_default_trait_impl_method_body(
 fn default_trait_impl_type_param_defs(
   impl_decl : ImplDecl,
   trait_name : String,
-) -> Array[@ir.BoundTypeParam] {
-  let constraints = @semantic.default_trait_impl_type_params(
+) -> Array[TypeParamConstraint] {
+  @semantic.default_trait_impl_type_params(
     fixed_type_param_constraints(impl_decl.type_params),
     trait_name,
   )
-  let result : Array[@ir.BoundTypeParam] = []
-  for param in constraints {
-    result.push({ name: param.name, constraints: param.constraints })
-  }
-  result
 }
 
 ///|
@@ -500,7 +495,7 @@ fn bind_concrete_impl_method_body(
         symbol_id: signature.function_id,
         name: impl_method.name,
         is_public: signature.is_public,
-        type_params: fixed_type_param_defs(impl_decl.type_params),
+        type_params: fixed_type_param_constraints(impl_decl.type_params),
         params,
         return_type: signature.return_type,
         effect: signature.effect,
@@ -723,32 +718,6 @@ fn string_set(items : Array[String]) -> Set[String] {
   let result : Set[String] = Set([])
   for item in items {
     result.add(item)
-  }
-  result
-}
-
-///|
-fn type_param_defs(
-  type_params : Array[@ast.TypeParamSyntax],
-) -> Array[@ir.BoundTypeParam] {
-  let result : Array[@ir.BoundTypeParam] = Array::new(
-    capacity=type_params.length(),
-  )
-  for param in type_params {
-    result.push({ name: param.name, constraints: param.constraints })
-  }
-  result
-}
-
-///|
-fn fixed_type_param_defs(
-  type_params : FixedArray[@ast.TypeParamSyntax],
-) -> Array[@ir.BoundTypeParam] {
-  let result : Array[@ir.BoundTypeParam] = Array::new(
-    capacity=type_params.length(),
-  )
-  for param in type_params {
-    result.push({ name: param.name, constraints: param.constraints })
   }
   result
 }

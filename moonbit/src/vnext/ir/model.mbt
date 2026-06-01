@@ -42,7 +42,7 @@ pub(all) struct BoundFunction {
   symbol_id : String
   name : String
   is_public : Bool
-  type_params : Array[BoundTypeParam]
+  type_params : Array[@binding.TypeParamConstraint]
   params : Array[BoundParam]
   return_type : @binding.TypeRef
   effect : @binding.EffectRef
@@ -55,12 +55,6 @@ pub(all) struct BoundFunction {
 pub(all) struct BoundExternalFunction {
   target : String
   body : String
-} derive(Eq, Debug)
-
-///|
-pub(all) struct BoundTypeParam {
-  name : String
-  constraints : Array[String]
 } derive(Eq, Debug)
 
 ///|

@@ -250,7 +250,10 @@ fn write_function(out : StringBuilder, function : @ir.BoundFunction) -> Unit {
 }
 
 ///|
-fn write_type_param(out : StringBuilder, param : @ir.BoundTypeParam) -> Unit {
+fn write_type_param(
+  out : StringBuilder,
+  param : @binding.TypeParamConstraint,
+) -> Unit {
   out.write_string("{\"name\":")
   write_string(out, param.name)
   out.write_string(",\"constraints\":[")

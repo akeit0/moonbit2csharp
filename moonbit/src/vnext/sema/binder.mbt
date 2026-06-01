@@ -58,7 +58,6 @@ using @ir {
   type BoundGlobal,
   type BoundModule,
   type BoundParam,
-  type BoundTypeParam,
   type BoundFieldValue,
   type BoundMapEntry,
   type BoundTraitDispatch,
@@ -749,7 +748,7 @@ fn signature_to_bound_function_stub(
     symbol_id: signature.function_id,
     name: signature.name,
     is_public: signature.is_public,
-    type_params: signature_type_params(signature.type_params),
+    type_params: signature.type_params,
     params,
     return_type: signature.return_type,
     effect: signature.effect,
@@ -780,17 +779,6 @@ fn find_function_external_body(
 }
 
 ///|
-fn signature_type_params(
-  type_params : Array[TypeParamConstraint],
-) -> Array[BoundTypeParam] {
-  let result : Array[BoundTypeParam] = []
-  for param in type_params {
-    result.push({ name: param.name, constraints: param.constraints })
-  }
-  result
-}
-
-///|
 pub fn bound_function_signature(
   function : BoundFunction,
   package_id : String,
@@ -800,20 +788,13 @@ pub fn bound_function_signature(
   for param in function.params {
     parameters.push(bound_parameter_def(param))
   }
-  let type_param_constraints : Array[TypeParamConstraint] = []
-  for param in function.type_params {
-    type_param_constraints.push({
-      name: param.name,
-      constraints: param.constraints,
-    })
-  }
   {
     function_id: function.symbol_id,
     package_id,
     module_path,
     name: function.name,
     receiver_type: bound_function_receiver_type(function),
-    type_params: type_param_constraints,
+    type_params: function.type_params,
     parameters,
     return_type: function.return_type,
     effect: function.effect,
