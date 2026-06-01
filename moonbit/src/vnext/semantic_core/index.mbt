@@ -576,7 +576,7 @@ fn declare_derived_non_operator_impl(
           let function_id = "derived:trait:" +
             trait_def.symbol.id +
             ":" +
-            @binding.type_name(self_type) +
+            derived_impl_self_type_id(self_type) +
             ":" +
             method_name
           let parameters = impl_method_parameters(
@@ -604,7 +604,7 @@ fn declare_derived_non_operator_impl(
             evidence_id: "derived-impl:" +
             trait_def.symbol.id +
             ":" +
-            @binding.type_name(self_type),
+            derived_impl_self_type_id(self_type),
             trait_ref: { trait_: trait_def.symbol, args: [] },
             self_type,
             type_args: [],
@@ -656,6 +656,11 @@ fn derived_impl_function_name(
 }
 
 ///|
+fn derived_impl_self_type_id(self_type : TypeRef) -> String {
+  @binding.type_key(self_type)
+}
+
+///|
 fn find_derived_trait(
   index : DeclarationIndex,
   trait_name : String,
@@ -703,7 +708,7 @@ fn declare_derived_operator_impl(
   let function_id = "derived:trait:" +
     binding.trait_symbol.id +
     ":" +
-    @binding.type_name(self_type) +
+    derived_impl_self_type_id(self_type) +
     ":" +
     binding.method_name
   let signature : FunctionSignature = {
@@ -732,7 +737,7 @@ fn declare_derived_operator_impl(
     evidence_id: "derived-impl:" +
     binding.trait_symbol.id +
     ":" +
-    @binding.type_name(self_type),
+    derived_impl_self_type_id(self_type),
     trait_ref: { trait_: binding.trait_symbol, args: [] },
     self_type,
     type_args: [],
@@ -1761,14 +1766,12 @@ fn add_imported_operator_impl(
   impl_ : ImplDefinition,
   impl_method : ImplMethodSignature,
 ) -> Unit {
-  guard find_trait_by_id(index, impl_.trait_ref.trait_.id) is Some(trait_def) else {
-    return
-  }
-  guard operator_key_from_trait_method(trait_def.symbol.name, impl_method.name)
+  guard operator_key_from_trait_ref_method(impl_.trait_ref, impl_method.name)
     is Some(key) else {
     return
   }
-  guard find_function(index, impl_method.function_id) is Some(signature) else {
+  guard imported_operator_signature(index, key, impl_.self_type, impl_method)
+    is Some(signature) else {
     return
   }
   add_operator_impl(
@@ -1788,6 +1791,58 @@ fn add_imported_operator_impl(
     },
     impl_.span,
   )
+}
+
+///|
+fn operator_key_from_trait_ref_method(
+  trait_ref : TraitRef,
+  method_name : String,
+) -> OperatorKey? {
+  if trait_ref.trait_.package_id != "pkg:moonbitlang/core/builtin" {
+    return None
+  }
+  operator_key_from_trait_method(trait_ref.trait_.name, method_name)
+}
+
+///|
+fn imported_operator_signature(
+  index : DeclarationIndex,
+  key : OperatorKey,
+  self_type : TypeRef,
+  impl_method : ImplMethodSignature,
+) -> FunctionSignature? {
+  match find_function(index, impl_method.function_id) {
+    Some(signature) => Some(signature)
+    None =>
+      match impl_method.body {
+        ImplMethodBody::DefaultMethod => {
+          let binding = operator_trait_binding(key, self_type)
+          let signature : FunctionSignature = {
+            function_id: impl_method.function_id,
+            package_id: binding.trait_symbol.package_id,
+            module_path: binding.trait_symbol.module_path,
+            name: impl_method.name,
+            receiver_type: None,
+            type_params: [],
+            parameters: builtin_operator_parameters(
+              impl_method.function_id,
+              binding.parameters,
+              impl_method.span,
+            ),
+            return_type: binding.return_type,
+            effect: @binding.no_raise(),
+            aliases: [],
+            intrinsic: None,
+            is_public: true,
+            span: impl_method.span,
+          }
+          declare_function(index, signature)
+          add_impl_method_function_index(index, impl_method.function_id)
+          Some(signature)
+        }
+        _ => None
+      }
+  }
 }
 
 ///|

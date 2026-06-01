@@ -567,7 +567,20 @@ fn bind_unsupported_binary_operator(
     error_type(),
     ast,
   )
-  context.error("VNX1101", "unsupported binary operator", span)
+  context.error(
+    "VNX1101",
+    "unsupported binary operator `" +
+    op +
+    "` for " +
+    diagnostic_type_name(
+      @semantic.resolve_inferred_type(typing, @ir.expr_type(left_bound)),
+    ) +
+    " and " +
+    diagnostic_type_name(
+      @semantic.resolve_inferred_type(typing, @ir.expr_type(right_bound)),
+    ),
+    span,
+  )
   BoundExpr::Binary(
     op,
     left_bound,

@@ -157,7 +157,9 @@ fn test_core_source() -> String {
 test "vnext lowers logger append interpolated strings to logger writes" {
   let source = "fn main() -> Unit {\n  let world = \"world\"\n  let sb = StringBuilder::new()\n  sb <+ \"Hello, \\{world}!\"\n}\n"
   let json = compile_test_source_to_json(source, "logger_append.mbt", "Main")
-  assert_true(json.contains("\"diagnostics\":[]"))
+  if !json.contains("\"diagnostics\":[]") {
+    fail(json)
+  }
   assert_true(json.contains("\"name\":\"write_string\""))
   assert_true(json.contains("\"name\":\"StringBuilder::write_object\""))
   assert_true(json.contains("\"value\":\"Hello, \""))
@@ -221,7 +223,9 @@ test "vnext infers empty array element type through append receiver call" {
       "\"functionId\":\"fn:pkg:moonbitlang/core/builtin:moonbitlang/core/builtin:Array::append\"",
     ),
   )
-  assert_true(json.contains("\"diagnostics\":[]"))
+  if !json.contains("\"diagnostics\":[]") {
+    fail(json)
+  }
 }
 
 ///|
@@ -2245,6 +2249,49 @@ test "vnext declaration source core numeric empty main stays clean" {
     ]),
   )
   assert_true(json.contains("\"diagnostics\":[]"))
+}
+
+///|
+test "vnext keeps imported derived enum impls unique by full type identity" {
+  let ast_source =
+    "pub(all) enum UsingItemKind {\n  Type\n  Value\n} derive(Eq)\npub(all) struct UsingItem {\n  package_id : String\n  name : String\n  kind : UsingItemKind\n}\n"
+  let semantic_source =
+    "pub(all) enum UsingItemKind {\n  Type\n  Function\n  Global\n} derive(Eq)\npub(all) struct UsingItem {\n  package_id : String\n  name : String\n  kind : UsingItemKind\n}\n"
+  let source =
+    "fn same(existing : @semantic.UsingItem, item : @semantic.UsingItem) -> Bool {\n  existing.package_id == item.package_id && existing.name == item.name && existing.kind == item.kind\n}\n"
+  let json = compile_package_sources_with_declarations_to_json(
+    [{ file_path: "main.mbt", source }],
+    "Main",
+    "import {\n  \"moonbitlang/core/builtin\" as builtin\n  \"ast\" @ast\n  \"semantic\" @semantic\n}\n",
+    "moon.pkg",
+    [
+      {
+        import_ref: {
+          alias_name: "ast",
+          package_id: "pkg:ast",
+          module_path: "ast",
+        },
+        file_path: "ast.mbt",
+        source: ast_source,
+      },
+      {
+        import_ref: {
+          alias_name: "semantic",
+          package_id: "pkg:semantic",
+          module_path: "semantic",
+        },
+        file_path: "semantic.mbt",
+        source: semantic_source,
+      },
+    ],
+    test_core_declaration_sources([]),
+  )
+  if !json.contains("\"diagnostics\":[]") {
+    fail(json)
+  }
+  if !json.contains("\"selectedFunctionId\":\"derived:trait:") {
+    fail(json)
+  }
 }
 
 ///|
