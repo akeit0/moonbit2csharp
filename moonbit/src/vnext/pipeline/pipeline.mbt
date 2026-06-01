@@ -4,7 +4,7 @@ pub fn compile_source_to_json(
   file_path : String,
   module_name : String,
 ) -> String {
-  let file = @text.source_file(file_path, source)
+  let file = @text.source_file(file_path, normalize_source_newlines(source))
   let parsed = @syntax.parse_source(file)
   let bound = @sema.bind_module(parsed.module_, module_name, parsed.diagnostics)
   @json.write_module_json(bound)
@@ -807,7 +807,7 @@ fn external_declaration_sources(
   let result : Array[@package.PackageSource] = []
   for source in sources {
     let parsed = @syntax.parse_declaration_source(
-      @text.source_file(source.file_path, source.source),
+      @text.source_file(source.file_path, normalize_source_newlines(source.source)),
     )
     for function in parsed.module_.functions {
       match function.external {
@@ -1599,7 +1599,7 @@ fn parse_package_sources(
 ) -> @ast.Module {
   let module_ = empty_module()
   for source in sources {
-    let file = @text.source_file(source.file_path, source.source)
+    let file = @text.source_file(source.file_path, normalize_source_newlines(source.source))
     let parsed = @syntax.parse_source(file)
     for diagnostic in parsed.diagnostics {
       diagnostics.push(diagnostic)
@@ -1616,7 +1616,7 @@ fn parse_declaration_package_sources(
 ) -> @ast.Module {
   let module_ = empty_module()
   for source in sources {
-    let file = @text.source_file(source.file_path, source.source)
+    let file = @text.source_file(source.file_path, normalize_source_newlines(source.source))
     let parsed = @syntax.parse_declaration_source(file)
     for diagnostic in parsed.diagnostics {
       diagnostics.push(diagnostic)
@@ -1633,7 +1633,7 @@ fn parse_source_units(
 ) -> @ast.Module {
   let module_ = empty_module()
   for source in sources {
-    let file = @text.source_file(source.file_path, source.source)
+    let file = @text.source_file(source.file_path, normalize_source_newlines(source.source))
     let parsed = @syntax.parse_source(file)
     for diagnostic in parsed.diagnostics {
       diagnostics.push(diagnostic)
@@ -1641,6 +1641,36 @@ fn parse_source_units(
     append_module(module_, parsed.module_)
   }
   module_
+}
+
+///|
+fn normalize_source_newlines(source : String) -> String {
+  let mut i = 0
+  let mut start = 0
+  let len = source.length()
+  let out = StringBuilder::new()
+  let mut changed = false
+  while i < len {
+    if source[i] == '\r' {
+      changed = true
+      if start < i {
+        out.write_stringview(source[start:i])
+      }
+      out.write_string("\n")
+      i = if i + 1 < len && source[i + 1] == '\n' { i + 2 } else { i + 1 }
+      start = i
+    } else {
+      i += 1
+    }
+  }
+  if !changed {
+    source
+  } else {
+    if start < len {
+      out.write_stringview(source[start:])
+    }
+    out.to_string()
+  }
 }
 
 ///|

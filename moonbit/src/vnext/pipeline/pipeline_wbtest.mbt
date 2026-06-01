@@ -611,6 +611,17 @@ test "vnext collects raw multiline text after let initializer separator" {
 }
 
 ///|
+test "vnext normalizes CRLF in raw multiline text" {
+  let source = "fn main()->String {\r\n  let source =\r\n    #| # Hello, MoonBit!\r\n    #| This is a sample markdown document.\r\n  source\r\n}\r\n"
+  let json = compile_test_source_to_json(source, "demo.mbt", "Demo")
+  assert_true(
+    json.contains("# Hello, MoonBit!\\n This is a sample markdown document."),
+  )
+  assert_false(json.contains("\\r"))
+  assert_true(json.contains("\"diagnostics\":[]"))
+}
+
+///|
 test "vnext json writer escapes tab characters in strings" {
   let source = "fn main()->String { \" \\t\" }\n"
   let json = compile_test_source_to_json(source, "demo.mbt", "Demo")
