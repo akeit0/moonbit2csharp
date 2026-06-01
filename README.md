@@ -94,6 +94,31 @@ MoonBit project
 The generated frontend host is created under the transpiler cache directory. It
 builds separately and then runs with `--no-build` so stdout remains pure JSON IR.
 
+For direct runner or NativeAOT usage, use the standalone runner project at
+`csharp/MoonBit2CSharp.VNextFrontendRunner`. It is intentionally not part of
+`MoonBit2CSharp.slnx` because it depends on the generated frontend project:
+
+```powershell
+dotnet publish csharp\MoonBit2CSharp.VNextFrontendRunner\MoonBit2CSharp.VNextFrontendRunner.csproj `
+  -c Release `
+  -p:GeneratedVNextFrontendProject=$PWD\artifacts\vnext_pipeline_csharp_dev\frontend.csproj `
+  -o artifacts\vnext_pipeline_runner
+
+dotnet run --project csharp\MoonBit2CSharp.Cli -- run samples\moonbit-project `
+  --vnext-frontend csharp:artifacts\vnext_pipeline_runner\MoonBit2CSharp.VNextFrontendRunner.dll
+```
+
+NativeAOT is the same runner published as an executable:
+
+```powershell
+dotnet publish csharp\MoonBit2CSharp.VNextFrontendRunner\MoonBit2CSharp.VNextFrontendRunner.csproj `
+  -c Release `
+  -r win-x64 `
+  -p:PublishAot=true `
+  -p:GeneratedVNextFrontendProject=$PWD\artifacts\vnext_pipeline_csharp_dev\frontend.csproj `
+  -o artifacts\vnext_pipeline_runner_aot
+```
+
 ## Caching
 
 `run` and `build` use a run-project cache. If source inputs, MoonBit manifests,

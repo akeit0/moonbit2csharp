@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>preview</LangVersion>
+    <InvariantGlobalization>true</InvariantGlobalization>
+  </PropertyGroup>
+
+  <Target Name="RequireGeneratedVNextFrontendProject" BeforeTargets="ResolveReferences">
+    <Error
+      Condition="'$(GeneratedVNextFrontendProject)' == ''"
+      Text="Set -p:GeneratedVNextFrontendProject=&lt;path-to-generated-frontend.csproj&gt;."
+    />
+  </Target>
+
+  <ItemGroup Condition="'$(GeneratedVNextFrontendProject)' != ''">
+    <ProjectReference Include="$(GeneratedVNextFrontendProject)" />
+  </ItemGroup>
+</Project>
