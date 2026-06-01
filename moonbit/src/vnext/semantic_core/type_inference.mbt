@@ -33,62 +33,142 @@ pub fn resolve_inferred_type(
   context : TypingContext,
   type_ : TypeRef,
 ) -> TypeRef {
+  if context.substitutions.length() == 0 {
+    return type_
+  }
+  resolve_inferred_type_with_change(context, type_).0
+}
+
+///|
+fn resolve_inferred_type_with_change(
+  context : TypingContext,
+  type_ : TypeRef,
+) -> (TypeRef, Bool) {
   match type_ {
     TypeRef::Unknown(reason) =>
       match find_substitution(context, reason) {
-        Some(resolved) => resolve_inferred_type(context, resolved)
-        None => type_
+        Some(resolved) => (resolve_inferred_type(context, resolved), true)
+        None => (type_, false)
       }
-    TypeRef::TypeParameter(name, symbol_id) =>
+    TypeRef::TypeParameter(_, symbol_id) =>
       match find_substitution(context, symbol_id) {
-        Some(resolved) => resolve_inferred_type(context, resolved)
-        None => TypeRef::TypeParameter(name, symbol_id)
+        Some(resolved) => (resolve_inferred_type(context, resolved), true)
+        None => (type_, false)
       }
     TypeRef::Declared(symbol, args) => {
-      let resolved_args : Array[TypeRef] = []
-      for arg in args {
-        resolved_args.push(resolve_inferred_type(context, arg))
-      }
-      TypeRef::Declared(symbol, resolved_args)
+      let (resolved_args, changed) = resolve_type_ref_array(context, args)
+      if changed { (TypeRef::Declared(symbol, resolved_args), true) } else { (type_, false) }
     }
     TypeRef::Tuple(items) => {
-      let resolved_items : Array[TypeRef] = []
-      for item in items {
-        resolved_items.push(resolve_inferred_type(context, item))
-      }
-      TypeRef::Tuple(resolved_items)
+      let (resolved_items, changed) = resolve_type_ref_array(context, items)
+      if changed { (TypeRef::Tuple(resolved_items), true) } else { (type_, false) }
     }
     TypeRef::Function(params, return_type, effect) => {
-      let resolved_params : Array[ParamTypeRef] = []
-      for param in params {
-        resolved_params.push({
-          label: param.label,
-          type_: resolve_inferred_type(context, param.type_),
-          optional: param.optional,
-          has_default: param.has_default,
-        })
-      }
-      TypeRef::Function(
-        resolved_params,
-        resolve_inferred_type(context, return_type),
-        resolve_inferred_effect(context, effect),
+      let (resolved_params, params_changed) = resolve_param_type_ref_array(
+        context,
+        params,
       )
+      let (resolved_return, return_changed) = resolve_inferred_type_with_change(
+        context,
+        return_type,
+      )
+      let (resolved_effect, effect_changed) = resolve_inferred_effect_with_change(
+        context,
+        effect,
+      )
+      if params_changed || return_changed || effect_changed {
+        (
+          TypeRef::Function(resolved_params, resolved_return, resolved_effect),
+          true,
+        )
+      } else {
+        (type_, false)
+      }
     }
     TypeRef::Apply(type_constructor, args) => {
-      let resolved_args : Array[TypeRef] = []
-      for arg in args {
-        resolved_args.push(resolve_inferred_type(context, arg))
-      }
-      TypeRef::Apply(type_constructor, resolved_args)
+      let (resolved_args, changed) = resolve_type_ref_array(context, args)
+      if changed { (TypeRef::Apply(type_constructor, resolved_args), true) } else { (type_, false) }
     }
     TypeRef::TraitObject(trait_ref) => {
-      let resolved_args : Array[TypeRef] = []
-      for arg in trait_ref.args {
-        resolved_args.push(resolve_inferred_type(context, arg))
+      let (resolved_args, changed) = resolve_type_ref_array(context, trait_ref.args)
+      if changed {
+        (
+          TypeRef::TraitObject({ trait_: trait_ref.trait_, args: resolved_args }),
+          true,
+        )
+      } else {
+        (type_, false)
       }
-      TypeRef::TraitObject({ trait_: trait_ref.trait_, args: resolved_args })
     }
-    _ => type_
+    _ => (type_, false)
+  }
+}
+
+///|
+fn resolve_type_ref_array(
+  context : TypingContext,
+  items : Array[TypeRef],
+) -> (Array[TypeRef], Bool) {
+  let mut result : Array[TypeRef]? = None
+  for i in 0..<items.length() {
+    let (resolved, changed) = resolve_inferred_type_with_change(context, items[i])
+    match result {
+      Some(values) => values.push(resolved)
+      None =>
+        if changed {
+          let values : Array[TypeRef] = []
+          for j in 0..<i {
+            values.push(items[j])
+          }
+          values.push(resolved)
+          result = Some(values)
+        }
+    }
+  }
+  match result {
+    Some(values) => (values, true)
+    None => (items, false)
+  }
+}
+
+///|
+fn resolve_param_type_ref_array(
+  context : TypingContext,
+  params : Array[ParamTypeRef],
+) -> (Array[ParamTypeRef], Bool) {
+  let mut result : Array[ParamTypeRef]? = None
+  for i in 0..<params.length() {
+    let param = params[i]
+    let (resolved_type, changed) = resolve_inferred_type_with_change(
+      context,
+      param.type_,
+    )
+    let resolved : ParamTypeRef = if changed {
+      {
+        label: param.label,
+        type_: resolved_type,
+        optional: param.optional,
+        has_default: param.has_default,
+      }
+    } else {
+      param
+    }
+    match result {
+      Some(values) => values.push(resolved)
+      None =>
+        if changed {
+          let values : Array[ParamTypeRef] = []
+          for j in 0..<i {
+            values.push(params[j])
+          }
+          values.push(resolved)
+          result = Some(values)
+        }
+    }
+  }
+  match result {
+    Some(values) => (values, true)
+    None => (params, false)
   }
 }
 
@@ -342,14 +422,19 @@ fn constructor_equal(
 }
 
 ///|
-fn resolve_inferred_effect(
+fn resolve_inferred_effect_with_change(
   context : TypingContext,
   effect : EffectRef,
-) -> EffectRef {
+) -> (EffectRef, Bool) {
   match effect {
-    EffectRef::Raises(error_type) =>
-      EffectRef::Raises(resolve_inferred_type(context, error_type))
-    _ => effect
+    EffectRef::Raises(error_type) => {
+      let (resolved, changed) = resolve_inferred_type_with_change(
+        context,
+        error_type,
+      )
+      if changed { (EffectRef::Raises(resolved), true) } else { (effect, false) }
+    }
+    _ => (effect, false)
   }
 }
 
