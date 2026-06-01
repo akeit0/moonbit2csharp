@@ -85,14 +85,14 @@ pub fn resolved_type_from_type_ref(type_ : TypeRef) -> ResolvedType {
     TypeRef::TypeParameter(name, symbol_id) =>
       ResolvedType::TypeParam(name, symbol_id)
     TypeRef::Tuple(items) => {
-      let resolved_items : Array[ResolvedType] = []
+      let resolved_items : Array[ResolvedType] = Array::new(capacity=items.length())
       for item in items {
         resolved_items.push(resolved_type_from_type_ref(item))
       }
       ResolvedType::Tuple(resolved_items)
     }
     TypeRef::Function(params, return_type, effect) => {
-      let resolved_params : Array[ResolvedParamType] = []
+      let resolved_params : Array[ResolvedParamType] = Array::new(capacity=params.length())
       for param in params {
         resolved_params.push({
           label: param.label,
@@ -128,7 +128,7 @@ pub fn resolved_type_from_type_ref(type_ : TypeRef) -> ResolvedType {
           )
       }
     TypeRef::Apply(type_constructor, args) => {
-      let resolved_args : Array[ResolvedType] = []
+      let resolved_args : Array[ResolvedType] = Array::new(capacity=args.length())
       for arg in args {
         resolved_args.push(resolved_type_from_type_ref(arg))
       }
@@ -138,7 +138,7 @@ pub fn resolved_type_from_type_ref(type_ : TypeRef) -> ResolvedType {
       )
     }
     TypeRef::TraitObject(trait_ref) => {
-      let resolved_args : Array[ResolvedType] = []
+      let resolved_args : Array[ResolvedType] = Array::new(capacity=trait_ref.args.length())
       for arg in trait_ref.args {
         resolved_args.push(resolved_type_from_type_ref(arg))
       }
@@ -200,7 +200,7 @@ fn resolved_nominal_type(
   symbol : TypeSymbolRef,
   args : FixedArray[TypeRef],
 ) -> ResolvedType {
-  let resolved_args : Array[ResolvedType] = []
+  let resolved_args : Array[ResolvedType] = Array::new(capacity=args.length())
   for arg in args {
     resolved_args.push(resolved_type_from_type_ref(arg))
   }

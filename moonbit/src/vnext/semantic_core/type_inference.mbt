@@ -157,7 +157,7 @@ fn resolve_param_type_ref_array(
       Some(values) => values.push(resolved)
       None =>
         if changed {
-          let values : Array[ParamTypeRef] = []
+          let values : Array[ParamTypeRef] = Array::new(capacity=params.length())
           for j in 0..<i {
             values.push(params[j])
           }
@@ -237,7 +237,7 @@ fn instantiate_type_params(
       TypeRef::Tuple(result)
     }
     TypeRef::Function(params, return_type, effect) => {
-      let result : Array[ParamTypeRef] = []
+      let result : Array[ParamTypeRef] = Array::new(capacity=params.length())
       for param in params {
         result.push({
           label: param.label,

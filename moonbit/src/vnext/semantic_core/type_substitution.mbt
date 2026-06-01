@@ -35,7 +35,7 @@ pub fn substitute_type(
       TypeRef::Tuple(mapped)
     }
     TypeRef::Function(param_types, return_type, effect) => {
-      let mapped_params : Array[ParamTypeRef] = []
+      let mapped_params : Array[ParamTypeRef] = Array::new(capacity=params.length())
       for param in param_types {
         mapped_params.push({
           label: param.label,
