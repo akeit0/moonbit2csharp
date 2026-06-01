@@ -52,6 +52,7 @@ public sealed record MoonBitProjectTranspileRequest(
     public bool CacheEnabled { get; init; } = true;
     public string CacheDirectory { get; init; } = "";
     public bool TrimApplicationOutput { get; init; }
+    public string GeneratedVNextPipelineProjectPath { get; init; } = "";
 }
 
 public sealed record MoonBitProjectTranspileResult(IReadOnlyList<string> WrittenFiles)
@@ -280,13 +281,23 @@ public static class MoonBitSourceTranspiler
             SourceLocationPackageNameForPackageRoot(mainRoot, moonModPath),
             EnvPackageNameForPackageRoot(mainRoot, moonModPath)
         );
-        var irJson = CompileMoonVNextSemanticIr(
-            mainFiles[0],
-            moduleName,
-            moonPkgPath,
-            importedRoots,
-            moonModPath
-        );
+        var irJson = string.IsNullOrWhiteSpace(request.GeneratedVNextPipelineProjectPath)
+            ? CompileMoonVNextSemanticIr(
+                mainFiles[0],
+                moduleName,
+                moonPkgPath,
+                importedRoots,
+                moonModPath
+            )
+            : CompileGeneratedVNextSemanticIr(
+                mainFiles[0],
+                moduleName,
+                moonPkgPath,
+                importedRoots,
+                moonModPath,
+                request.GeneratedVNextPipelineProjectPath,
+                request.CacheDirectory
+            );
         var targetExecutable = IsExecutableVNextTarget(request, fullInputs, mainRoot);
         var options = new VNextEmitterOptions(
             request.GeneratedNamespace,
@@ -573,6 +584,101 @@ public static class MoonBitSourceTranspiler
             File.WriteAllText(Path.GetFullPath(dumpPath), stdoutTask.Result);
 
         return stdoutTask.Result;
+    }
+
+    private static string CompileGeneratedVNextSemanticIr(
+        string mainFile,
+        string moduleName,
+        string moonPkgPath,
+        IReadOnlyList<string> importedRoots,
+        string? moonModPath,
+        string generatedProjectPath,
+        string cacheDirectory
+    )
+    {
+        var moonbitDirectory = Path.Combine(RepositoryRoot(), "moonbit");
+        var mainFileFullPath = Path.GetFullPath(mainFile);
+        var moonPkgFullPath = Path.GetFullPath(moonPkgPath);
+        var sources = new List<GeneratedVNextSourceUnit>
+        {
+            new(
+                MoonFrontendPath(moonbitDirectory, mainFileFullPath),
+                File.ReadAllText(mainFileFullPath)
+            ),
+        };
+        foreach (
+            var source in PackageSourceFiles(Path.GetDirectoryName(mainFileFullPath)!)
+                .Where(path =>
+                    !Path.GetFullPath(path)
+                        .Equals(mainFileFullPath, StringComparison.OrdinalIgnoreCase)
+                )
+        )
+        {
+            sources.Add(new(MoonFrontendPath(moonbitDirectory, source), File.ReadAllText(source)));
+        }
+
+        var importedSources = new List<GeneratedVNextPackageSource>();
+        var importedDeclarationSources = new List<GeneratedVNextPackageSource>();
+        var importedManifestSources = new List<GeneratedVNextSourceUnit>();
+        foreach (
+            var importedRoot in SortVNextImportedRootsByDependencies(importedRoots, moonModPath)
+        )
+        {
+            var modulePath =
+                SourceLocationPackageNameForPackageRoot(importedRoot, moonModPath)
+                ?? EnvPackageNameForPackageRoot(importedRoot, moonModPath)
+                ?? NormalizePackageName(Path.GetFileName(importedRoot));
+            var importRef = new GeneratedVNextImportRef(
+                DefaultMoonPkgAlias(modulePath),
+                "pkg:" + modulePath,
+                modulePath
+            );
+            if (FindMoonPkg(importedRoot) is { } importedMoonPkgPath)
+                importedManifestSources.Add(
+                    new(
+                        MoonFrontendPath(moonbitDirectory, importedMoonPkgPath),
+                        File.ReadAllText(importedMoonPkgPath)
+                    )
+                );
+
+            foreach (var file in VNextImportedPackageFiles(importedRoot, modulePath))
+                importedSources.Add(
+                    new(importRef, MoonFrontendPath(moonbitDirectory, file), File.ReadAllText(file))
+                );
+        }
+
+        foreach (var source in VNextCoreImplementationSources())
+            importedSources.Add(
+                new(
+                    new(source.Alias, source.PackageId, source.ModulePath),
+                    MoonFrontendPath(moonbitDirectory, source.Path),
+                    File.ReadAllText(source.Path)
+                )
+            );
+
+        foreach (var source in VNextCoreDeclarationSources())
+            importedDeclarationSources.Add(
+                new(
+                    new(source.Alias, source.PackageId, source.ModulePath),
+                    MoonFrontendPath(moonbitDirectory, source.Path),
+                    File.ReadAllText(source.Path)
+                )
+            );
+
+        var request = new GeneratedVNextFrontendRequest(
+            sources,
+            moduleName,
+            File.ReadAllText(moonPkgFullPath),
+            MoonFrontendPath(moonbitDirectory, moonPkgFullPath),
+            importedSources,
+            importedDeclarationSources,
+            importedManifestSources
+        );
+        return GeneratedVNextFrontendCompiler.Compile(
+            request,
+            generatedProjectPath,
+            cacheDirectory
+        );
     }
 
     private static void LogVNextMoonProfile(string stderr)

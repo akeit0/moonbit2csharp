@@ -115,3 +115,12 @@ test "vnext lexer treats hash identifier lines as generic attributes" {
   assert_true(result.tokens[4].kind == TokenKind::StringLiteral)
   assert_true(result.tokens[result.tokens.length() - 1].kind == TokenKind::Eof)
 }
+
+///|
+test "vnext lexer trims carriage return from CRLF attribute lines" {
+  let source = "#cfg(target=\"js\")\r\nlet seed : Int = 0\r\n"
+  let result = lex(@text.source_file("attributes-crlf.mbt", source))
+  assert_eq(result.diagnostics.length(), 0)
+  assert_true(result.tokens[0].kind == TokenKind::Attribute)
+  assert_eq(result.tokens[0].text, "#cfg(target=\"js\")")
+}

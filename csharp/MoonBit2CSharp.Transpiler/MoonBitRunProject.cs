@@ -23,6 +23,7 @@ public sealed record MoonBitRunProjectRequest(IReadOnlyList<string> Inputs)
     public IReadOnlyList<string> AdditionalProjectReferences { get; init; } = [];
     public bool CacheEnabled { get; init; } = true;
     public string CacheDirectory { get; init; } = "";
+    public string GeneratedVNextPipelineProjectPath { get; init; } = "";
 }
 
 public sealed record MoonBitRunProjectResult(
@@ -62,7 +63,13 @@ public static class MoonBitRunProject
         var projectPath = Path.Combine(outputDir, projectName + ".csproj");
         if (
             request.CacheEnabled
-            && RunProjectCacheFresh(outputDir, projectPath, fullInputs, moonModPath)
+            && RunProjectCacheFresh(
+                outputDir,
+                projectPath,
+                fullInputs,
+                moonModPath,
+                request.GeneratedVNextPipelineProjectPath
+            )
         )
         {
             return new(outputDir, projectPath, ExistingGeneratedFiles(outputDir, projectPath))
@@ -90,12 +97,18 @@ public static class MoonBitRunProject
                 AdditionalProjectReferences = request.AdditionalProjectReferences,
                 CacheEnabled = request.CacheEnabled,
                 CacheDirectory = request.CacheDirectory,
+                GeneratedVNextPipelineProjectPath = request.GeneratedVNextPipelineProjectPath,
                 TrimApplicationOutput = true,
             }
         );
 
         if (request.CacheEnabled)
-            WriteRunProjectCacheMarker(outputDir, fullInputs, moonModPath);
+            WriteRunProjectCacheMarker(
+                outputDir,
+                fullInputs,
+                moonModPath,
+                request.GeneratedVNextPipelineProjectPath
+            );
 
         return new(outputDir, projectPath, result.WrittenFiles) { CacheHit = result.CacheHit };
     }
@@ -104,15 +117,25 @@ public static class MoonBitRunProject
         string outputDir,
         string projectPath,
         IReadOnlyList<string> fullInputs,
-        string? moonModPath
+        string? moonModPath,
+        string generatedVNextPipelineProjectPath
     )
     {
         var markerPath = CacheMarkerPath(outputDir);
         if (!File.Exists(markerPath) || !File.Exists(projectPath))
             return false;
+        if (!RunProjectCacheMarkerMatches(markerPath, generatedVNextPipelineProjectPath))
+            return false;
 
         var markerTime = File.GetLastWriteTimeUtc(markerPath);
-        foreach (var path in CacheDependencyFiles(fullInputs, moonModPath, outputDir))
+        foreach (
+            var path in CacheDependencyFiles(
+                fullInputs,
+                moonModPath,
+                outputDir,
+                generatedVNextPipelineProjectPath
+            )
+        )
             if (File.GetLastWriteTimeUtc(path) > markerTime)
                 return false;
 
@@ -137,16 +160,41 @@ public static class MoonBitRunProject
     private static void WriteRunProjectCacheMarker(
         string outputDir,
         IReadOnlyList<string> fullInputs,
-        string? moonModPath
+        string? moonModPath,
+        string generatedVNextPipelineProjectPath
     )
     {
         Directory.CreateDirectory(outputDir);
         var builder = new StringBuilder();
-        builder.AppendLine("version=1");
+        builder.AppendLine("version=2");
         builder.AppendLine("moonMod=" + (moonModPath ?? ""));
+        builder.AppendLine(
+            "generatedVNextPipeline="
+                + (
+                    string.IsNullOrWhiteSpace(generatedVNextPipelineProjectPath)
+                        ? ""
+                        : Path.GetFullPath(generatedVNextPipelineProjectPath)
+                )
+        );
         foreach (var input in fullInputs)
             builder.AppendLine("input=" + input);
         File.WriteAllText(CacheMarkerPath(outputDir), builder.ToString());
+    }
+
+    private static bool RunProjectCacheMarkerMatches(
+        string markerPath,
+        string generatedVNextPipelineProjectPath
+    )
+    {
+        var expected =
+            "generatedVNextPipeline="
+            + (
+                string.IsNullOrWhiteSpace(generatedVNextPipelineProjectPath)
+                    ? ""
+                    : Path.GetFullPath(generatedVNextPipelineProjectPath)
+            );
+        var lines = File.ReadLines(markerPath).ToHashSet(StringComparer.Ordinal);
+        return lines.Contains("version=2") && lines.Contains(expected);
     }
 
     private static string CacheMarkerPath(string outputDir) =>
@@ -155,7 +203,8 @@ public static class MoonBitRunProject
     private static IReadOnlyList<string> CacheDependencyFiles(
         IReadOnlyList<string> fullInputs,
         string? moonModPath,
-        string outputDir
+        string outputDir,
+        string generatedVNextPipelineProjectPath
     )
     {
         var dependencies = new List<string>();
@@ -182,12 +231,41 @@ public static class MoonBitRunProject
                 dependencies.Add(fullPath);
         }
 
+        if (!string.IsNullOrWhiteSpace(generatedVNextPipelineProjectPath))
+        {
+            var generatedProject = Path.GetFullPath(generatedVNextPipelineProjectPath);
+            if (File.Exists(generatedProject))
+                AddGeneratedPipelineDependency(generatedProject);
+            var generatedProjectDirectory = Path.GetDirectoryName(generatedProject);
+            if (!string.IsNullOrWhiteSpace(generatedProjectDirectory))
+                foreach (
+                    var file in Directory.EnumerateFiles(
+                        generatedProjectDirectory,
+                        "*",
+                        SearchOption.AllDirectories
+                    )
+                )
+                    AddGeneratedPipelineDependency(file);
+        }
+
         return dependencies;
 
         void AddIfDependency(string path)
         {
             var fullPath = Path.GetFullPath(path);
             if (!IsCacheDependencyFile(fullPath, outputDir) || !seen.Add(fullPath))
+                return;
+
+            dependencies.Add(fullPath);
+        }
+
+        void AddGeneratedPipelineDependency(string path)
+        {
+            var fullPath = Path.GetFullPath(path);
+            var parts = fullPath.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            if (parts.Any(part => part is ".git" or "bin" or "obj"))
+                return;
+            if (!seen.Add(fullPath))
                 return;
 
             dependencies.Add(fullPath);

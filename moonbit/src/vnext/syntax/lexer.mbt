@@ -195,7 +195,7 @@ fn Lexer::scan_attribute_line(self : Lexer) -> Unit {
   let start = self.pos
   let start_col = self.col
   let start_line = self.line
-  while !self.at_end() && self.peek() != '\n' {
+  while !self.at_end() && self.peek() != '\n' && self.peek() != '\r' {
     self.advance()
   }
   self.tokens.push({

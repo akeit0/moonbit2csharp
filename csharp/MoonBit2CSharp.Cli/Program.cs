@@ -91,6 +91,7 @@ static MoonBitRunProjectResult PrepareGeneratedProject(
     release = false;
     var additionalUsings = new List<string>();
     var additionalProjectReferences = new List<string>();
+    var generatedVNextPipelineProjectPath = "";
     var inputPaths = new List<string>();
 
     for (var i = 0; i < commandArgs.Length; i++)
@@ -147,6 +148,11 @@ static MoonBitRunProjectResult PrepareGeneratedProject(
                     Path.GetFullPath(RequireValue(commandArgs, ref i, "--project-reference"))
                 );
                 break;
+            case "--generated-vnext-pipeline":
+                generatedVNextPipelineProjectPath = Path.GetFullPath(
+                    RequireValue(commandArgs, ref i, "--generated-vnext-pipeline")
+                );
+                break;
             default:
                 if (commandArgs[i].StartsWith("-", StringComparison.Ordinal))
                     throw new ArgumentException($"unknown {commandName} option: {commandArgs[i]}");
@@ -173,6 +179,7 @@ static MoonBitRunProjectResult PrepareGeneratedProject(
             RuntimeNamespace = runtimeNamespace,
             AdditionalUsings = additionalUsings,
             AdditionalProjectReferences = additionalProjectReferences,
+            GeneratedVNextPipelineProjectPath = generatedVNextPipelineProjectPath,
             CacheDirectory = cacheDirectory,
             CacheEnabled = cacheEnabled,
         }
@@ -195,6 +202,7 @@ static int RunProject(string[] args)
     var cacheEnabled = true;
     var additionalUsings = new List<string>();
     var additionalProjectReferences = new List<string>();
+    var generatedVNextPipelineProjectPath = "";
     var moonModPath = "";
     var runtimeProjectPath = MoonBitSourceTranspiler.DefaultRuntimeProjectPath;
     var inputPaths = new List<string>();
@@ -244,6 +252,11 @@ static int RunProject(string[] args)
             case "--project-reference":
                 additionalProjectReferences.Add(
                     Path.GetFullPath(RequireValue(args, ref i, "--project-reference"))
+                );
+                break;
+            case "--generated-vnext-pipeline":
+                generatedVNextPipelineProjectPath = Path.GetFullPath(
+                    RequireValue(args, ref i, "--generated-vnext-pipeline")
                 );
                 break;
             case "--runtime-project":
@@ -299,6 +312,7 @@ static int RunProject(string[] args)
             RuntimeNamespace = runtimeNamespace,
             AdditionalUsings = additionalUsings,
             AdditionalProjectReferences = additionalProjectReferences,
+            GeneratedVNextPipelineProjectPath = generatedVNextPipelineProjectPath,
             CacheDirectory = cacheDirectory,
             CacheEnabled = cacheEnabled,
         }
@@ -469,13 +483,13 @@ static int PrintUsage()
         "usage: MoonBit2CSharp.Cli [--pascal-case] <input.mbt|input.mbtx> [output.cs]"
     );
     Console.Error.WriteLine(
-        "   or: MoonBit2CSharp.Cli build [--release] [input.mbt|directory|moon.mod|moon.mod.json]"
+        "   or: MoonBit2CSharp.Cli build [--release] [--generated-vnext-pipeline <frontend.csproj>] [input.mbt|directory|moon.mod|moon.mod.json]"
     );
     Console.Error.WriteLine(
-        "   or: MoonBit2CSharp.Cli run [--release] [input.mbt|directory|moon.mod|moon.mod.json] [-- app args...]"
+        "   or: MoonBit2CSharp.Cli run [--release] [--generated-vnext-pipeline <frontend.csproj>] [input.mbt|directory|moon.mod|moon.mod.json] [-- app args...]"
     );
     Console.Error.WriteLine(
-        "   or: MoonBit2CSharp.Cli --project <output-dir> [--single-file <name.cs>] [--csproj <name>|--no-csproj] [--moon-mod <moon.mod|moon.mod.json>] [--exe] [--reference-runtime] [--runtime-project <path>] [--project-reference <path>] [--namespace <namespace>] [--runtime-namespace <namespace>] [--using <namespace>] [--cache-dir <dir>|--no-cache] [--include-main-packages] [--pascal-case] <inputs...>"
+        "   or: MoonBit2CSharp.Cli --project <output-dir> [--single-file <name.cs>] [--csproj <name>|--no-csproj] [--moon-mod <moon.mod|moon.mod.json>] [--exe] [--reference-runtime] [--runtime-project <path>] [--project-reference <path>] [--generated-vnext-pipeline <frontend.csproj>] [--namespace <namespace>] [--runtime-namespace <namespace>] [--using <namespace>] [--cache-dir <dir>|--no-cache] [--include-main-packages] [--pascal-case] <inputs...>"
     );
     return 1;
 }
