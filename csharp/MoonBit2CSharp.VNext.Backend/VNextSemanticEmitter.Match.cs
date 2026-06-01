@@ -46,6 +46,9 @@ public sealed partial class VNextSemanticEmitter
         if (finalArm.TryGetProperty("condition", out _))
             return false;
 
+        if (IsBuiltinApply(targetType, "Option"))
+            return FinalOptionArmCoversRemainder(arms, arms.Length - 1);
+
         return IsIrrefutableSwitchPattern(targetType, finalArm.GetProperty("pattern"));
     }
 

@@ -630,7 +630,7 @@ public sealed partial class VNextSemanticEmitter
         );
 
         var builder = new StringBuilder();
-        EmitPatternBindings(builder, targetName, pattern);
+        EmitPatternBindings(builder, targetName, targetType, pattern);
         var bindingText = builder.ToString();
         if (bindingText.Length == 0)
             return;

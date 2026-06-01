@@ -419,6 +419,18 @@ public static class OptionEq
 
         return Eq.equal<T, TEqImpl>(self.Value, other.Value);
     }
+
+    public static bool equal_nullable_reference<T, TEqImpl>(T? self, T? other)
+        where T : class
+        where TEqImpl : IEqImpl<T, TEqImpl>
+    {
+        if (self is null || other is null)
+        {
+            return self is null && other is null;
+        }
+
+        return Eq.equal<T, TEqImpl>(self, other);
+    }
 }
 
 public readonly struct OptionEqImpl<T, TEqImpl> : IEqImpl<Option<T>, OptionEqImpl<T, TEqImpl>>
@@ -426,6 +438,14 @@ public readonly struct OptionEqImpl<T, TEqImpl> : IEqImpl<Option<T>, OptionEqImp
 {
     public static bool equal(Option<T> self, Option<T> other) =>
         OptionEq.equal<T, TEqImpl>(self, other);
+}
+
+public readonly struct NullableOptionEqImpl<T, TEqImpl> : IEqImpl<T?, NullableOptionEqImpl<T, TEqImpl>>
+    where T : class
+    where TEqImpl : IEqImpl<T, TEqImpl>
+{
+    public static bool equal(T? self, T? other) =>
+        OptionEq.equal_nullable_reference<T, TEqImpl>(self, other);
 }
 
 public interface IEqImpl

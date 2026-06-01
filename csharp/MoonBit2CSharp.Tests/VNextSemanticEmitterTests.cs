@@ -607,9 +607,101 @@ public sealed partial class VNextSemanticEmitterTests
         );
 
         var code = VNextBackend.Emit(json);
-        Assert.Contains("impl_Eq_Option_X_.equal<string", code, StringComparison.Ordinal);
+        Assert.Contains("OptionEq.equal_nullable_reference<string", code, StringComparison.Ordinal);
         Assert.Contains("StringEqImpl", code, StringComparison.Ordinal);
         Assert.DoesNotContain("MoonBitOptionEq", code, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void EmitsConcreteReferenceOptionAsNullableReference()
+    {
+        var stringType = """{ "kind": "Builtin", "name": "String" }""";
+        var intType = """{ "kind": "Builtin", "name": "Int" }""";
+        var optionStringType =
+            $$"""{ "kind": "Apply", "constructor": { "kind": "Builtin", "name": "Option" }, "args": [{{stringType}}] }""";
+        var optionOptionStringType =
+            $$"""{ "kind": "Apply", "constructor": { "kind": "Builtin", "name": "Option" }, "args": [{{optionStringType}}] }""";
+        var json = ModuleJson(
+            $$"""
+            {
+              "kind": "Function",
+              "symbolId": "fn:Demo:some_text",
+              "name": "some_text",
+              "params": [],
+              "returnType": {{optionStringType}},
+              "body": {
+                "kind": "OptionSome",
+                "value": { "kind": "StringLiteral", "value": "a", "type": {{stringType}} },
+                "type": {{optionStringType}}
+              }
+            },
+            {
+              "kind": "Function",
+              "symbolId": "fn:Demo:no_text",
+              "name": "no_text",
+              "params": [],
+              "returnType": {{optionStringType}},
+              "body": { "kind": "OptionNone", "type": {{optionStringType}} }
+            },
+            {
+              "kind": "Function",
+              "symbolId": "fn:Demo:nested_no_text",
+              "name": "nested_no_text",
+              "params": [],
+              "returnType": {{optionOptionStringType}},
+              "body": { "kind": "OptionNone", "type": {{optionOptionStringType}} }
+            },
+            {
+              "kind": "Function",
+              "symbolId": "fn:Demo:value_or_length",
+              "name": "value_or_length",
+              "params": [{ "symbolId": "param:fn:Demo:value_or_length:x", "name": "x", "type": {{optionStringType}} }],
+              "returnType": {{intType}},
+              "body": {
+                "kind": "Match",
+                "target": { "kind": "Name", "symbolId": "param:fn:Demo:value_or_length:x", "name": "x", "type": {{optionStringType}} },
+                "arms": [
+                  {
+                    "pattern": {
+                      "kind": "OptionSome",
+                      "payload": {
+                        "kind": "Binding",
+                        "symbol": { "symbolId": "local:fn:Demo:value_or_length:v", "name": "v", "type": {{stringType}} }
+                      }
+                    },
+                    "body": {
+                      "kind": "Call",
+                      "functionId": "core:String::length",
+                      "args": [{ "kind": "Name", "symbolId": "local:fn:Demo:value_or_length:v", "name": "v", "type": {{stringType}} }],
+                      "selectedIntrinsic": "%string_length",
+                      "type": {{intType}}
+                    }
+                  },
+                  {
+                    "pattern": { "kind": "OptionNone" },
+                    "body": { "kind": "IntLiteral", "value": "0", "type": {{intType}} }
+                  }
+                ],
+                "type": {{intType}}
+              }
+            }
+            """
+        );
+
+        var code = VNextBackend.Emit(json);
+        Assert.Contains("string? some_text", code, StringComparison.Ordinal);
+        Assert.Contains("return \"a\";", code, StringComparison.Ordinal);
+        Assert.Contains("return null;", code, StringComparison.Ordinal);
+        Assert.Contains("Option<string?>", code, StringComparison.Ordinal);
+        Assert.Contains("{ } v", code, StringComparison.Ordinal);
+        Assert.Contains("null =>", code, StringComparison.Ordinal);
+
+        var assembly = Compile(OptionRuntimeSupportCode(), code);
+        var type = assembly.GetType("Generated.MoonBit.Demo", true)!;
+        Assert.Equal("a", StaticMethod(type, "some_text").Invoke(null, []));
+        Assert.Null(StaticMethod(type, "no_text").Invoke(null, []));
+        Assert.Equal(1, StaticMethod(type, "value_or_length").Invoke(null, ["a"]));
+        Assert.Equal(0, StaticMethod(type, "value_or_length").Invoke(null, [null]));
     }
 
     [Fact]
@@ -2281,17 +2373,17 @@ public sealed partial class VNextSemanticEmitterTests
         );
 
         var code = VNextBackend.Emit(json);
-        Assert.Contains("MoonBitOption<int>.Some(1)", code);
-        Assert.Contains("MoonBitOption<int>.None()", code);
-        var assembly = Compile(code);
+        Assert.Contains("Option<int>.Some(1)", code);
+        Assert.Contains("Option<int>.None()", code);
+        var assembly = Compile(OptionRuntimeSupportCode(), code);
         var type = assembly.GetType("Generated.MoonBit.Demo", true)!;
 
-        var some = type.GetMethod("some")!.Invoke(null, [])!;
+        var some = StaticMethod(type, "some").Invoke(null, [])!;
         Assert.True((bool)some.GetType().GetProperty("IsSome")!.GetValue(some)!);
         Assert.Equal(1, some.GetType().GetProperty("Value")!.GetValue(some));
-        Assert.Equal("None", type.GetMethod("none")!.Invoke(null, [])!.ToString());
-        Assert.Equal("None", type.GetMethod("call_question")!.Invoke(null, [])!.ToString());
-        var supplied = type.GetMethod("call_question_given")!.Invoke(null, [])!;
+        Assert.Equal("None", StaticMethod(type, "none").Invoke(null, [])!.ToString());
+        Assert.Equal("None", StaticMethod(type, "call_question").Invoke(null, [])!.ToString());
+        var supplied = StaticMethod(type, "call_question_given").Invoke(null, [])!;
         Assert.True((bool)supplied.GetType().GetProperty("IsSome")!.GetValue(supplied)!);
         Assert.Equal(2, supplied.GetType().GetProperty("Value")!.GetValue(supplied));
     }
@@ -3960,6 +4052,30 @@ public sealed partial class VNextSemanticEmitterTests
             }
             """;
     }
+
+    private static string OptionRuntimeSupportCode() =>
+        """
+        namespace Generated.MoonBit.Runtime
+        {
+            public readonly struct Option<T>
+            {
+                private readonly T? value;
+                private Option(T? value, bool isSome)
+                {
+                    this.value = value;
+                    IsSome = isSome;
+                }
+
+                public bool IsSome { get; }
+                public bool IsNone => !IsSome;
+                public T Value => IsSome ? value! : throw new System.InvalidOperationException();
+                public T Unwrap() => Value;
+                public static Option<T> Some(T value) => new(value, true);
+                public static Option<T> None() => new(default, false);
+                public override string ToString() => IsSome ? "Some(" + value!.ToString() + ")" : "None";
+            }
+        }
+        """;
 
     private static Assembly Compile(params string[] sources)
     {

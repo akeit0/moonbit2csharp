@@ -190,14 +190,21 @@ public sealed partial class VNextSemanticEmitter
             }
 
             case "OptionNone":
-                return value + ".IsNone";
+                return UseNullableReferenceOption(type) ? value + " is null" : value + ".IsNone";
             case "OptionSome":
             {
+                var elementType = OptionElementType(type);
+                var payloadValue = UseNullableReferenceOption(type) ? value + "!" : value + ".Value";
                 var payloadCondition = PayloadPatternCondition(
-                    value + ".Value",
-                    OptionElementType(type),
+                    payloadValue,
+                    elementType,
                     pattern.GetProperty("payload")
                 );
+                if (UseNullableReferenceOption(type))
+                    return payloadCondition == "true"
+                        ? value + " is not null"
+                        : value + " is not null && " + payloadCondition;
+
                 return payloadCondition == "true"
                     ? value + ".IsSome"
                     : value + ".IsSome && " + payloadCondition;
@@ -278,6 +285,16 @@ public sealed partial class VNextSemanticEmitter
 
     private void EmitPatternBindings(StringBuilder builder, string value, JsonElement pattern)
     {
+        EmitPatternBindings(builder, value, default, pattern);
+    }
+
+    private void EmitPatternBindings(
+        StringBuilder builder,
+        string value,
+        JsonElement type,
+        JsonElement pattern
+    )
+    {
         var kind = pattern.GetProperty("kind").GetString();
         if (kind == "Binding")
         {
@@ -295,7 +312,13 @@ public sealed partial class VNextSemanticEmitter
 
         if (kind == "OptionSome")
         {
-            EmitPatternBindings(builder, value + ".Value", pattern.GetProperty("payload"));
+            var payloadValue =
+                type.ValueKind == JsonValueKind.Object && UseNullableReferenceOption(type)
+                    ? value + "!"
+                    : value + ".Value";
+            var payloadType =
+                type.ValueKind == JsonValueKind.Object ? OptionElementType(type) : default;
+            EmitPatternBindings(builder, payloadValue, payloadType, pattern.GetProperty("payload"));
             return;
         }
 
@@ -712,11 +735,14 @@ public sealed partial class VNextSemanticEmitter
             case "Range":
                 return RangePatternExpression(pattern);
             case "OptionNone":
-                return "{ IsNone: true }";
+                return UseNullableReferenceOption(targetType) ? "null" : "{ IsNone: true }";
             case "OptionSome":
             {
                 var payload = pattern.GetProperty("payload");
                 var payloadPattern = MatchPatternExpression(OptionElementType(targetType), payload);
+                if (UseNullableReferenceOption(targetType))
+                    return NullableOptionSomePatternExpression(payload, payloadPattern);
+
                 return payloadPattern == "_"
                     ? "{ IsSome: true }"
                     : "{ IsSome: true, Value: " + payloadPattern + " }";
@@ -860,6 +886,12 @@ public sealed partial class VNextSemanticEmitter
                     OptionElementType(targetType),
                     pattern.GetProperty("payload")
                 );
+                if (UseNullableReferenceOption(targetType))
+                    return NullableOptionSomePatternExpression(
+                        pattern.GetProperty("payload"),
+                        payloadPattern
+                    );
+
                 return payloadPattern == "_"
                     ? "{ IsSome: true }"
                     : "{ IsSome: true, Value: " + payloadPattern + " }";
@@ -943,6 +975,12 @@ public sealed partial class VNextSemanticEmitter
                     OptionElementType(targetType),
                     pattern.GetProperty("payload")
                 );
+                if (UseNullableReferenceOption(targetType))
+                    return NullableOptionSomePatternExpression(
+                        pattern.GetProperty("payload"),
+                        payloadPattern
+                    );
+
                 return payloadPattern == "_"
                     ? "{ IsSome: true }"
                     : "{ IsSome: true, Value: " + payloadPattern + " }";
@@ -987,6 +1025,9 @@ public sealed partial class VNextSemanticEmitter
         var kind = pattern.GetProperty("kind").GetString();
         if (kind is "Wildcard" or "Binding")
             return true;
+
+        if (IsBuiltinApply(targetType, "Option") && UseNullableReferenceOption(targetType))
+            return false;
 
         if (IsBuiltinApply(targetType, "Option"))
             return FinalOptionArmCoversRemainder(arms, armIndex);
@@ -1204,6 +1245,18 @@ public sealed partial class VNextSemanticEmitter
             throw new NotSupportedException("vnext Option match pattern target must be Option[T]");
 
         return targetType.GetProperty("args").EnumerateArray().First();
+    }
+
+    private string NullableOptionSomePatternExpression(JsonElement payload, string payloadPattern)
+    {
+        if (payload.GetProperty("kind").GetString() == "Binding")
+        {
+            var symbol = payload.GetProperty("symbol");
+            var name = symbol.GetProperty("name").GetString() ?? "_";
+            return name == "_" ? "{ }" : "{ } " + LocalIdentifier(symbol);
+        }
+
+        return payloadPattern == "_" ? "{ }" : payloadPattern;
     }
 
     private static string RangePatternExpression(JsonElement pattern)

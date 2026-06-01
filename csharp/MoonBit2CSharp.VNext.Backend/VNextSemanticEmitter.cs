@@ -4305,8 +4305,14 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
         var elementType = OptionElementType(optionType);
         var elementTypeName = EmitType(elementType).NormalizeWhitespace().ToFullString();
         var elementEqEvidenceName = EqEvidenceName(elementType);
+        var helperName = UseNullableReferenceOption(optionType)
+            ? "equal_nullable_reference"
+            : "equal";
+        var equalityTarget = UseNullableReferenceOption(optionType)
+            ? SupportTypeName("OptionEq")
+            : CoreBuiltinTypeName("impl_Eq_Option_X_");
         var equality = ParseExpression(
-            $"{CoreBuiltinTypeName("impl_Eq_Option_X_")}.equal<{elementTypeName}, {elementEqEvidenceName}>({left.NormalizeWhitespace()}, {right.NormalizeWhitespace()})"
+            $"{equalityTarget}.{helperName}<{elementTypeName}, {elementEqEvidenceName}>({left.NormalizeWhitespace()}, {right.NormalizeWhitespace()})"
         );
         return (expr.GetProperty("op").GetString() ?? "") == "!="
             ? ParenthesizedExpression(
@@ -4711,7 +4717,9 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
         if (kind == "Apply" && IsBuiltinApply(type, "Option"))
         {
             var typeName = EmitType(type).NormalizeWhitespace().ToFullString();
-            return ParseExpression($"{typeName}.None()");
+            return UseNullableReferenceOption(type)
+                ? LiteralExpression(SyntaxKind.NullLiteralExpression)
+                : ParseExpression($"{typeName}.None()");
         }
 
         if (
@@ -5447,7 +5455,7 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
         var mapTypeName = CoreBuiltinTypeName("Map");
         var entryTypeName = CoreBuiltinTypeName("Entry");
         return ParseExpression(
-            $"new {mapTypeName}<{keyTypeName}, {valueTypeName}>(new MoonBitOption<{entryTypeName}<{keyTypeName}, {valueTypeName}>>[{capacity.ToString(CultureInfo.InvariantCulture)}], {entryCount.ToString(CultureInfo.InvariantCulture)}, {capacity.ToString(CultureInfo.InvariantCulture)}, {capacityMask.ToString(CultureInfo.InvariantCulture)}, {growAt.ToString(CultureInfo.InvariantCulture)}, MoonBitOption<{entryTypeName}<{keyTypeName}, {valueTypeName}>>.None(), -1)"
+            $"new {mapTypeName}<{keyTypeName}, {valueTypeName}>(new Option<{entryTypeName}<{keyTypeName}, {valueTypeName}>>[{capacity.ToString(CultureInfo.InvariantCulture)}], {entryCount.ToString(CultureInfo.InvariantCulture)}, {capacity.ToString(CultureInfo.InvariantCulture)}, {capacityMask.ToString(CultureInfo.InvariantCulture)}, {growAt.ToString(CultureInfo.InvariantCulture)}, Option<{entryTypeName}<{keyTypeName}, {valueTypeName}>>.None(), -1)"
         );
     }
 
@@ -5481,7 +5489,10 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
         {
             var elementType = type.GetProperty("args")[0];
             var elementTypeName = EmitType(elementType).NormalizeWhitespace().ToFullString();
-            return $"{SupportTypeName("OptionEqImpl")}<{elementTypeName}, {EqEvidenceName(elementType)}>";
+            var implName = UseNullableReferenceOption(type)
+                ? SupportTypeName("NullableOptionEqImpl")
+                : SupportTypeName("OptionEqImpl");
+            return $"{implName}<{elementTypeName}, {EqEvidenceName(elementType)}>";
         }
 
         if (type.GetProperty("kind").GetString() == "Declared" && DeclaredTypeDerives(type, "Eq"))
@@ -5831,9 +5842,7 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
             _ when IsBuiltinApply(type, "MutArrayView") => ParseTypeName(
                 $"MoonBitMutArrayView<{EmitType(type.GetProperty("args")[0]).NormalizeWhitespace().ToFullString()}>"
             ),
-            _ when IsBuiltinApply(type, "Option") => ParseTypeName(
-                $"MoonBitOption<{EmitType(type.GetProperty("args")[0]).NormalizeWhitespace().ToFullString()}>"
-            ),
+            _ when IsBuiltinApply(type, "Option") => EmitOptionType(type),
             _ when IsBuiltinApply(type, "Result") => ParseTypeName(
                 $"MoonBitResult<{EmitType(type.GetProperty("args")[0]).NormalizeWhitespace().ToFullString()}, {EmitType(type.GetProperty("args")[1]).NormalizeWhitespace().ToFullString()}>"
             ),
@@ -5921,15 +5930,31 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
 
     private ExpressionSyntax EmitOptionSome(JsonElement expr)
     {
-        var elementType = OptionElementTypeName(expr.GetProperty("type"));
+        var optionType = expr.GetProperty("type");
         var value = EmitExpr(expr.GetProperty("value")).NormalizeWhitespace().ToFullString();
-        return ParseExpression($"MoonBitOption<{elementType}>.Some({value})");
+        if (UseNullableReferenceOption(optionType))
+            return ParseExpression(value);
+
+        var elementType = OptionElementTypeName(optionType);
+        return ParseExpression($"Option<{elementType}>.Some({value})");
     }
 
     private ExpressionSyntax EmitOptionNone(JsonElement expr)
     {
-        var elementType = OptionElementTypeName(expr.GetProperty("type"));
-        return ParseExpression($"MoonBitOption<{elementType}>.None()");
+        var optionType = expr.GetProperty("type");
+        if (UseNullableReferenceOption(optionType))
+            return LiteralExpression(SyntaxKind.NullLiteralExpression);
+
+        var elementType = OptionElementTypeName(optionType);
+        return ParseExpression($"Option<{elementType}>.None()");
+    }
+
+    private TypeSyntax EmitOptionType(JsonElement optionType)
+    {
+        var elementTypeName = OptionElementTypeName(optionType);
+        return UseNullableReferenceOption(optionType)
+            ? ParseTypeName(elementTypeName + "?")
+            : ParseTypeName($"Option<{elementTypeName}>");
     }
 
     private string OptionElementTypeName(JsonElement optionType)
@@ -5938,6 +5963,62 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
             throw new NotSupportedException("vnext option expression type must be Option[T]");
 
         return EmitType(optionType.GetProperty("args")[0]).NormalizeWhitespace().ToFullString();
+    }
+
+    private bool UseNullableReferenceOption(JsonElement optionType)
+    {
+        if (!IsBuiltinApply(optionType, "Option"))
+            return false;
+
+        var elementType = OptionElementType(optionType);
+        return !IsBuiltinApply(elementType, "Option") && IsNonNullableReferenceType(elementType);
+    }
+
+    private bool IsNonNullableReferenceType(JsonElement type)
+    {
+        var kind = type.GetProperty("kind").GetString() ?? "";
+        if (kind == "Function" || kind == "TraitObject")
+            return true;
+
+        if (kind == "Builtin")
+            return (type.GetProperty("name").GetString() ?? "") switch
+            {
+                "String" or "Bytes" or "StringBuilder" or "Error" => true,
+                _ => false,
+            };
+
+        if (kind == "Apply")
+        {
+            if (IsBuiltinApply(type, "Option"))
+                return false;
+
+            return ConstructedCoreBuiltinTypeNameOrNull(type) switch
+            {
+                "Array" or "Map" or "Set" or "Iter" or "FixedArray" or "UninitializedArray" =>
+                    true,
+                _ => false,
+            };
+        }
+
+        if (kind != "Declared")
+            return false;
+
+        var symbolId = type.GetProperty("symbol").GetProperty("id").GetString() ?? "";
+        if (!typeDefinitions.TryGetValue(symbolId, out var definition))
+            return true;
+
+        var definitionKind = definition.TryGetProperty("kind", out var kindProperty)
+            ? kindProperty.GetString()
+            : "Struct";
+        if (definitionKind == "Enum")
+            return !IsAllConstantEnum(definition);
+        if (definitionKind == "Struct")
+            return !(
+                definition.TryGetProperty("valtype", out var valtype)
+                && valtype.ValueKind == JsonValueKind.True
+            );
+
+        return false;
     }
 
     private string DeclaredTypeName(JsonElement type)
@@ -6553,8 +6634,9 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
         return name switch
         {
             "MoonBitIntrinsics" => RuntimeTypeName("MoonBitIntrinsics"),
-            "OptionEq" => RuntimeTypeName("MoonBitOptionEq"),
-            "OptionEqImpl" => RuntimeTypeName("MoonBitOptionEqImpl"),
+            "OptionEq" => RuntimeTypeName("OptionEq"),
+            "OptionEqImpl" => RuntimeTypeName("OptionEqImpl"),
+            "NullableOptionEqImpl" => RuntimeTypeName("NullableOptionEqImpl"),
             _ => throw new NotSupportedException("unknown vnext support type: " + name),
         };
     }
@@ -6864,6 +6946,7 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
                 ["Option"] = "Option",
                 ["OptionEq"] = "OptionEq",
                 ["OptionEqImpl"] = "OptionEqImpl",
+                ["NullableOptionEqImpl"] = "NullableOptionEqImpl",
                 ["Panic"] = "Panic",
                 ["Result"] = "Result",
                 ["StringBuilder"] = "StringBuilder",
@@ -6877,9 +6960,6 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
                 ["MoonBitFixedArray"] = "FixedArray",
                 ["MoonBitIntrinsics"] = "Intrinsics",
                 ["MoonBitMutArrayView"] = "MutArrayView",
-                ["MoonBitOption"] = "Option",
-                ["MoonBitOptionEq"] = "OptionEq",
-                ["MoonBitOptionEqImpl"] = "OptionEqImpl",
                 ["MoonBitPanic"] = "Panic",
                 ["MoonBitResult"] = "Result",
                 ["MoonBitStringBuilder"] = "StringBuilder",
