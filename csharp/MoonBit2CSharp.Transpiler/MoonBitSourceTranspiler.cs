@@ -281,23 +281,25 @@ public static class MoonBitSourceTranspiler
             SourceLocationPackageNameForPackageRoot(mainRoot, moonModPath),
             EnvPackageNameForPackageRoot(mainRoot, moonModPath)
         );
+        var frontendRequest = BuildVNextFrontendRequest(
+            mainFiles[0],
+            moduleName,
+            moonPkgPath,
+            importedRoots,
+            moonModPath
+        );
         var irJson = string.IsNullOrWhiteSpace(request.GeneratedVNextPipelineProjectPath)
-            ? CompileMoonVNextSemanticIr(
-                mainFiles[0],
-                moduleName,
-                moonPkgPath,
-                importedRoots,
-                moonModPath
-            )
-            : CompileGeneratedVNextSemanticIr(
-                mainFiles[0],
-                moduleName,
-                moonPkgPath,
-                importedRoots,
-                moonModPath,
+            ? CompileMoonVNextSemanticIr(frontendRequest)
+            : GeneratedVNextFrontendCompiler.Compile(
+                frontendRequest,
                 request.GeneratedVNextPipelineProjectPath,
                 request.CacheDirectory
             );
+        if (
+            Environment.GetEnvironmentVariable("MOONBIT2CSHARP_VNEXT_IR_DUMP") is
+            { Length: > 0 } dumpPath
+        )
+            File.WriteAllText(Path.GetFullPath(dumpPath), irJson);
         var targetExecutable = IsExecutableVNextTarget(request, fullInputs, mainRoot);
         var options = new VNextEmitterOptions(
             request.GeneratedNamespace,
@@ -468,17 +470,9 @@ public static class MoonBitSourceTranspiler
             .ToArray();
     }
 
-    private static string CompileMoonVNextSemanticIr(
-        string mainFile,
-        string moduleName,
-        string moonPkgPath,
-        IReadOnlyList<string> importedRoots,
-        string? moonModPath
-    )
+    private static string CompileMoonVNextSemanticIr(VNextFrontendRequest request)
     {
         var moonbitDirectory = Path.Combine(RepositoryRoot(), "moonbit");
-        var mainFileFullPath = Path.GetFullPath(mainFile);
-        var moonPkgFullPath = Path.GetFullPath(moonPkgPath);
         var startInfo = new ProcessStartInfo
         {
             FileName = FindMoonCommand(),
@@ -496,62 +490,37 @@ public static class MoonBitSourceTranspiler
         startInfo.ArgumentList.Add("run");
         startInfo.ArgumentList.Add("./src/vnext_cli");
         startInfo.ArgumentList.Add("--");
-        startInfo.ArgumentList.Add(MoonFrontendPath(moonbitDirectory, mainFileFullPath));
-        startInfo.ArgumentList.Add(moduleName);
-        startInfo.ArgumentList.Add(MoonFrontendPath(moonbitDirectory, moonPkgFullPath));
-        foreach (
-            var source in PackageSourceFiles(Path.GetDirectoryName(mainFileFullPath)!)
-                .Where(path =>
-                    !Path.GetFullPath(path)
-                        .Equals(mainFileFullPath, StringComparison.OrdinalIgnoreCase)
-                )
-        )
+        startInfo.ArgumentList.Add(request.Sources[0].FilePath);
+        startInfo.ArgumentList.Add(request.ModuleName);
+        startInfo.ArgumentList.Add(request.MoonPkgPath);
+        foreach (var source in request.Sources.Skip(1))
         {
             startInfo.ArgumentList.Add("--source");
-            startInfo.ArgumentList.Add(MoonFrontendPath(moonbitDirectory, source));
+            startInfo.ArgumentList.Add(source.FilePath);
         }
 
-        foreach (
-            var importedRoot in SortVNextImportedRootsByDependencies(importedRoots, moonModPath)
-        )
+        foreach (var manifest in request.ImportedManifestSources)
         {
-            var modulePath =
-                SourceLocationPackageNameForPackageRoot(importedRoot, moonModPath)
-                ?? EnvPackageNameForPackageRoot(importedRoot, moonModPath)
-                ?? NormalizePackageName(Path.GetFileName(importedRoot));
-            var aliasName = DefaultMoonPkgAlias(modulePath);
-            if (FindMoonPkg(importedRoot) is { } importedMoonPkgPath)
-            {
-                startInfo.ArgumentList.Add("--import-manifest");
-                startInfo.ArgumentList.Add(MoonFrontendPath(moonbitDirectory, importedMoonPkgPath));
-            }
-
-            foreach (var file in VNextImportedPackageFiles(importedRoot, modulePath))
-            {
-                startInfo.ArgumentList.Add("--import-source");
-                startInfo.ArgumentList.Add(aliasName);
-                startInfo.ArgumentList.Add("pkg:" + modulePath);
-                startInfo.ArgumentList.Add(modulePath);
-                startInfo.ArgumentList.Add(MoonFrontendPath(moonbitDirectory, file));
-            }
+            startInfo.ArgumentList.Add("--import-manifest");
+            startInfo.ArgumentList.Add(manifest.FilePath);
         }
 
-        foreach (var source in VNextCoreImplementationSources())
+        foreach (var source in request.ImportedSources)
         {
             startInfo.ArgumentList.Add("--import-source");
-            startInfo.ArgumentList.Add(source.Alias);
-            startInfo.ArgumentList.Add(source.PackageId);
-            startInfo.ArgumentList.Add(source.ModulePath);
-            startInfo.ArgumentList.Add(MoonFrontendPath(moonbitDirectory, source.Path));
+            startInfo.ArgumentList.Add(source.ImportRef.AliasName);
+            startInfo.ArgumentList.Add(source.ImportRef.PackageId);
+            startInfo.ArgumentList.Add(source.ImportRef.ModulePath);
+            startInfo.ArgumentList.Add(source.FilePath);
         }
 
-        foreach (var source in VNextCoreDeclarationSources())
+        foreach (var source in request.ImportedDeclarationSources)
         {
             startInfo.ArgumentList.Add("--import-declaration-source");
-            startInfo.ArgumentList.Add(source.Alias);
-            startInfo.ArgumentList.Add(source.PackageId);
-            startInfo.ArgumentList.Add(source.ModulePath);
-            startInfo.ArgumentList.Add(MoonFrontendPath(moonbitDirectory, source.Path));
+            startInfo.ArgumentList.Add(source.ImportRef.AliasName);
+            startInfo.ArgumentList.Add(source.ImportRef.PackageId);
+            startInfo.ArgumentList.Add(source.ImportRef.ModulePath);
+            startInfo.ArgumentList.Add(source.FilePath);
         }
 
         using var process =
@@ -577,29 +546,21 @@ public static class MoonBitSourceTranspiler
         if (TranspilerProfiler.Enabled && !string.IsNullOrWhiteSpace(stderrTask.Result))
             LogVNextMoonProfile(stderrTask.Result);
 
-        if (
-            Environment.GetEnvironmentVariable("MOONBIT2CSHARP_VNEXT_IR_DUMP") is
-            { Length: > 0 } dumpPath
-        )
-            File.WriteAllText(Path.GetFullPath(dumpPath), stdoutTask.Result);
-
         return stdoutTask.Result;
     }
 
-    private static string CompileGeneratedVNextSemanticIr(
+    private static VNextFrontendRequest BuildVNextFrontendRequest(
         string mainFile,
         string moduleName,
         string moonPkgPath,
         IReadOnlyList<string> importedRoots,
-        string? moonModPath,
-        string generatedProjectPath,
-        string cacheDirectory
+        string? moonModPath
     )
     {
         var moonbitDirectory = Path.Combine(RepositoryRoot(), "moonbit");
         var mainFileFullPath = Path.GetFullPath(mainFile);
         var moonPkgFullPath = Path.GetFullPath(moonPkgPath);
-        var sources = new List<GeneratedVNextSourceUnit>
+        var sources = new List<VNextSourceUnit>
         {
             new(
                 MoonFrontendPath(moonbitDirectory, mainFileFullPath),
@@ -617,9 +578,9 @@ public static class MoonBitSourceTranspiler
             sources.Add(new(MoonFrontendPath(moonbitDirectory, source), File.ReadAllText(source)));
         }
 
-        var importedSources = new List<GeneratedVNextPackageSource>();
-        var importedDeclarationSources = new List<GeneratedVNextPackageSource>();
-        var importedManifestSources = new List<GeneratedVNextSourceUnit>();
+        var importedSources = new List<VNextPackageSource>();
+        var importedDeclarationSources = new List<VNextPackageSource>();
+        var importedManifestSources = new List<VNextSourceUnit>();
         foreach (
             var importedRoot in SortVNextImportedRootsByDependencies(importedRoots, moonModPath)
         )
@@ -628,7 +589,7 @@ public static class MoonBitSourceTranspiler
                 SourceLocationPackageNameForPackageRoot(importedRoot, moonModPath)
                 ?? EnvPackageNameForPackageRoot(importedRoot, moonModPath)
                 ?? NormalizePackageName(Path.GetFileName(importedRoot));
-            var importRef = new GeneratedVNextImportRef(
+            var importRef = new VNextImportRef(
                 DefaultMoonPkgAlias(modulePath),
                 "pkg:" + modulePath,
                 modulePath
@@ -665,7 +626,7 @@ public static class MoonBitSourceTranspiler
                 )
             );
 
-        var request = new GeneratedVNextFrontendRequest(
+        return new VNextFrontendRequest(
             sources,
             moduleName,
             File.ReadAllText(moonPkgFullPath),
@@ -673,11 +634,6 @@ public static class MoonBitSourceTranspiler
             importedSources,
             importedDeclarationSources,
             importedManifestSources
-        );
-        return GeneratedVNextFrontendCompiler.Compile(
-            request,
-            generatedProjectPath,
-            cacheDirectory
         );
     }
 

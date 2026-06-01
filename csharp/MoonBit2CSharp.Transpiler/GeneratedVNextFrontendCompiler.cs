@@ -5,25 +5,25 @@ using System.Text.Json;
 
 namespace MoonBit2CSharp.Transpiler;
 
-internal sealed record GeneratedVNextFrontendRequest(
-    IReadOnlyList<GeneratedVNextSourceUnit> Sources,
+internal sealed record VNextFrontendRequest(
+    IReadOnlyList<VNextSourceUnit> Sources,
     string ModuleName,
     string MoonPkgSource,
     string MoonPkgPath,
-    IReadOnlyList<GeneratedVNextPackageSource> ImportedSources,
-    IReadOnlyList<GeneratedVNextPackageSource> ImportedDeclarationSources,
-    IReadOnlyList<GeneratedVNextSourceUnit> ImportedManifestSources
+    IReadOnlyList<VNextPackageSource> ImportedSources,
+    IReadOnlyList<VNextPackageSource> ImportedDeclarationSources,
+    IReadOnlyList<VNextSourceUnit> ImportedManifestSources
 );
 
-internal sealed record GeneratedVNextSourceUnit(string FilePath, string Source);
+internal sealed record VNextSourceUnit(string FilePath, string Source);
 
-internal sealed record GeneratedVNextPackageSource(
-    GeneratedVNextImportRef ImportRef,
+internal sealed record VNextPackageSource(
+    VNextImportRef ImportRef,
     string FilePath,
     string Source
 );
 
-internal sealed record GeneratedVNextImportRef(
+internal sealed record VNextImportRef(
     string AliasName,
     string PackageId,
     string ModulePath
@@ -32,7 +32,7 @@ internal sealed record GeneratedVNextImportRef(
 internal static class GeneratedVNextFrontendCompiler
 {
     public static string Compile(
-        GeneratedVNextFrontendRequest request,
+        VNextFrontendRequest request,
         string generatedProjectPath,
         string cacheDirectory
     )
@@ -167,7 +167,7 @@ internal static class GeneratedVNextFrontendCompiler
             using Pipeline = Generated.MoonBit.Packages.moonbit2csharp.frontend.vnext.pipeline.pipeline;
             using SourceUnit = Generated.MoonBit.Packages.moonbit2csharp.frontend.vnext.package.SourceUnit;
 
-            var request = JsonSerializer.Deserialize<GeneratedVNextFrontendRequest>(
+            var request = JsonSerializer.Deserialize<VNextFrontendRequest>(
                 File.ReadAllText(args[0])
             ) ?? throw new InvalidOperationException("missing generated vnext frontend request");
 
@@ -192,7 +192,7 @@ internal static class GeneratedVNextFrontendCompiler
             );
             Console.Write(result);
 
-            static PackageSource ToPackageSource(GeneratedVNextPackageSource source) =>
+            static PackageSource ToPackageSource(VNextPackageSource source) =>
                 new(
                     new ImportRef(
                         source.ImportRef.AliasName,
@@ -203,25 +203,25 @@ internal static class GeneratedVNextFrontendCompiler
                     source.Source
                 );
 
-            sealed record GeneratedVNextFrontendRequest(
-                IReadOnlyList<GeneratedVNextSourceUnit> Sources,
+            sealed record VNextFrontendRequest(
+                IReadOnlyList<VNextSourceUnit> Sources,
                 string ModuleName,
                 string MoonPkgSource,
                 string MoonPkgPath,
-                IReadOnlyList<GeneratedVNextPackageSource> ImportedSources,
-                IReadOnlyList<GeneratedVNextPackageSource> ImportedDeclarationSources,
-                IReadOnlyList<GeneratedVNextSourceUnit> ImportedManifestSources
+                IReadOnlyList<VNextPackageSource> ImportedSources,
+                IReadOnlyList<VNextPackageSource> ImportedDeclarationSources,
+                IReadOnlyList<VNextSourceUnit> ImportedManifestSources
             );
 
-            sealed record GeneratedVNextSourceUnit(string FilePath, string Source);
+            sealed record VNextSourceUnit(string FilePath, string Source);
 
-            sealed record GeneratedVNextPackageSource(
-                GeneratedVNextImportRef ImportRef,
+            sealed record VNextPackageSource(
+                VNextImportRef ImportRef,
                 string FilePath,
                 string Source
             );
 
-            sealed record GeneratedVNextImportRef(
+            sealed record VNextImportRef(
                 string AliasName,
                 string PackageId,
                 string ModulePath

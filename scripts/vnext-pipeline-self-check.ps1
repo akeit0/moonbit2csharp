@@ -3,7 +3,8 @@ param(
     [string]$WorkDirectory = "",
     [switch]$KeepWorkDirectory,
     [switch]$SkipBuild,
-    [switch]$SkipMoonOracle
+    [switch]$SkipMoonOracle,
+    [switch]$SkipCliIntegration
 )
 
 $ErrorActionPreference = "Stop"
@@ -54,30 +55,68 @@ function New-ProofProject(
     $programSource = @'
 using MbArraySource = Generated.MoonBit.Runtime.Array<Generated.MoonBit.Packages.moonbit2csharp.frontend.vnext.package.SourceUnit>;
 using MbArrayPackage = Generated.MoonBit.Runtime.Array<Generated.MoonBit.Packages.moonbit2csharp.frontend.vnext.package.PackageSource>;
+using ImportRef = Generated.MoonBit.Packages.moonbit2csharp.frontend.vnext.binding.ImportRef;
 using SourceUnit = Generated.MoonBit.Packages.moonbit2csharp.frontend.vnext.package.SourceUnit;
 using PackageSource = Generated.MoonBit.Packages.moonbit2csharp.frontend.vnext.package.PackageSource;
 using Pipeline = Generated.MoonBit.Packages.moonbit2csharp.frontend.vnext.pipeline.pipeline;
 
-if (args.Length != 3)
+if (args.Length < 3)
 {
-    Console.Error.WriteLine("usage: VNextPipelineProof <source.mbt> <module-name> <moon.pkg>");
+    Console.Error.WriteLine("usage: VNextPipelineProof <source.mbt> <module-name> <moon.pkg> [vnext_cli import flags]");
     Environment.Exit(2);
 }
 
 var sourcePath = Path.GetFullPath(args[0]);
 var moduleName = args[1];
 var manifestPath = Path.GetFullPath(args[2]);
-var source = File.ReadAllText(sourcePath);
-var manifest = File.ReadAllText(manifestPath);
+var sources = new List<SourceUnit> { new(sourcePath, File.ReadAllText(sourcePath)) };
+var importedSources = new List<PackageSource>();
+var importedDeclarationSources = new List<PackageSource>();
+var importedManifestSources = new List<SourceUnit>();
+
+for (var i = 3; i < args.Length;)
+{
+    switch (args[i++])
+    {
+        case "--source":
+        {
+            var path = Path.GetFullPath(args[i++]);
+            sources.Add(new SourceUnit(path, File.ReadAllText(path)));
+            break;
+        }
+        case "--import-manifest":
+        {
+            var path = Path.GetFullPath(args[i++]);
+            importedManifestSources.Add(new SourceUnit(path, File.ReadAllText(path)));
+            break;
+        }
+        case "--import-source":
+        {
+            var importRef = new ImportRef(args[i++], args[i++], args[i++]);
+            var path = Path.GetFullPath(args[i++]);
+            importedSources.Add(new PackageSource(importRef, path, File.ReadAllText(path)));
+            break;
+        }
+        case "--import-declaration-source":
+        {
+            var importRef = new ImportRef(args[i++], args[i++], args[i++]);
+            var path = Path.GetFullPath(args[i++]);
+            importedDeclarationSources.Add(new PackageSource(importRef, path, File.ReadAllText(path)));
+            break;
+        }
+        default:
+            throw new InvalidOperationException("unsupported proof arg: " + args[i - 1]);
+    }
+}
 
 var json = Pipeline.compile_package_sources_with_manifests_to_json(
-    new MbArraySource(new[] { new SourceUnit(sourcePath, source) }),
+    new MbArraySource(sources.ToArray()),
     moduleName,
-    manifest,
+    File.ReadAllText(manifestPath),
     manifestPath,
-    new MbArrayPackage(Array.Empty<PackageSource>()),
-    new MbArrayPackage(Array.Empty<PackageSource>()),
-    new MbArraySource(Array.Empty<SourceUnit>())
+    new MbArrayPackage(importedSources.ToArray()),
+    new MbArrayPackage(importedDeclarationSources.ToArray()),
+    new MbArraySource(importedManifestSources.ToArray())
 );
 
 Console.Write(json);
@@ -88,18 +127,21 @@ Console.Write(json);
 function Write-ProofCase(
     [string]$Directory,
     [string]$Name,
-    [string]$Source
+    [string]$Source,
+    [string]$Manifest = "",
+    [string[]]$ExtraArgs = @()
 ) {
     $caseDir = Join-Path $Directory $Name
     New-Item -ItemType Directory -Path $caseDir -Force | Out-Null
     $sourcePath = Join-Path $caseDir "$Name.mbt"
     $manifestPath = Join-Path $caseDir "moon.pkg"
     Write-TextFile $sourcePath $Source
-    Write-TextFile $manifestPath ""
+    Write-TextFile $manifestPath $Manifest
     [pscustomobject]@{
         Name = $Name
         SourcePath = $sourcePath
         ManifestPath = $manifestPath
+        ExtraArgs = $ExtraArgs
         GeneratedJsonPath = Join-Path $caseDir "generated.json"
         MoonJsonPath = Join-Path $caseDir "moon.json"
     }
@@ -155,16 +197,34 @@ fn probe(hash:Int)->Int {
   idx + psl
 }
 '@
+    $cases += Write-ProofCase $casesDir "crlf_cfg" "#cfg(not(target=""js""))`r`nlet seed : Int = 0`r`n#cfg(target=""js"")`r`nlet seed : Int = 1`r`nfn seed_value() -> Int { seed }`r`n"
+
+    $importDeclDir = Join-Path $casesDir "import_decl"
+    $depDeclPath = Join-Path $importDeclDir "dep.mbti"
+    $importDeclSource = @'
+fn use_answer() -> Int { @dep.answer() }
+'@
+    $importDeclManifest = @'
+import {
+  "dep"
+}
+'@
+    $cases += Write-ProofCase $casesDir "import_decl" $importDeclSource $importDeclManifest @("--import-declaration-source", "dep", "pkg:dep", "dep", $depDeclPath)
+    Write-TextFile $depDeclPath @'
+pub fn answer() -> Int
+'@
 
     foreach ($case in $cases) {
         Invoke-Checked "generated pipeline case '$($case.Name)'" {
-            $output = dotnet $proofDll $case.SourcePath Demo $case.ManifestPath
+            $generatedArgs = @($proofDll, $case.SourcePath, "Demo", $case.ManifestPath) + $case.ExtraArgs
+            $output = dotnet @generatedArgs
             Write-TextFile $case.GeneratedJsonPath ($output -join [Environment]::NewLine)
         }
 
         if (!$SkipMoonOracle) {
             Invoke-Checked "moon vnext_cli oracle case '$($case.Name)'" {
-                $output = moon -C moonbit run ./src/vnext_cli -- $case.SourcePath Demo $case.ManifestPath
+                $moonArgs = @("-C", "moonbit", "run", "./src/vnext_cli", "--", $case.SourcePath, "Demo", $case.ManifestPath) + $case.ExtraArgs
+                $output = moon @moonArgs
                 Write-TextFile $case.MoonJsonPath ($output -join [Environment]::NewLine)
             }
 
@@ -176,6 +236,12 @@ fn probe(hash:Int)->Int {
                 Write-Host "moon:      $($case.MoonJsonPath)"
                 exit 2
             }
+        }
+    }
+
+    if (!$SkipCliIntegration) {
+        Invoke-Checked "CLI generated frontend integration: samples/simple_project" {
+            dnrelay run --project csharp\MoonBit2CSharp.Cli\MoonBit2CSharp.Cli.csproj -- build samples\simple_project --no-cache --generated-vnext-pipeline $generatedProject
         }
     }
 
