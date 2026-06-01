@@ -288,6 +288,7 @@ public static class MoonBitSourceTranspiler
             importedRoots,
             moonModPath
         );
+        var frontendProfile = TranspilerProfiler.Measure("write front end ir total");
         var irJson = VNextFrontendIsMoon(request.VNextFrontend)
             ? CompileMoonVNextSemanticIr(frontendRequest)
             : GeneratedVNextFrontendCompiler.Compile(
@@ -295,6 +296,7 @@ public static class MoonBitSourceTranspiler
                 VNextFrontendCSharpPath(request.VNextFrontend),
                 request.CacheDirectory
             );
+        frontendProfile.Dispose();
         if (
             Environment.GetEnvironmentVariable("MOONBIT2CSHARP_VNEXT_IR_DUMP") is
             { Length: > 0 } dumpPath
@@ -573,7 +575,10 @@ public static class MoonBitSourceTranspiler
 
     private static string StripVNextMoonProfile(string stdout)
     {
-        if (string.IsNullOrWhiteSpace(stdout) || !stdout.Contains("vnext-profile:", StringComparison.Ordinal))
+        if (
+            string.IsNullOrWhiteSpace(stdout)
+            || !stdout.Contains("vnext-profile:", StringComparison.Ordinal)
+        )
             return stdout;
 
         var result = new StringBuilder();
