@@ -544,11 +544,7 @@ public static class MoonBitSourceTranspiler
             );
         }
 
-        var stdout = stdoutTask.Result;
-        if (TranspilerProfiler.Enabled)
-        {
-            stdout = StripVNextMoonProfile(stdout);
-        }
+        var stdout = StripVNextMoonProfile(stdoutTask.Result);
 
         if (TranspilerProfiler.Enabled && !string.IsNullOrWhiteSpace(stderrTask.Result))
             LogVNextMoonProfile(stderrTask.Result);
