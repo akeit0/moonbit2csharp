@@ -109,6 +109,7 @@ pub fn compile_package_sources_with_manifests_to_json_profiled(
   let imported_globals : Array[@binding.GlobalSignature] = []
   let imported_traits : Array[@semantic.TraitDefinition] = []
   let imported_impls : Array[@semantic.ImplDefinition] = []
+  let imported_usings : Array[@semantic.UsingItem] = []
   let imported_default_arguments : Array[@binding.DefaultArgument] = []
   let declaration_imports_start = profile_start(profiler)
   let declaration_imports = declaration_import_refs(
@@ -147,7 +148,7 @@ pub fn compile_package_sources_with_manifests_to_json_profiled(
       imported_group.sources.length(),
     )
     let collect_start = profile_start(profiler)
-    let imported_bound = @sema.collect_semantic_declarations_with_package_id(
+    let imported_bound = @sema.collect_semantic_declarations_with_package_id_and_imported_usings(
       imported_parsed,
       imported_group.import_ref.module_path,
       imported_group.import_ref.package_id,
@@ -157,6 +158,7 @@ pub fn compile_package_sources_with_manifests_to_json_profiled(
       imported_globals,
       imported_traits,
       imported_impls,
+      imported_usings,
       diagnostics,
     )
     profile_event(
@@ -178,6 +180,9 @@ pub fn compile_package_sources_with_manifests_to_json_profiled(
     }
     for impl_def in imported_bound.impls {
       push_impl_definition_unique(imported_impls, impl_def)
+    }
+    for using_item in imported_bound.exported_usings {
+      push_using_item_unique(imported_usings, using_item)
     }
     let extern_sources = external_declaration_sources(imported_group.sources)
     if extern_sources.length() > 0 {
@@ -209,7 +214,7 @@ pub fn compile_package_sources_with_manifests_to_json_profiled(
       imported_group.sources.length(),
     )
     let collect_start = profile_start(profiler)
-    let imported_bound = @sema.collect_semantic_declarations_with_package_id(
+    let imported_bound = @sema.collect_semantic_declarations_with_package_id_and_imported_usings(
       imported_parsed,
       imported_group.import_ref.module_path,
       imported_group.import_ref.package_id,
@@ -219,6 +224,7 @@ pub fn compile_package_sources_with_manifests_to_json_profiled(
       imported_globals,
       imported_traits,
       imported_impls,
+      imported_usings,
       diagnostics,
     )
     profile_event(
@@ -245,6 +251,9 @@ pub fn compile_package_sources_with_manifests_to_json_profiled(
     for impl_def in imported_bound.impls {
       push_impl_definition_unique(imported_impls, impl_def)
     }
+    for using_item in imported_bound.exported_usings {
+      push_using_item_unique(imported_usings, using_item)
+    }
     if should_emit_imported_group(imported_group) {
       for symbol in imported_bound.symbols {
         push_symbol_unique(emitted_symbols, symbol)
@@ -260,7 +269,7 @@ pub fn compile_package_sources_with_manifests_to_json_profiled(
     sources.length(),
   )
   let local_bind_start = profile_start(profiler)
-  let bound = @sema.bind_module_with_package_id_and_default_arguments(
+  let bound = @sema.bind_module_with_package_id_and_imported_usings_and_default_arguments(
     parsed,
     module_name,
     "pkg:" + module_name,
@@ -270,6 +279,7 @@ pub fn compile_package_sources_with_manifests_to_json_profiled(
     imported_globals,
     imported_traits,
     imported_impls,
+    imported_usings,
     imported_default_arguments,
     diagnostics,
   )
@@ -286,6 +296,7 @@ pub fn compile_package_sources_with_manifests_to_json_profiled(
     imported_globals,
     imported_traits,
     imported_impls,
+    imported_usings,
     imported_default_arguments,
     diagnostics,
     profiler,
@@ -319,6 +330,7 @@ fn complete_reachable_declaration_source_functions(
   imported_globals : Array[@binding.GlobalSignature],
   imported_traits : Array[@semantic.TraitDefinition],
   imported_impls : Array[@semantic.ImplDefinition],
+  imported_usings : Array[@semantic.UsingItem],
   imported_default_arguments : Array[@binding.DefaultArgument],
   diagnostics : Array[@common.Diagnostic],
   profiler : PipelineProfiler,
@@ -326,7 +338,7 @@ fn complete_reachable_declaration_source_functions(
   let sessions_start = profile_start(profiler)
   let sessions = reachable_package_sessions(
     imported_declaration_groups, declaration_imports, imported_types, imported_functions,
-    imported_globals, imported_traits, imported_impls, imported_default_arguments,
+    imported_globals, imported_traits, imported_impls, imported_usings, imported_default_arguments,
     diagnostics, profiler,
   )
   profile_event_with_count(
@@ -631,6 +643,7 @@ fn reachable_package_sessions(
   imported_globals : Array[@binding.GlobalSignature],
   imported_traits : Array[@semantic.TraitDefinition],
   imported_impls : Array[@semantic.ImplDefinition],
+  imported_usings : Array[@semantic.UsingItem],
   imported_default_arguments : Array[@binding.DefaultArgument],
   diagnostics : Array[@common.Diagnostic],
   profiler : PipelineProfiler,
@@ -653,7 +666,7 @@ fn reachable_package_sessions(
     let visible_traits = imported_traits
     let visible_impls = imported_impls
     let session_start = profile_start(profiler)
-    let binding_session = @sema.package_binding_session_with_default_arguments(
+    let binding_session = @sema.package_binding_session_with_imported_usings_and_default_arguments(
       parsed,
       imported_group.import_ref.module_path,
       imported_group.import_ref.package_id,
@@ -663,6 +676,7 @@ fn reachable_package_sessions(
       visible_globals,
       visible_traits,
       visible_impls,
+      imported_usings,
       imported_default_arguments,
       local_diagnostics,
     )
@@ -807,7 +821,10 @@ fn external_declaration_sources(
   let result : Array[@package.PackageSource] = []
   for source in sources {
     let parsed = @syntax.parse_declaration_source(
-      @text.source_file(source.file_path, normalize_source_newlines(source.source)),
+      @text.source_file(
+        source.file_path,
+        normalize_source_newlines(source.source),
+      ),
     )
     for function in parsed.module_.functions {
       match function.external {
@@ -1599,7 +1616,10 @@ fn parse_package_sources(
 ) -> @ast.Module {
   let module_ = empty_module()
   for source in sources {
-    let file = @text.source_file(source.file_path, normalize_source_newlines(source.source))
+    let file = @text.source_file(
+      source.file_path,
+      normalize_source_newlines(source.source),
+    )
     let parsed = @syntax.parse_source(file)
     for diagnostic in parsed.diagnostics {
       diagnostics.push(diagnostic)
@@ -1616,7 +1636,10 @@ fn parse_declaration_package_sources(
 ) -> @ast.Module {
   let module_ = empty_module()
   for source in sources {
-    let file = @text.source_file(source.file_path, normalize_source_newlines(source.source))
+    let file = @text.source_file(
+      source.file_path,
+      normalize_source_newlines(source.source),
+    )
     let parsed = @syntax.parse_declaration_source(file)
     for diagnostic in parsed.diagnostics {
       diagnostics.push(diagnostic)
@@ -1633,7 +1656,10 @@ fn parse_source_units(
 ) -> @ast.Module {
   let module_ = empty_module()
   for source in sources {
-    let file = @text.source_file(source.file_path, normalize_source_newlines(source.source))
+    let file = @text.source_file(
+      source.file_path,
+      normalize_source_newlines(source.source),
+    )
     let parsed = @syntax.parse_source(file)
     for diagnostic in parsed.diagnostics {
       diagnostics.push(diagnostic)
@@ -1836,6 +1862,21 @@ fn push_impl_definition_unique(
       for impl_method in item.methods {
         merge_imported_impl_method(items[i].methods, impl_method)
       }
+      return
+    }
+  }
+  items.push(item)
+}
+
+///|
+fn push_using_item_unique(
+  items : Array[@semantic.UsingItem],
+  item : @semantic.UsingItem,
+) -> Unit {
+  for existing in items {
+    if existing.package_id == item.package_id &&
+      existing.name == item.name &&
+      existing.kind == item.kind {
       return
     }
   }

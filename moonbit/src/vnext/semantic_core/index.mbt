@@ -1619,7 +1619,10 @@ fn substitute_impl_self_type(type_ : TypeRef, self_type : TypeRef) -> TypeRef {
   match type_ {
     TypeRef::Builtin("Self") => self_type
     TypeRef::Tuple(items) => {
-      let result = FixedArray::make(items.length(), @binding.unresolved_type_ref())
+      let result = FixedArray::make(
+        items.length(),
+        @binding.unresolved_type_ref(),
+      )
       for i in 0..<items.length() {
         result[i] = substitute_impl_self_type(items[i], self_type)
       }
@@ -1642,21 +1645,30 @@ fn substitute_impl_self_type(type_ : TypeRef, self_type : TypeRef) -> TypeRef {
       )
     }
     TypeRef::Apply(type_constructor, args) => {
-      let result = FixedArray::make(args.length(), @binding.unresolved_type_ref())
+      let result = FixedArray::make(
+        args.length(),
+        @binding.unresolved_type_ref(),
+      )
       for i in 0..<args.length() {
         result[i] = substitute_impl_self_type(args[i], self_type)
       }
       TypeRef::Apply(type_constructor, result)
     }
     TypeRef::Declared(symbol, args) => {
-      let result = FixedArray::make(args.length(), @binding.unresolved_type_ref())
+      let result = FixedArray::make(
+        args.length(),
+        @binding.unresolved_type_ref(),
+      )
       for i in 0..<args.length() {
         result[i] = substitute_impl_self_type(args[i], self_type)
       }
       TypeRef::Declared(symbol, result)
     }
     TypeRef::TraitObject(trait_ref) => {
-      let result = FixedArray::make(trait_ref.args.length(), @binding.unresolved_type_ref())
+      let result = FixedArray::make(
+        trait_ref.args.length(),
+        @binding.unresolved_type_ref(),
+      )
       for i in 0..<trait_ref.args.length() {
         result[i] = substitute_impl_self_type(trait_ref.args[i], self_type)
       }
@@ -1784,6 +1796,16 @@ pub fn add_using_item(index : DeclarationIndex, item : UsingItem) -> Unit {
 }
 
 ///|
+pub fn add_using_items(
+  index : DeclarationIndex,
+  items : Array[UsingItem],
+) -> Unit {
+  for item in items {
+    add_using_item(index, item)
+  }
+}
+
+///|
 pub fn resolve_import_alias(
   index : DeclarationIndex,
   alias_name : String,
@@ -1830,7 +1852,10 @@ fn same_type_header(
 }
 
 ///|
-fn same_string_array(left : FixedArray[String], right : FixedArray[String]) -> Bool {
+fn same_string_array(
+  left : FixedArray[String],
+  right : FixedArray[String],
+) -> Bool {
   if left.length() != right.length() {
     return false
   }
@@ -2045,23 +2070,28 @@ pub fn find_visible_type_header(
     }
   }
   for header in index.type_headers {
-    let visible = match package_alias {
-      Some(alias_name) =>
-        imported_package_id(index, alias_name) == Some(header.symbol.package_id)
-      None =>
-        header.symbol.package_id == index.package_id ||
-        core_prelude_type(header.symbol) ||
-        type_is_imported_by_using(
-          index,
-          header.symbol.package_id,
-          header.symbol.name,
-        )
-    }
+    let visible = type_symbol_visible(index, package_alias, header.symbol)
     if visible && header.symbol.name == name {
       return Some(header)
     }
   }
   None
+}
+
+///|
+fn type_symbol_visible(
+  index : DeclarationIndex,
+  package_alias : String?,
+  symbol : TypeSymbolRef,
+) -> Bool {
+  match package_alias {
+    Some(alias_name) =>
+      imported_package_id(index, alias_name) == Some(symbol.package_id)
+    None =>
+      symbol.package_id == index.package_id ||
+      core_prelude_type(symbol) ||
+      type_is_imported_by_using(index, symbol.package_id, symbol.name)
+  }
 }
 
 ///|
@@ -2363,12 +2393,32 @@ fn receiver_function_visible(
   index : DeclarationIndex,
   function : FunctionSignature,
 ) -> Bool {
-  function_visible(index, function) ||
-  (
-    function.is_public &&
-    function.receiver_type is Some(_) &&
-    function_is_moon_pkg_imported(index, function)
-  )
+  if function_visible(index, function) {
+    return true
+  }
+  guard function.is_public else { return false }
+  match function.receiver_type {
+    Some(receiver_type) =>
+      function_is_moon_pkg_imported(index, function) ||
+      receiver_type_visible(index, receiver_type)
+    None => false
+  }
+}
+
+///|
+fn receiver_type_visible(index : DeclarationIndex, type_ : TypeRef) -> Bool {
+  match type_ {
+    TypeRef::Builtin(_) => true
+    TypeRef::Apply(TypeConstructorRef::Builtin(_), _) => true
+    TypeRef::Declared(symbol, _) => type_symbol_visible(index, None, symbol)
+    TypeRef::Apply(TypeConstructorRef::Declared(symbol), _) =>
+      type_symbol_visible(index, None, symbol)
+    TypeRef::TypeParameter(_, _) => true
+    TypeRef::Tuple(_) | TypeRef::Function(_, _, _) => true
+    TypeRef::TraitObject(trait_ref) =>
+      trait_is_visible(index, None, trait_ref.trait_)
+    _ => false
+  }
 }
 
 ///|

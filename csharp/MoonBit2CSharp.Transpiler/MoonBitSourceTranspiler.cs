@@ -913,6 +913,20 @@ public static class MoonBitSourceTranspiler
         );
         AddDeclarationSource(
             result,
+            "ref",
+            "pkg:moonbitlang/core/ref",
+            "moonbitlang/core/ref",
+            Path.Combine(root, "moonbit", "builtin", "overrides", "core_ref_csharp.mbt")
+        );
+        AddDeclarationSource(
+            result,
+            "prelude",
+            "pkg:moonbitlang/core/prelude",
+            "moonbitlang/core/prelude",
+            Path.Combine(root, "moonbit", "builtin", "overrides", "core_prelude_csharp.mbt")
+        );
+        AddDeclarationSource(
+            result,
             "env",
             "pkg:moonbitlang/core/env",
             "moonbitlang/core/env",
@@ -1191,6 +1205,13 @@ public static class MoonBitSourceTranspiler
             "pkg:moonbitlang/core/set",
             "moonbitlang/core/set",
             Path.Combine(root, "moonbitlang", "core", "set", "debug.mbt")
+        );
+        AddDeclarationSource(
+            result,
+            "ref",
+            "pkg:moonbitlang/core/ref",
+            "moonbitlang/core/ref",
+            Path.Combine(root, "moonbit", "builtin", "overrides", "core_ref_csharp.mbt")
         );
         AddDeclarationSource(
             result,

@@ -1,10 +1,27 @@
 ///|
 fn declare_usings(index : DeclarationIndex, ast : Module) -> Unit {
+  ignore(declare_usings_and_collect_exports(index, ast))
+}
+
+///|
+fn declare_usings_and_collect_exports(
+  index : DeclarationIndex,
+  ast : Module,
+) -> Array[@semantic.UsingItem] {
+  let exported : Array[@semantic.UsingItem] = []
   for using_decl in ast.usings {
     match @semantic.resolve_import_alias(index, using_decl.package_alias) {
       Some(package_id) =>
         for item in using_decl.items {
+          let start = index.using_items.length()
           declare_using_item(index, using_decl.package_alias, package_id, item)
+          if using_decl.is_public {
+            let mut i = start
+            while i < index.using_items.length() {
+              exported.push(index.using_items[i])
+              i += 1
+            }
+          }
         }
       None =>
         index.error(
@@ -14,6 +31,7 @@ fn declare_usings(index : DeclarationIndex, ast : Module) -> Unit {
         )
     }
   }
+  exported
 }
 
 ///|

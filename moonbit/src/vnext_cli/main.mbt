@@ -192,11 +192,7 @@ fn default_core_declaration_sources() -> Array[@package.PackageSource] {
       "builtin/overrides/core_traits_csharp.mbt", "builtin/overrides/core_uint64_intrinsics_csharp.mbt",
       "builtin/overrides/core_uint64_operator_intrinsics_csharp.mbt",
     ] {
-    result.push({
-      import_ref,
-      file_path: path,
-      source: read_text_file(path),
-    })
+    result.push({ import_ref, file_path: path, source: read_text_file(path) })
   }
   let debug_import_ref : @binding.ImportRef = {
     alias_name: "debug",
@@ -225,8 +221,18 @@ fn default_core_declaration_sources() -> Array[@package.PackageSource] {
   }
   result.push({
     import_ref: ref_import_ref,
-    file_path: "../moonbitlang/core/ref/pkg.generated.mbti",
-    source: read_text_file("../moonbitlang/core/ref/pkg.generated.mbti"),
+    file_path: "builtin/overrides/core_ref_csharp.mbt",
+    source: read_text_file("builtin/overrides/core_ref_csharp.mbt"),
+  })
+  let prelude_import_ref : @binding.ImportRef = {
+    alias_name: "prelude",
+    package_id: "pkg:moonbitlang/core/prelude",
+    module_path: "moonbitlang/core/prelude",
+  }
+  result.push({
+    import_ref: prelude_import_ref,
+    file_path: "builtin/overrides/core_prelude_csharp.mbt",
+    source: read_text_file("builtin/overrides/core_prelude_csharp.mbt"),
   })
   result
 }
@@ -251,4 +257,3 @@ fn import_ref_for_source(
     None => None
   }
 }
-

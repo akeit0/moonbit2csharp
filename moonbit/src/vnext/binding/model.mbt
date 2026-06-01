@@ -648,7 +648,10 @@ fn constructor_equal(
 }
 
 ///|
-fn type_arrays_equal(left : FixedArray[TypeRef], right : FixedArray[TypeRef]) -> Bool {
+fn type_arrays_equal(
+  left : FixedArray[TypeRef],
+  right : FixedArray[TypeRef],
+) -> Bool {
   if left.length() != right.length() {
     return false
   }

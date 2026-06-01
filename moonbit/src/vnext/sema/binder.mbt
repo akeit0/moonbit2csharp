@@ -101,6 +101,7 @@ pub(all) struct CollectedDeclarations {
   functions : Array[FunctionSignature]
   globals : Array[GlobalSignature]
   impls : Array[@semantic.ImplDefinition]
+  exported_usings : Array[@semantic.UsingItem]
   default_arguments : Array[@binding.DefaultArgument]
   bound_traits : Array[@ir.BoundTrait]
   function_stubs : Array[@ir.BoundFunction]
@@ -212,6 +213,37 @@ pub fn bind_module_with_package_id_and_default_arguments(
   imported_default_arguments : Array[@binding.DefaultArgument],
   diagnostics : Array[Diagnostic],
 ) -> BoundModule {
+  bind_module_with_package_id_and_imported_usings_and_default_arguments(
+    ast,
+    module_name,
+    package_id,
+    imports,
+    imported_types,
+    imported_functions,
+    imported_globals,
+    imported_traits,
+    imported_impls,
+    [],
+    imported_default_arguments,
+    diagnostics,
+  )
+}
+
+///|
+pub fn bind_module_with_package_id_and_imported_usings_and_default_arguments(
+  ast : Module,
+  module_name : String,
+  package_id : String,
+  imports : Array[ImportRef],
+  imported_types : Array[TypeDefinition],
+  imported_functions : Array[FunctionSignature],
+  imported_globals : Array[GlobalSignature],
+  imported_traits : Array[@semantic.TraitDefinition],
+  imported_impls : Array[@semantic.ImplDefinition],
+  imported_usings : Array[@semantic.UsingItem],
+  imported_default_arguments : Array[@binding.DefaultArgument],
+  diagnostics : Array[Diagnostic],
+) -> BoundModule {
   let context = @binding.binding_context_with_imports(
     module_name, package_id, imports, imported_types, imported_functions, imported_globals,
     diagnostics,
@@ -228,6 +260,7 @@ pub fn bind_module_with_package_id_and_default_arguments(
   @semantic.add_imported_globals(index, imported_globals)
   @semantic.add_imported_traits(index, imported_traits)
   @semantic.add_imported_impls(index, imported_impls)
+  @semantic.add_using_items(index, imported_usings)
   declare_usings(index, ast)
   declare_opaque_type_headers(context, index, ast)
   declare_struct_headers(context, index, ast)
@@ -330,6 +363,37 @@ pub fn package_binding_session_with_default_arguments(
   imported_default_arguments : Array[@binding.DefaultArgument],
   diagnostics : Array[Diagnostic],
 ) -> PackageBindingSession {
+  package_binding_session_with_imported_usings_and_default_arguments(
+    ast,
+    module_name,
+    package_id,
+    imports,
+    imported_types,
+    imported_functions,
+    imported_globals,
+    imported_traits,
+    imported_impls,
+    [],
+    imported_default_arguments,
+    diagnostics,
+  )
+}
+
+///|
+pub fn package_binding_session_with_imported_usings_and_default_arguments(
+  ast : Module,
+  module_name : String,
+  package_id : String,
+  imports : Array[ImportRef],
+  imported_types : Array[TypeDefinition],
+  imported_functions : Array[FunctionSignature],
+  imported_globals : Array[GlobalSignature],
+  imported_traits : Array[@semantic.TraitDefinition],
+  imported_impls : Array[@semantic.ImplDefinition],
+  imported_usings : Array[@semantic.UsingItem],
+  imported_default_arguments : Array[@binding.DefaultArgument],
+  diagnostics : Array[Diagnostic],
+) -> PackageBindingSession {
   let context = @binding.binding_context_with_imports(
     module_name, package_id, imports, imported_types, imported_functions, imported_globals,
     diagnostics,
@@ -346,6 +410,7 @@ pub fn package_binding_session_with_default_arguments(
   @semantic.add_imported_globals(index, imported_globals)
   @semantic.add_imported_traits(index, imported_traits)
   @semantic.add_imported_impls(index, imported_impls)
+  @semantic.add_using_items(index, imported_usings)
   declare_usings(index, ast)
   declare_opaque_type_headers(context, index, ast)
   declare_struct_headers(context, index, ast)
@@ -642,6 +707,35 @@ pub fn collect_semantic_declarations_with_package_id(
   imported_impls : Array[@semantic.ImplDefinition],
   diagnostics : Array[Diagnostic],
 ) -> CollectedDeclarations {
+  collect_semantic_declarations_with_package_id_and_imported_usings(
+    ast,
+    module_name,
+    package_id,
+    imports,
+    imported_types,
+    imported_functions,
+    imported_globals,
+    imported_traits,
+    imported_impls,
+    [],
+    diagnostics,
+  )
+}
+
+///|
+pub fn collect_semantic_declarations_with_package_id_and_imported_usings(
+  ast : Module,
+  module_name : String,
+  package_id : String,
+  imports : Array[ImportRef],
+  imported_types : Array[TypeDefinition],
+  imported_functions : Array[FunctionSignature],
+  imported_globals : Array[GlobalSignature],
+  imported_traits : Array[@semantic.TraitDefinition],
+  imported_impls : Array[@semantic.ImplDefinition],
+  imported_usings : Array[@semantic.UsingItem],
+  diagnostics : Array[Diagnostic],
+) -> CollectedDeclarations {
   let context = @binding.binding_context_with_imports(
     module_name, package_id, imports, imported_types, imported_functions, imported_globals,
     diagnostics,
@@ -657,7 +751,8 @@ pub fn collect_semantic_declarations_with_package_id(
   @semantic.add_imported_globals(index, imported_globals)
   @semantic.add_imported_traits(index, imported_traits)
   @semantic.add_imported_impls(index, imported_impls)
-  declare_usings(index, ast)
+  @semantic.add_using_items(index, imported_usings)
+  let exported_usings = declare_usings_and_collect_exports(index, ast)
   declare_opaque_type_headers(context, index, ast)
   declare_struct_headers(context, index, ast)
   declare_enum_headers(context, index, ast)
@@ -689,6 +784,7 @@ pub fn collect_semantic_declarations_with_package_id(
     functions: signatures,
     globals: collected_global_signatures(context),
     impls: index.impls,
+    exported_usings,
     bound_traits: bound_traits(index.traits),
     function_stubs: functions,
     default_arguments: context.default_arguments,

@@ -451,12 +451,35 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
     )
     {
         yield return EmitTypeDefinition(typeDefinition);
+        foreach (var member in EmitCoreRefShowMembers(typeDefinition))
+            yield return member;
         foreach (var member in EmitDerivedEqMembers(typeDefinition))
             yield return member;
         foreach (var member in EmitDerivedHashMembers(typeDefinition))
             yield return member;
         foreach (var member in EmitDerivedDebugMembers(typeDefinition))
             yield return member;
+    }
+
+    private IEnumerable<MemberDeclarationSyntax> EmitCoreRefShowMembers(JsonElement typeDefinition)
+    {
+        var symbol = typeDefinition.GetProperty("symbol");
+        if (
+            symbol.GetProperty("packageId").GetString() != "pkg:moonbitlang/core/ref"
+            || symbol.GetProperty("name").GetString() != "Ref"
+        )
+            yield break;
+
+        var showImplInterfaceName = CoreBuiltinTypeName("IShowImpl");
+        yield return ParseMemberDeclaration(
+            $$"""
+            public sealed class RefShowImpl<T, TShow> : {{showImplInterfaceName}}<Ref<T>, RefShowImpl<T, TShow>>
+                where TShow : {{showImplInterfaceName}}<T, TShow>
+            {
+                public static string to_string(Ref<T> self) => "{val: " + TShow.to_string(self.val) + "}";
+            }
+            """
+        )!;
     }
 
     private IEnumerable<MemberDeclarationSyntax> EmitDerivedHashMembers(JsonElement typeDefinition)
@@ -3898,6 +3921,27 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
                 }
                 """
             )!;
+        if (CoreBuiltinEvidenceRequired("OptionShowImpl"))
+            yield return ParseMemberDeclaration(
+                """
+                public sealed class OptionShowImpl<T, TShow> : IShowImpl<Option<T>, OptionShowImpl<T, TShow>>
+                    where TShow : IShowImpl<T, TShow>
+                {
+                    public static string to_string(Option<T> self) => self.IsNone ? "None" : "Some(" + TShow.to_string(self.Value) + ")";
+                }
+                """
+            )!;
+        if (CoreBuiltinEvidenceRequired("NullableOptionShowImpl"))
+            yield return ParseMemberDeclaration(
+                """
+                public sealed class NullableOptionShowImpl<T, TShow> : IShowImpl<T?, NullableOptionShowImpl<T, TShow>>
+                    where T : class
+                    where TShow : IShowImpl<T, TShow>
+                {
+                    public static string to_string(T? self) => self is null ? "None" : "Some(" + TShow.to_string(self) + ")";
+                }
+                """
+            )!;
     }
 
     private IEnumerable<MemberDeclarationSyntax> EmitCoreDebugEvidenceMembers(string packageName)
@@ -3955,6 +3999,21 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
             )
         )
             return adapterType;
+
+        if (traitName == "Show" && IsBuiltinApply(type, "Option"))
+        {
+            var elementType = OptionElementType(type);
+            var elementTypeName = EmitType(elementType).NormalizeWhitespace().ToFullString();
+            var elementShowType = TraitEvidenceTypeArgument(elementType, "Show");
+            var implName = UseNullableReferenceOption(type)
+                ? "NullableOptionShowImpl"
+                : "OptionShowImpl";
+            requiredCoreBuiltinEvidence.Add(implName);
+            return $"{CoreBuiltinTypeName(implName)}<{elementTypeName}, {elementShowType}>";
+        }
+
+        if (traitName == "Show" && TryCoreRefShowEvidenceName(type, out var refShowEvidence))
+            return refShowEvidence;
 
         if (
             traitName == "Eq"
@@ -4038,6 +4097,36 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
                 traitName
             ),
         };
+    }
+
+    private bool TryCoreRefShowEvidenceName(JsonElement type, out string evidenceName)
+    {
+        evidenceName = "";
+        if (type.GetProperty("kind").GetString() != "Declared")
+            return false;
+
+        var symbol = type.GetProperty("symbol");
+        if (
+            symbol.GetProperty("packageId").GetString() != "pkg:moonbitlang/core/ref"
+            || symbol.GetProperty("name").GetString() != "Ref"
+            || !type.TryGetProperty("args", out var argsElement)
+        )
+            return false;
+
+        var args = argsElement.EnumerateArray().ToArray();
+        if (args.Length != 1)
+            return false;
+
+        var valueType = EmitType(args[0]).NormalizeWhitespace().ToFullString();
+        var valueShow = TraitEvidenceTypeArgument(args[0], "Show");
+        evidenceName =
+            QualifyPackageTypeName(symbol.GetProperty("id").GetString() ?? "", "RefShowImpl")
+            + "<"
+            + valueType
+            + ", "
+            + valueShow
+            + ">";
+        return true;
     }
 
     private static string StaticTraitImplAdapterKey(string traitName, JsonElement type)
@@ -4653,6 +4742,9 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
         if (TryEmitBuiltinPrintln(expr, functionId, emittedArgs, out var printlnExpr))
             return printlnExpr;
 
+        if (TryEmitCoreOptionUnwrapOr(expr, functionId, emittedArgs, out var optionExpr))
+            return optionExpr;
+
         return InvocationExpression(
             FunctionMemberAccess(
                 functionId,
@@ -4662,6 +4754,34 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
             ),
             ArgumentList(SeparatedList(args))
         );
+    }
+
+    private bool TryEmitCoreOptionUnwrapOr(
+        JsonElement expr,
+        string functionId,
+        IReadOnlyList<ExpressionSyntax> emittedArgs,
+        out ExpressionSyntax result
+    )
+    {
+        result = default!;
+        if (
+            functionId
+                != "fn:pkg:moonbitlang/core/builtin:moonbitlang/core/builtin:Option::unwrap_or"
+            || emittedArgs.Count != 2
+        )
+            return false;
+
+        var args = expr.GetProperty("args").EnumerateArray().ToArray();
+        if (args.Length != 2 || !args[0].TryGetProperty("type", out var selfType))
+            return false;
+
+        if (!UseNullableReferenceOption(selfType))
+            return false;
+
+        result = ParseExpression(
+            $"({emittedArgs[0].NormalizeWhitespace().ToFullString()} ?? {emittedArgs[1].NormalizeWhitespace().ToFullString()})"
+        );
+        return true;
     }
 
     private bool TryEmitBuiltinPrintln(
@@ -5994,8 +6114,7 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
 
             return ConstructedCoreBuiltinTypeNameOrNull(type) switch
             {
-                "Array" or "Map" or "Set" or "Iter" or "FixedArray" or "UninitializedArray" =>
-                    true,
+                "Array" or "Map" or "Set" or "Iter" or "FixedArray" or "UninitializedArray" => true,
                 _ => false,
             };
         }

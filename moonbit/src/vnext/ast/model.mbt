@@ -12,6 +12,7 @@ pub(all) struct Module {
 
 ///|
 pub(all) struct UsingDecl {
+  is_public : Bool
   package_alias : String
   items : Array[UsingItem]
   span : @common.SourceSpan

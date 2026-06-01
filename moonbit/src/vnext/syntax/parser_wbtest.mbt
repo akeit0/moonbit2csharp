@@ -280,6 +280,7 @@ test "vnext parser accepts public using declarations" {
   let result = parse_source(@text.source_file("using.mbt", source))
   assert_eq(result.diagnostics.length(), 0)
   assert_eq(result.module_.usings.length(), 1)
+  assert_true(result.module_.usings[0].is_public)
 }
 
 ///|

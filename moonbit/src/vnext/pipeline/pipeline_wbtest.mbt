@@ -1054,6 +1054,15 @@ test "vnext resolves static receiver function aliases from interface declaration
         file_path: "ref.pkg.generated.mbti",
         source: "package \"moonbitlang/core/ref\"\npub(all) struct Ref[T] { mut val : T }\n#alias(new, deprecated)\npub fn[T] Ref::Ref(T) -> Self[T]\n",
       },
+      {
+        import_ref: {
+          alias_name: "prelude",
+          package_id: "pkg:moonbitlang/core/prelude",
+          module_path: "moonbitlang/core/prelude",
+        },
+        file_path: "prelude.mbt",
+        source: "package \"moonbitlang/core/prelude\"\npub using @ref { type Ref }\n",
+      },
     ]),
   )
   assert_true(
@@ -1062,6 +1071,41 @@ test "vnext resolves static receiver function aliases from interface declaration
     ),
   )
   assert_true(json.contains("\"diagnostics\":[]"))
+}
+
+///|
+test "vnext resolves bare Ref constructor calls through prelude type visibility" {
+  let source =
+    #|fn make()->Ref[Int] { Ref(42) }
+    #|fn make_option()->Ref[Int]? { Some(Ref(42)) }
+    #|
+  let json = compile_package_sources_with_declarations_to_json(
+    [{ file_path: "main.mbt", source }],
+    "Main",
+    "import { \"moonbitlang/core/builtin\" as builtin }\n",
+    "moon.pkg",
+    [],
+    test_core_declaration_sources([
+      {
+        import_ref: {
+          alias_name: "ref",
+          package_id: "pkg:moonbitlang/core/ref",
+          module_path: "moonbitlang/core/ref",
+        },
+        file_path: "ref.pkg.generated.mbti",
+        source: "package \"moonbitlang/core/ref\"\npub(all) struct Ref[T] { mut val : T }\n#alias(new, deprecated)\npub fn[T] Ref::Ref(T) -> Self[T]\n",
+      },
+    ]),
+  )
+  assert_true(
+    json.contains(
+      "\"functionId\":\"fn:pkg:moonbitlang/core/ref:moonbitlang/core/ref:Ref::Ref\"",
+    ),
+  )
+  assert_true(json.contains("\"kind\":\"OptionSome\""))
+  if !json.contains("\"diagnostics\":[]") {
+    fail(json)
+  }
 }
 
 ///|

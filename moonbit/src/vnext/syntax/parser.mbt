@@ -66,9 +66,9 @@ fn Parser::parse_module(self : Parser) -> ParseResult {
       TokenKind::Attribute => self.record_attribute()
       TokenKind::Using =>
         if self.take_pending_decl_enabled() {
-          usings.push(self.parse_using())
+          usings.push(self.parse_using(false))
         } else {
-          ignore(self.parse_using())
+          ignore(self.parse_using(false))
         }
       TokenKind::Import => self.skip_import_decl()
       _ => {
@@ -77,9 +77,9 @@ fn Parser::parse_module(self : Parser) -> ParseResult {
         match self.current().kind {
           TokenKind::Using =>
             if enabled {
-              usings.push(self.parse_using())
+              usings.push(self.parse_using(is_public))
             } else {
-              ignore(self.parse_using())
+              ignore(self.parse_using(is_public))
             }
           TokenKind::Extern | TokenKind::Fn =>
             if enabled {
@@ -243,7 +243,7 @@ fn Parser::take_pending_valtype(self : Parser) -> Bool {
 }
 
 ///|
-fn Parser::parse_using(self : Parser) -> @ast.UsingDecl {
+fn Parser::parse_using(self : Parser, is_public : Bool) -> @ast.UsingDecl {
   let start = self.expect(TokenKind::Using)
   let alias_name = self.expect_package_name()
   ignore(self.expect(TokenKind::LBrace))
@@ -270,7 +270,7 @@ fn Parser::parse_using(self : Parser) -> @ast.UsingDecl {
     }
   }
   ignore(self.expect(TokenKind::RBrace))
-  { package_alias: alias_name.text, items, span: start.span }
+  { is_public, package_alias: alias_name.text, items, span: start.span }
 }
 
 ///|
@@ -942,10 +942,7 @@ fn fixed_type_params(
     constraints: [],
     span: @common.source_span("", 0, 0, 1, 1),
   }
-  let result = FixedArray::make(
-    type_params.length(),
-    empty,
-  )
+  let result = FixedArray::make(type_params.length(), empty)
   for i in 0..<type_params.length() {
     result[i] = type_params[i]
   }
