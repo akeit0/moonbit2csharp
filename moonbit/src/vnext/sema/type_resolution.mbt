@@ -134,16 +134,14 @@ fn resolve_self_type_syntax(
   }
   match self_type {
     TypeRef::Declared(symbol, _) => {
-      let args : Array[TypeRef] = []
-      for arg in type_.args {
-        args.push(
-          resolve_type_with_params_and_self(
-            context,
-            index,
-            arg,
-            type_params,
-            Some(self_type),
-          ),
+      let args = FixedArray::make(type_.args.length(), @binding.unresolved_type_ref())
+      for i in 0..<type_.args.length() {
+        args[i] = resolve_type_with_params_and_self(
+          context,
+          index,
+          type_.args[i],
+          type_params,
+          Some(self_type),
         )
       }
       TypeRef::Declared(symbol, args)
@@ -188,16 +186,14 @@ fn resolve_self_type_syntax(
       self_type
     }
     TypeRef::Apply(type_constructor, _) => {
-      let args : Array[TypeRef] = []
-      for arg in type_.args {
-        args.push(
-          resolve_type_with_params_and_self(
-            context,
-            index,
-            arg,
-            type_params,
-            Some(self_type),
-          ),
+      let args = FixedArray::make(type_.args.length(), @binding.unresolved_type_ref())
+      for i in 0..<type_.args.length() {
+        args[i] = resolve_type_with_params_and_self(
+          context,
+          index,
+          type_.args[i],
+          type_params,
+          Some(self_type),
         )
       }
       TypeRef::Apply(type_constructor, args)
@@ -253,9 +249,9 @@ fn resolve_declared_type_header(
   type_params : Array[String],
   header : @semantic.TypeHeader,
 ) -> TypeRef {
-  let args : Array[TypeRef] = []
-  for arg in type_.args {
-    args.push(resolve_type_with_params(context, index, arg, type_params))
+  let args = FixedArray::make(type_.args.length(), @binding.unresolved_type_ref())
+  for i in 0..<type_.args.length() {
+    args[i] = resolve_type_with_params(context, index, type_.args[i], type_params)
   }
   TypeRef::Declared(header.symbol, args)
 }
@@ -269,9 +265,9 @@ fn resolve_trait_object_type(
 ) -> TypeRef {
   match @semantic.find_visible_trait(index, type_.package_alias, type_.name) {
     Some(trait_def) => {
-      let args : Array[TypeRef] = []
-      for arg in type_.args {
-        args.push(resolve_type_with_params(context, index, arg, type_params))
+      let args = FixedArray::make(type_.args.length(), @binding.unresolved_type_ref())
+      for i in 0..<type_.args.length() {
+        args[i] = resolve_type_with_params(context, index, type_.args[i], type_params)
       }
       TypeRef::TraitObject({ trait_: trait_def.symbol, args })
     }
@@ -295,12 +291,10 @@ fn resolve_builtin_scalar_type_with_self(
     None => ()
   }
   if type_.name == "Tuple" {
-    let items : Array[TypeRef] = []
-    for arg in type_.args {
-      items.push(
-        resolve_type_with_params_and_self(
-          context, index, arg, type_params, self_type,
-        ),
+    let items = FixedArray::make(type_.args.length(), @binding.unresolved_type_ref())
+    for i in 0..<type_.args.length() {
+      items[i] = resolve_type_with_params_and_self(
+        context, index, type_.args[i], type_params, self_type,
       )
     }
     return Some(TypeRef::Tuple(items))

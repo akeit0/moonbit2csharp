@@ -339,7 +339,7 @@ fn find_enum_variant(
 }
 
 ///|
-fn enum_type_args(type_ : TypeRef) -> Array[TypeRef] {
+fn enum_type_args(type_ : TypeRef) -> FixedArray[TypeRef] {
   match type_ {
     TypeRef::Declared(_, args) => args
     _ => []
@@ -364,10 +364,11 @@ fn enum_case_type(
 }
 
 ///|
-fn type_param_refs(type_params : Array[String]) -> Array[TypeRef] {
-  let refs : Array[TypeRef] = []
-  for param in type_params {
-    refs.push(TypeRef::TypeParameter(param, "type-param:" + param))
+fn type_param_refs(type_params : Array[String]) -> FixedArray[TypeRef] {
+  let refs = FixedArray::make(type_params.length(), @binding.unresolved_type_ref())
+  for i in 0..<type_params.length() {
+    let param = type_params[i]
+    refs[i] = TypeRef::TypeParameter(param, "type-param:" + param)
   }
   refs
 }

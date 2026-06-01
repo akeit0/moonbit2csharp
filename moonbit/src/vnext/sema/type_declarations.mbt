@@ -269,11 +269,10 @@ fn declared_type_with_params(
   symbol : @binding.TypeSymbolRef,
   type_params : Array[String],
 ) -> TypeRef {
-  let args : Array[TypeRef] = []
-  for param in type_params {
-    args.push(
-      TypeRef::TypeParameter(param, "type-param:" + symbol.id + ":" + param),
-    )
+  let args = FixedArray::make(type_params.length(), @binding.unresolved_type_ref())
+  for i in 0..<type_params.length() {
+    let param = type_params[i]
+    args[i] = TypeRef::TypeParameter(param, "type-param:" + symbol.id + ":" + param)
   }
   TypeRef::Declared(symbol, args)
 }

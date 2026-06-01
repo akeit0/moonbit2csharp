@@ -1179,7 +1179,7 @@ fn impl_type_constructor_key(
 ///|
 fn impl_type_args_key(
   index : DeclarationIndex,
-  args : Array[TypeRef],
+  args : FixedArray[TypeRef],
 ) -> String {
   if args.length() == 0 {
     return ""
@@ -1604,9 +1604,9 @@ fn substitute_impl_self_type(type_ : TypeRef, self_type : TypeRef) -> TypeRef {
   match type_ {
     TypeRef::Builtin("Self") => self_type
     TypeRef::Tuple(items) => {
-      let result : Array[TypeRef] = []
-      for item in items {
-        result.push(substitute_impl_self_type(item, self_type))
+      let result = FixedArray::make(items.length(), @binding.unresolved_type_ref())
+      for i in 0..<items.length() {
+        result[i] = substitute_impl_self_type(items[i], self_type)
       }
       TypeRef::Tuple(result)
     }
@@ -1627,23 +1627,23 @@ fn substitute_impl_self_type(type_ : TypeRef, self_type : TypeRef) -> TypeRef {
       )
     }
     TypeRef::Apply(type_constructor, args) => {
-      let result : Array[TypeRef] = []
-      for arg in args {
-        result.push(substitute_impl_self_type(arg, self_type))
+      let result = FixedArray::make(args.length(), @binding.unresolved_type_ref())
+      for i in 0..<args.length() {
+        result[i] = substitute_impl_self_type(args[i], self_type)
       }
       TypeRef::Apply(type_constructor, result)
     }
     TypeRef::Declared(symbol, args) => {
-      let result : Array[TypeRef] = []
-      for arg in args {
-        result.push(substitute_impl_self_type(arg, self_type))
+      let result = FixedArray::make(args.length(), @binding.unresolved_type_ref())
+      for i in 0..<args.length() {
+        result[i] = substitute_impl_self_type(args[i], self_type)
       }
       TypeRef::Declared(symbol, result)
     }
     TypeRef::TraitObject(trait_ref) => {
-      let result : Array[TypeRef] = []
-      for arg in trait_ref.args {
-        result.push(substitute_impl_self_type(arg, self_type))
+      let result = FixedArray::make(trait_ref.args.length(), @binding.unresolved_type_ref())
+      for i in 0..<trait_ref.args.length() {
+        result[i] = substitute_impl_self_type(trait_ref.args[i], self_type)
       }
       TypeRef::TraitObject({ trait_: trait_ref.trait_, args: result })
     }
@@ -3163,7 +3163,7 @@ fn type_lookup_key(type_ : TypeRef) -> String {
 }
 
 ///|
-fn type_array_lookup_key(types : Array[TypeRef]) -> String {
+fn type_array_lookup_key(types : FixedArray[TypeRef]) -> String {
   let mut text = ""
   for i in 0..<types.length() {
     if i > 0 {

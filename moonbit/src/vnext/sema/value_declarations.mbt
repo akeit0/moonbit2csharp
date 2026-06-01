@@ -197,11 +197,9 @@ fn declared_receiver_type(
 ) -> TypeRef {
   if header.type_params.length() > 0 &&
     type_params.length() >= header.type_params.length() {
-    let args : Array[TypeRef] = []
+    let args = FixedArray::make(header.type_params.length(), @binding.unresolved_type_ref())
     for i in 0..<header.type_params.length() {
-      args.push(
-        TypeRef::TypeParameter(type_params[i], "type-param:" + type_params[i]),
-      )
+      args[i] = TypeRef::TypeParameter(type_params[i], "type-param:" + type_params[i])
     }
     TypeRef::Declared(header.symbol, args)
   } else {

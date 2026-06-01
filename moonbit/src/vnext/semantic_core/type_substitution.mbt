@@ -1,7 +1,7 @@
 ///|
 pub fn substitute_type(
   params : Array[String],
-  args : Array[TypeRef],
+  args : FixedArray[TypeRef],
   type_ : TypeRef,
 ) -> TypeRef {
   match type_ {
@@ -14,23 +14,23 @@ pub fn substitute_type(
       type_
     }
     TypeRef::Apply(type_constructor, items) => {
-      let mapped : Array[TypeRef] = []
-      for item in items {
-        mapped.push(substitute_type(params, args, item))
+      let mapped = FixedArray::make(items.length(), @binding.unresolved_type_ref())
+      for i in 0..<items.length() {
+        mapped[i] = substitute_type(params, args, items[i])
       }
       TypeRef::Apply(type_constructor, mapped)
     }
     TypeRef::Declared(symbol, items) => {
-      let mapped : Array[TypeRef] = []
-      for item in items {
-        mapped.push(substitute_type(params, args, item))
+      let mapped = FixedArray::make(items.length(), @binding.unresolved_type_ref())
+      for i in 0..<items.length() {
+        mapped[i] = substitute_type(params, args, items[i])
       }
       TypeRef::Declared(symbol, mapped)
     }
     TypeRef::Tuple(items) => {
-      let mapped : Array[TypeRef] = []
-      for item in items {
-        mapped.push(substitute_type(params, args, item))
+      let mapped = FixedArray::make(items.length(), @binding.unresolved_type_ref())
+      for i in 0..<items.length() {
+        mapped[i] = substitute_type(params, args, items[i])
       }
       TypeRef::Tuple(mapped)
     }
@@ -51,9 +51,9 @@ pub fn substitute_type(
       )
     }
     TypeRef::TraitObject(trait_ref) => {
-      let mapped_args : Array[TypeRef] = []
-      for arg in trait_ref.args {
-        mapped_args.push(substitute_type(params, args, arg))
+      let mapped_args = FixedArray::make(trait_ref.args.length(), @binding.unresolved_type_ref())
+      for i in 0..<trait_ref.args.length() {
+        mapped_args[i] = substitute_type(params, args, trait_ref.args[i])
       }
       TypeRef::TraitObject({ trait_: trait_ref.trait_, args: mapped_args })
     }
@@ -64,7 +64,7 @@ pub fn substitute_type(
 ///|
 fn substitute_effect(
   params : Array[String],
-  args : Array[TypeRef],
+  args : FixedArray[TypeRef],
   effect : EffectRef,
 ) -> EffectRef {
   match effect {

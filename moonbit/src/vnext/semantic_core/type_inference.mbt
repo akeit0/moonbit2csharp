@@ -107,20 +107,20 @@ fn resolve_inferred_type_with_change(
 ///|
 fn resolve_type_ref_array(
   context : TypingContext,
-  items : Array[TypeRef],
-) -> (Array[TypeRef], Bool) {
-  let mut result : Array[TypeRef]? = None
+  items : FixedArray[TypeRef],
+) -> (FixedArray[TypeRef], Bool) {
+  let mut result : FixedArray[TypeRef]? = None
   for i in 0..<items.length() {
     let (resolved, changed) = resolve_inferred_type_with_change(context, items[i])
     match result {
-      Some(values) => values.push(resolved)
+      Some(values) => values[i] = resolved
       None =>
         if changed {
-          let values : Array[TypeRef] = []
+          let values = FixedArray::make(items.length(), @binding.unresolved_type_ref())
           for j in 0..<i {
-            values.push(items[j])
+            values[j] = items[j]
           }
-          values.push(resolved)
+          values[i] = resolved
           result = Some(values)
         }
     }
@@ -223,16 +223,16 @@ fn instantiate_type_params(
         type_
       }
     TypeRef::Declared(symbol, args) => {
-      let result : Array[TypeRef] = []
-      for arg in args {
-        result.push(instantiate_type_params(type_params, arg, prefix))
+      let result = FixedArray::make(args.length(), @binding.unresolved_type_ref())
+      for i in 0..<args.length() {
+        result[i] = instantiate_type_params(type_params, args[i], prefix)
       }
       TypeRef::Declared(symbol, result)
     }
     TypeRef::Tuple(items) => {
-      let result : Array[TypeRef] = []
-      for item in items {
-        result.push(instantiate_type_params(type_params, item, prefix))
+      let result = FixedArray::make(items.length(), @binding.unresolved_type_ref())
+      for i in 0..<items.length() {
+        result[i] = instantiate_type_params(type_params, items[i], prefix)
       }
       TypeRef::Tuple(result)
     }
@@ -253,16 +253,16 @@ fn instantiate_type_params(
       )
     }
     TypeRef::Apply(type_constructor, args) => {
-      let result : Array[TypeRef] = []
-      for arg in args {
-        result.push(instantiate_type_params(type_params, arg, prefix))
+      let result = FixedArray::make(args.length(), @binding.unresolved_type_ref())
+      for i in 0..<args.length() {
+        result[i] = instantiate_type_params(type_params, args[i], prefix)
       }
       TypeRef::Apply(type_constructor, result)
     }
     TypeRef::TraitObject(trait_ref) => {
-      let result : Array[TypeRef] = []
-      for arg in trait_ref.args {
-        result.push(instantiate_type_params(type_params, arg, prefix))
+      let result = FixedArray::make(trait_ref.args.length(), @binding.unresolved_type_ref())
+      for i in 0..<trait_ref.args.length() {
+        result[i] = instantiate_type_params(type_params, trait_ref.args[i], prefix)
       }
       TypeRef::TraitObject({ trait_: trait_ref.trait_, args: result })
     }
@@ -366,8 +366,8 @@ fn unify_concrete_types(
 ///|
 fn unify_type_arrays(
   context : TypingContext,
-  left : Array[TypeRef],
-  right : Array[TypeRef],
+  left : FixedArray[TypeRef],
+  right : FixedArray[TypeRef],
 ) -> Bool {
   if left.length() != right.length() {
     return false
@@ -480,6 +480,7 @@ fn bind_inference_variable(
   }
 }
 
+///|
 ///|
 fn occurs_in(variable : String, type_ : TypeRef) -> Bool {
   match inference_variable_key(type_) {

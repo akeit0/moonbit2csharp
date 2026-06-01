@@ -57,7 +57,7 @@ fn diagnostic_type_name(type_ : TypeRef) -> String {
 }
 
 ///|
-fn diagnostic_type_args(args : Array[TypeRef]) -> String {
+fn diagnostic_type_args(args : FixedArray[TypeRef]) -> String {
   if args.length() == 0 {
     return ""
   }

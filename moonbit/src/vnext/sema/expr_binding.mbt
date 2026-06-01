@@ -1007,7 +1007,7 @@ fn bind_tuple_literal(
     _ => []
   }
   let bound_items : Array[BoundExpr] = []
-  let item_types : Array[TypeRef] = []
+  let item_types = FixedArray::make(items.length(), @binding.unresolved_type_ref())
   for i in 0..<items.length() {
     let item_expected = if i < expected_items.length() {
       expected_items[i]
@@ -1026,9 +1026,7 @@ fn bind_tuple_literal(
       ast,
     )
     bound_items.push(item)
-    item_types.push(
-      @semantic.resolve_inferred_type(typing, @ir.expr_type(item)),
-    )
+    item_types[i] = @semantic.resolve_inferred_type(typing, @ir.expr_type(item))
   }
   BoundExpr::TupleLiteral(bound_items, TypeRef::Tuple(item_types), span)
 }
@@ -1190,7 +1188,7 @@ fn constructor_local_struct_def(
   value_type : TypeRef,
   type_syntax : @ast.TypeSyntax?,
   name : String,
-) -> (String, Array[FieldDef], Array[String], Array[TypeRef])? {
+) -> (String, Array[FieldDef], Array[String], FixedArray[TypeRef])? {
   match value_type {
     TypeRef::Declared(symbol, args) =>
       match @semantic.find_type_definition(index, symbol.id) {
@@ -1407,12 +1405,10 @@ fn tuple_expected_for_patterns(
   span : SourceSpan,
   patterns : Array[@ast.Pattern],
 ) -> TypeRef {
-  let items : Array[TypeRef] = []
+  let items = FixedArray::make(patterns.length(), @binding.unresolved_type_ref())
   for i in 0..<patterns.length() {
-    items.push(
-      @semantic.inference_type(
-        "tuple-let:" + span.start.to_string() + ":" + i.to_string(),
-      ),
+    items[i] = @semantic.inference_type(
+      "tuple-let:" + span.start.to_string() + ":" + i.to_string(),
     )
   }
   TypeRef::Tuple(items)
@@ -1425,7 +1421,7 @@ priv struct TupleLocalBinding {
 }
 
 ///|
-fn tuple_item_type(item_types : Array[TypeRef], index : Int) -> TypeRef {
+fn tuple_item_type(item_types : FixedArray[TypeRef], index : Int) -> TypeRef {
   if index >= 0 && index < item_types.length() {
     item_types[index]
   } else {

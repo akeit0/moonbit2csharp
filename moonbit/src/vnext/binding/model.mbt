@@ -47,21 +47,29 @@ pub(all) struct ParamTypeRef {
 ///|
 pub(all) struct TraitRef {
   trait_ : TypeSymbolRef
-  args : Array[TypeRef]
+  args : FixedArray[TypeRef]
 } derive(Eq, Debug)
 
 ///|
 pub(all) enum TypeRef {
   Builtin(String)
-  Declared(TypeSymbolRef, Array[TypeRef])
+  Declared(TypeSymbolRef, FixedArray[TypeRef])
   TypeParameter(String, String)
-  Tuple(Array[TypeRef])
+  Tuple(FixedArray[TypeRef])
   Function(Array[ParamTypeRef], TypeRef, EffectRef)
-  Apply(TypeConstructorRef, Array[TypeRef])
+  Apply(TypeConstructorRef, FixedArray[TypeRef])
   TraitObject(TraitRef)
   Unknown(String)
   Error(String)
 } derive(Eq, Debug)
+
+///|
+let unresolved_type_ref_value : TypeRef = TypeRef::Unknown("<unresolved>")
+
+///|
+pub fn unresolved_type_ref() -> TypeRef {
+  unresolved_type_ref_value
+}
 
 ///|
 pub(all) struct Symbol {
@@ -523,7 +531,7 @@ pub fn type_key(type_ : TypeRef) -> String {
 }
 
 ///|
-fn type_args_key(args : Array[TypeRef]) -> String {
+fn type_args_key(args : FixedArray[TypeRef]) -> String {
   if args.length() == 0 {
     return ""
   }
@@ -604,7 +612,7 @@ pub fn core_builtin_type_symbol_name(symbol : TypeSymbolRef) -> String? {
 }
 
 ///|
-pub fn type_constructor_name(type_ : TypeRef) -> (String, Array[TypeRef])? {
+pub fn type_constructor_name(type_ : TypeRef) -> (String, FixedArray[TypeRef])? {
   match type_ {
     TypeRef::Apply(TypeConstructorRef::Builtin(name), args) =>
       Some((name, args))
@@ -640,7 +648,7 @@ fn constructor_equal(
 }
 
 ///|
-fn type_arrays_equal(left : Array[TypeRef], right : Array[TypeRef]) -> Bool {
+fn type_arrays_equal(left : FixedArray[TypeRef], right : FixedArray[TypeRef]) -> Bool {
   if left.length() != right.length() {
     return false
   }

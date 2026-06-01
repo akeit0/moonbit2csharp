@@ -1346,7 +1346,7 @@ fn module_enum_variant_payload_types(
   type_id : String,
   variant_id : String,
   target_type : TypeRef,
-) -> Array[TypeRef]? {
+) -> FixedArray[TypeRef]? {
   let args = match target_type {
     TypeRef::Declared(symbol, args) =>
       if symbol.id == type_id {
@@ -1362,10 +1362,15 @@ fn module_enum_variant_payload_types(
         if enum_def.symbol.id == type_id {
           for variant in enum_def.variants {
             if variant.id == variant_id {
-              let payloads : Array[TypeRef] = []
-              for payload in variant.payloads {
-                payloads.push(
-                  substitute_type(enum_def.type_params, args, payload.type_),
+              let payloads = FixedArray::make(
+                variant.payloads.length(),
+                @binding.unresolved_type_ref(),
+              )
+              for i in 0..<variant.payloads.length() {
+                payloads[i] = substitute_type(
+                  enum_def.type_params,
+                  args,
+                  variant.payloads[i].type_,
                 )
               }
               return Some(payloads)

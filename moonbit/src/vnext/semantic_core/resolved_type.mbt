@@ -198,7 +198,7 @@ fn resolved_core_builtin_type(
 ///|
 fn resolved_nominal_type(
   symbol : TypeSymbolRef,
-  args : Array[TypeRef],
+  args : FixedArray[TypeRef],
 ) -> ResolvedType {
   let resolved_args : Array[ResolvedType] = []
   for arg in args {
