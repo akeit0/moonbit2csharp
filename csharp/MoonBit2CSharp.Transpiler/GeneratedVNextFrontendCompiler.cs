@@ -17,17 +17,9 @@ internal sealed record VNextFrontendRequest(
 
 internal sealed record VNextSourceUnit(string FilePath, string Source);
 
-internal sealed record VNextPackageSource(
-    VNextImportRef ImportRef,
-    string FilePath,
-    string Source
-);
+internal sealed record VNextPackageSource(VNextImportRef ImportRef, string FilePath, string Source);
 
-internal sealed record VNextImportRef(
-    string AliasName,
-    string PackageId,
-    string ModulePath
-);
+internal sealed record VNextImportRef(string AliasName, string PackageId, string ModulePath);
 
 internal static class GeneratedVNextFrontendCompiler
 {
@@ -39,10 +31,7 @@ internal static class GeneratedVNextFrontendCompiler
     {
         var fullFrontendPath = Path.GetFullPath(frontendPath);
         if (!File.Exists(fullFrontendPath))
-            throw new FileNotFoundException(
-                "C# vnext frontend path not found",
-                fullFrontendPath
-            );
+            throw new FileNotFoundException("C# vnext frontend path not found", fullFrontendPath);
 
         var requestPath = RequestPath(fullFrontendPath, cacheDirectory);
         File.WriteAllText(requestPath, JsonSerializer.Serialize(request));
@@ -86,7 +75,8 @@ internal static class GeneratedVNextFrontendCompiler
             RedirectStandardError = true,
             StandardOutputEncoding = Encoding.UTF8,
             StandardErrorEncoding = Encoding.UTF8,
-            WorkingDirectory = Path.GetDirectoryName(executablePath) ?? Environment.CurrentDirectory,
+            WorkingDirectory =
+                Path.GetDirectoryName(executablePath) ?? Environment.CurrentDirectory,
         };
         startInfo.ArgumentList.Add(requestPath);
         return RunFrontendProcess(startInfo);
@@ -196,13 +186,7 @@ internal static class GeneratedVNextFrontendCompiler
     }
 
     private static string HostDllPath(string hostDirectory) =>
-        Path.Combine(
-            hostDirectory,
-            "bin",
-            "Debug",
-            "net10.0",
-            "GeneratedVNextFrontendHost.dll"
-        );
+        Path.Combine(hostDirectory, "bin", "Debug", "net10.0", "GeneratedVNextFrontendHost.dll");
 
     private static bool HostBuildFresh(
         string hostDllPath,

@@ -103,12 +103,7 @@ public static class MoonBitRunProject
         );
 
         if (request.CacheEnabled)
-            WriteRunProjectCacheMarker(
-                outputDir,
-                fullInputs,
-                moonModPath,
-                request.VNextFrontend
-            );
+            WriteRunProjectCacheMarker(outputDir, fullInputs, moonModPath, request.VNextFrontend);
 
         return new(outputDir, projectPath, result.WrittenFiles) { CacheHit = result.CacheHit };
     }
@@ -129,12 +124,7 @@ public static class MoonBitRunProject
 
         var markerTime = File.GetLastWriteTimeUtc(markerPath);
         foreach (
-            var path in CacheDependencyFiles(
-                fullInputs,
-                moonModPath,
-                outputDir,
-                vNextFrontend
-            )
+            var path in CacheDependencyFiles(fullInputs, moonModPath, outputDir, vNextFrontend)
         )
             if (File.GetLastWriteTimeUtc(path) > markerTime)
                 return false;
@@ -174,10 +164,7 @@ public static class MoonBitRunProject
         File.WriteAllText(CacheMarkerPath(outputDir), builder.ToString());
     }
 
-    private static bool RunProjectCacheMarkerMatches(
-        string markerPath,
-        string vNextFrontend
-    )
+    private static bool RunProjectCacheMarkerMatches(string markerPath, string vNextFrontend)
     {
         var expected = "vNextFrontend=" + NormalizeVNextFrontendForCache(vNextFrontend);
         var lines = File.ReadLines(markerPath).ToHashSet(StringComparer.Ordinal);
@@ -223,7 +210,10 @@ public static class MoonBitRunProject
             var frontendPath = Path.GetFullPath(csharpFrontendPath);
             if (File.Exists(frontendPath))
                 AddGeneratedPipelineDependency(frontendPath);
-            if (Path.GetExtension(frontendPath).Equals(".csproj", StringComparison.OrdinalIgnoreCase))
+            if (
+                Path.GetExtension(frontendPath)
+                    .Equals(".csproj", StringComparison.OrdinalIgnoreCase)
+            )
             {
                 var generatedProjectDirectory = Path.GetDirectoryName(frontendPath);
                 if (!string.IsNullOrWhiteSpace(generatedProjectDirectory))

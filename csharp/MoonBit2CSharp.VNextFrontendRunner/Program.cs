@@ -11,11 +11,11 @@ if (args.Length != 1)
     return 2;
 }
 
-var request = JsonSerializer.Deserialize(
+var request =
+    JsonSerializer.Deserialize(
         File.ReadAllText(args[0]),
         VNextFrontendJsonContext.Default.VNextFrontendRequest
-    )
-    ?? throw new InvalidOperationException("missing vnext frontend request");
+    ) ?? throw new InvalidOperationException("missing vnext frontend request");
 
 var result = Pipeline.compile_package_sources_with_manifests_to_json(
     new Generated.MoonBit.Runtime.Array<SourceUnit>(
@@ -31,8 +31,8 @@ var result = Pipeline.compile_package_sources_with_manifests_to_json(
         request.ImportedDeclarationSources.Select(ToPackageSource).ToArray()
     ),
     new Generated.MoonBit.Runtime.Array<SourceUnit>(
-        request.ImportedManifestSources
-            .Select(item => new SourceUnit(item.FilePath, item.Source))
+        request
+            .ImportedManifestSources.Select(item => new SourceUnit(item.FilePath, item.Source))
             .ToArray()
     )
 );
