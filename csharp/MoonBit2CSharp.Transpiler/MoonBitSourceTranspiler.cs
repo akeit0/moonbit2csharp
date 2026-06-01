@@ -52,7 +52,7 @@ public sealed record MoonBitProjectTranspileRequest(
     public bool CacheEnabled { get; init; } = true;
     public string CacheDirectory { get; init; } = "";
     public bool TrimApplicationOutput { get; init; }
-    public string GeneratedVNextPipelineProjectPath { get; init; } = "";
+    public string VNextFrontend { get; init; } = "";
 }
 
 public sealed record MoonBitProjectTranspileResult(IReadOnlyList<string> WrittenFiles)
@@ -288,11 +288,11 @@ public static class MoonBitSourceTranspiler
             importedRoots,
             moonModPath
         );
-        var irJson = string.IsNullOrWhiteSpace(request.GeneratedVNextPipelineProjectPath)
+        var irJson = VNextFrontendIsMoon(request.VNextFrontend)
             ? CompileMoonVNextSemanticIr(frontendRequest)
             : GeneratedVNextFrontendCompiler.Compile(
                 frontendRequest,
-                request.GeneratedVNextPipelineProjectPath,
+                VNextFrontendCSharpPath(request.VNextFrontend),
                 request.CacheDirectory
             );
         if (
@@ -547,6 +547,25 @@ public static class MoonBitSourceTranspiler
             LogVNextMoonProfile(stderrTask.Result);
 
         return stdoutTask.Result;
+    }
+
+    private static bool VNextFrontendIsMoon(string frontend) =>
+        string.IsNullOrWhiteSpace(frontend)
+        || frontend.Equals("moon", StringComparison.OrdinalIgnoreCase);
+
+    private static string VNextFrontendCSharpPath(string frontend)
+    {
+        const string csharpPrefix = "csharp:";
+        if (frontend.StartsWith(csharpPrefix, StringComparison.OrdinalIgnoreCase))
+        {
+            var path = frontend[csharpPrefix.Length..];
+            if (!string.IsNullOrWhiteSpace(path))
+                return path;
+        }
+
+        throw new ArgumentException(
+            "unsupported vnext frontend: expected 'moon' or 'csharp:<exe|dll|csproj>'"
+        );
     }
 
     private static VNextFrontendRequest BuildVNextFrontendRequest(

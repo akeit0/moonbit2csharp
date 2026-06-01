@@ -76,7 +76,7 @@ The CLI can optionally use a generated C# version of the vnext frontend instead
 of invoking `moonbit/src/vnext_cli`.
 
 ```powershell
-dotnet run --project csharp\MoonBit2CSharp.Cli -- build samples\simple_project --no-cache --generated-vnext-pipeline artifacts\vnext_pipeline_csharp_dev\frontend.csproj
+dotnet run --project csharp\MoonBit2CSharp.Cli -- build samples\simple_project --no-cache --vnext-frontend csharp:artifacts\vnext_pipeline_csharp_dev\frontend.csproj
 ```
 
 This path is intended for self-hosting work:
@@ -107,7 +107,7 @@ Useful options:
 --no-cache
 --cache-dir <dir>
 --release
---generated-vnext-pipeline <frontend.csproj>
+--vnext-frontend moon|csharp:<exe|dll|csproj>
 ```
 
 `--release` forwards to generated project execution/build as `-c Release`.
@@ -180,7 +180,7 @@ Then run:
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts\vnext-pipeline-self-check.ps1
-dnrelay run --project csharp\MoonBit2CSharp.Cli\MoonBit2CSharp.Cli.csproj -- build samples\simple_project --no-cache --generated-vnext-pipeline artifacts\vnext_pipeline_csharp_dev\frontend.csproj
+dnrelay run --project csharp\MoonBit2CSharp.Cli\MoonBit2CSharp.Cli.csproj -- build samples\simple_project --no-cache --vnext-frontend csharp:artifacts\vnext_pipeline_csharp_dev\frontend.csproj
 ```
 
 ## Development checks
@@ -190,7 +190,7 @@ Common focused checks:
 ```powershell
 moon test ./src/vnext/syntax
 dnrelay run --project csharp\MoonBit2CSharp.Cli\MoonBit2CSharp.Cli.csproj -- build samples\simple_project --no-cache
-dnrelay run --project csharp\MoonBit2CSharp.Cli\MoonBit2CSharp.Cli.csproj -- build samples\simple_project --no-cache --generated-vnext-pipeline artifacts\vnext_pipeline_csharp_dev\frontend.csproj
+dnrelay run --project csharp\MoonBit2CSharp.Cli\MoonBit2CSharp.Cli.csproj -- build samples\simple_project --no-cache --vnext-frontend csharp:artifacts\vnext_pipeline_csharp_dev\frontend.csproj
 ```
 
 Run `moon` commands from the `moonbit/` module root when using package-relative

@@ -23,7 +23,7 @@ public sealed record MoonBitRunProjectRequest(IReadOnlyList<string> Inputs)
     public IReadOnlyList<string> AdditionalProjectReferences { get; init; } = [];
     public bool CacheEnabled { get; init; } = true;
     public string CacheDirectory { get; init; } = "";
-    public string GeneratedVNextPipelineProjectPath { get; init; } = "";
+    public string VNextFrontend { get; init; } = "";
 }
 
 public sealed record MoonBitRunProjectResult(
@@ -68,7 +68,7 @@ public static class MoonBitRunProject
                 projectPath,
                 fullInputs,
                 moonModPath,
-                request.GeneratedVNextPipelineProjectPath
+                request.VNextFrontend
             )
         )
         {
@@ -97,7 +97,7 @@ public static class MoonBitRunProject
                 AdditionalProjectReferences = request.AdditionalProjectReferences,
                 CacheEnabled = request.CacheEnabled,
                 CacheDirectory = request.CacheDirectory,
-                GeneratedVNextPipelineProjectPath = request.GeneratedVNextPipelineProjectPath,
+                VNextFrontend = request.VNextFrontend,
                 TrimApplicationOutput = true,
             }
         );
@@ -107,7 +107,7 @@ public static class MoonBitRunProject
                 outputDir,
                 fullInputs,
                 moonModPath,
-                request.GeneratedVNextPipelineProjectPath
+                request.VNextFrontend
             );
 
         return new(outputDir, projectPath, result.WrittenFiles) { CacheHit = result.CacheHit };
@@ -118,13 +118,13 @@ public static class MoonBitRunProject
         string projectPath,
         IReadOnlyList<string> fullInputs,
         string? moonModPath,
-        string generatedVNextPipelineProjectPath
+        string vNextFrontend
     )
     {
         var markerPath = CacheMarkerPath(outputDir);
         if (!File.Exists(markerPath) || !File.Exists(projectPath))
             return false;
-        if (!RunProjectCacheMarkerMatches(markerPath, generatedVNextPipelineProjectPath))
+        if (!RunProjectCacheMarkerMatches(markerPath, vNextFrontend))
             return false;
 
         var markerTime = File.GetLastWriteTimeUtc(markerPath);
@@ -133,7 +133,7 @@ public static class MoonBitRunProject
                 fullInputs,
                 moonModPath,
                 outputDir,
-                generatedVNextPipelineProjectPath
+                vNextFrontend
             )
         )
             if (File.GetLastWriteTimeUtc(path) > markerTime)
@@ -161,21 +161,14 @@ public static class MoonBitRunProject
         string outputDir,
         IReadOnlyList<string> fullInputs,
         string? moonModPath,
-        string generatedVNextPipelineProjectPath
+        string vNextFrontend
     )
     {
         Directory.CreateDirectory(outputDir);
         var builder = new StringBuilder();
         builder.AppendLine("version=2");
         builder.AppendLine("moonMod=" + (moonModPath ?? ""));
-        builder.AppendLine(
-            "generatedVNextPipeline="
-                + (
-                    string.IsNullOrWhiteSpace(generatedVNextPipelineProjectPath)
-                        ? ""
-                        : Path.GetFullPath(generatedVNextPipelineProjectPath)
-                )
-        );
+        builder.AppendLine("vNextFrontend=" + NormalizeVNextFrontendForCache(vNextFrontend));
         foreach (var input in fullInputs)
             builder.AppendLine("input=" + input);
         File.WriteAllText(CacheMarkerPath(outputDir), builder.ToString());
@@ -183,16 +176,10 @@ public static class MoonBitRunProject
 
     private static bool RunProjectCacheMarkerMatches(
         string markerPath,
-        string generatedVNextPipelineProjectPath
+        string vNextFrontend
     )
     {
-        var expected =
-            "generatedVNextPipeline="
-            + (
-                string.IsNullOrWhiteSpace(generatedVNextPipelineProjectPath)
-                    ? ""
-                    : Path.GetFullPath(generatedVNextPipelineProjectPath)
-            );
+        var expected = "vNextFrontend=" + NormalizeVNextFrontendForCache(vNextFrontend);
         var lines = File.ReadLines(markerPath).ToHashSet(StringComparer.Ordinal);
         return lines.Contains("version=2") && lines.Contains(expected);
     }
@@ -204,7 +191,7 @@ public static class MoonBitRunProject
         IReadOnlyList<string> fullInputs,
         string? moonModPath,
         string outputDir,
-        string generatedVNextPipelineProjectPath
+        string vNextFrontend
     )
     {
         var dependencies = new List<string>();
@@ -231,24 +218,36 @@ public static class MoonBitRunProject
                 dependencies.Add(fullPath);
         }
 
-        if (!string.IsNullOrWhiteSpace(generatedVNextPipelineProjectPath))
+        if (VNextFrontendCSharpPath(vNextFrontend) is { } csharpFrontendPath)
         {
-            var generatedProject = Path.GetFullPath(generatedVNextPipelineProjectPath);
-            if (File.Exists(generatedProject))
-                AddGeneratedPipelineDependency(generatedProject);
-            var generatedProjectDirectory = Path.GetDirectoryName(generatedProject);
-            if (!string.IsNullOrWhiteSpace(generatedProjectDirectory))
-                foreach (
-                    var file in Directory.EnumerateFiles(
-                        generatedProjectDirectory,
-                        "*",
-                        SearchOption.AllDirectories
+            var frontendPath = Path.GetFullPath(csharpFrontendPath);
+            if (File.Exists(frontendPath))
+                AddGeneratedPipelineDependency(frontendPath);
+            if (Path.GetExtension(frontendPath).Equals(".csproj", StringComparison.OrdinalIgnoreCase))
+            {
+                var generatedProjectDirectory = Path.GetDirectoryName(frontendPath);
+                if (!string.IsNullOrWhiteSpace(generatedProjectDirectory))
+                    foreach (
+                        var file in Directory.EnumerateFiles(
+                            generatedProjectDirectory,
+                            "*",
+                            SearchOption.AllDirectories
+                        )
                     )
-                )
-                    AddGeneratedPipelineDependency(file);
+                        AddGeneratedPipelineDependency(file);
+            }
         }
 
         return dependencies;
+
+        static string? VNextFrontendCSharpPath(string frontend)
+        {
+            const string csharpPrefix = "csharp:";
+            if (!frontend.StartsWith(csharpPrefix, StringComparison.OrdinalIgnoreCase))
+                return null;
+            var path = frontend[csharpPrefix.Length..];
+            return string.IsNullOrWhiteSpace(path) ? null : path;
+        }
 
         void AddIfDependency(string path)
         {
@@ -306,6 +305,24 @@ public static class MoonBitRunProject
 
         foreach (var root in BuiltinDependencyRoots())
             yield return root;
+    }
+
+    private static string NormalizeVNextFrontendForCache(string vNextFrontend)
+    {
+        const string csharpPrefix = "csharp:";
+        if (string.IsNullOrWhiteSpace(vNextFrontend))
+            return "";
+        if (vNextFrontend.Equals("moon", StringComparison.OrdinalIgnoreCase))
+            return "moon";
+        if (vNextFrontend.StartsWith(csharpPrefix, StringComparison.OrdinalIgnoreCase))
+        {
+            var path = vNextFrontend[csharpPrefix.Length..];
+            return string.IsNullOrWhiteSpace(path)
+                ? csharpPrefix
+                : csharpPrefix + Path.GetFullPath(path);
+        }
+
+        return vNextFrontend;
     }
 
     private static IEnumerable<string> BuiltinDependencyRoots()

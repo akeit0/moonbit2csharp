@@ -241,7 +241,7 @@ pub fn answer() -> Int
 
     if (!$SkipCliIntegration) {
         Invoke-Checked "CLI generated frontend integration: samples/simple_project" {
-            dnrelay run --project csharp\MoonBit2CSharp.Cli\MoonBit2CSharp.Cli.csproj -- build samples\simple_project --no-cache --generated-vnext-pipeline $generatedProject
+            dnrelay run --project csharp\MoonBit2CSharp.Cli\MoonBit2CSharp.Cli.csproj -- build samples\simple_project --no-cache --vnext-frontend "csharp:$generatedProject"
         }
     }
 

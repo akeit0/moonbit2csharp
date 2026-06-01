@@ -91,7 +91,7 @@ static MoonBitRunProjectResult PrepareGeneratedProject(
     release = false;
     var additionalUsings = new List<string>();
     var additionalProjectReferences = new List<string>();
-    var generatedVNextPipelineProjectPath = "";
+    var vNextFrontend = "";
     var inputPaths = new List<string>();
 
     for (var i = 0; i < commandArgs.Length; i++)
@@ -148,10 +148,17 @@ static MoonBitRunProjectResult PrepareGeneratedProject(
                     Path.GetFullPath(RequireValue(commandArgs, ref i, "--project-reference"))
                 );
                 break;
-            case "--generated-vnext-pipeline":
-                generatedVNextPipelineProjectPath = Path.GetFullPath(
-                    RequireValue(commandArgs, ref i, "--generated-vnext-pipeline")
+            case "--vnext-frontend":
+                vNextFrontend = ParseVNextFrontendOption(
+                    RequireValue(commandArgs, ref i, "--vnext-frontend")
                 );
+                break;
+            case "--generated-vnext-pipeline":
+                vNextFrontend =
+                    "csharp:"
+                    + Path.GetFullPath(
+                        RequireValue(commandArgs, ref i, "--generated-vnext-pipeline")
+                    );
                 break;
             default:
                 if (commandArgs[i].StartsWith("-", StringComparison.Ordinal))
@@ -179,7 +186,7 @@ static MoonBitRunProjectResult PrepareGeneratedProject(
             RuntimeNamespace = runtimeNamespace,
             AdditionalUsings = additionalUsings,
             AdditionalProjectReferences = additionalProjectReferences,
-            GeneratedVNextPipelineProjectPath = generatedVNextPipelineProjectPath,
+            VNextFrontend = vNextFrontend,
             CacheDirectory = cacheDirectory,
             CacheEnabled = cacheEnabled,
         }
@@ -202,7 +209,7 @@ static int RunProject(string[] args)
     var cacheEnabled = true;
     var additionalUsings = new List<string>();
     var additionalProjectReferences = new List<string>();
-    var generatedVNextPipelineProjectPath = "";
+    var vNextFrontend = "";
     var moonModPath = "";
     var runtimeProjectPath = MoonBitSourceTranspiler.DefaultRuntimeProjectPath;
     var inputPaths = new List<string>();
@@ -254,10 +261,15 @@ static int RunProject(string[] args)
                     Path.GetFullPath(RequireValue(args, ref i, "--project-reference"))
                 );
                 break;
-            case "--generated-vnext-pipeline":
-                generatedVNextPipelineProjectPath = Path.GetFullPath(
-                    RequireValue(args, ref i, "--generated-vnext-pipeline")
+            case "--vnext-frontend":
+                vNextFrontend = ParseVNextFrontendOption(
+                    RequireValue(args, ref i, "--vnext-frontend")
                 );
+                break;
+            case "--generated-vnext-pipeline":
+                vNextFrontend =
+                    "csharp:"
+                    + Path.GetFullPath(RequireValue(args, ref i, "--generated-vnext-pipeline"));
                 break;
             case "--runtime-project":
                 runtimeProjectPath = Path.GetFullPath(
@@ -312,7 +324,7 @@ static int RunProject(string[] args)
             RuntimeNamespace = runtimeNamespace,
             AdditionalUsings = additionalUsings,
             AdditionalProjectReferences = additionalProjectReferences,
-            GeneratedVNextPipelineProjectPath = generatedVNextPipelineProjectPath,
+            VNextFrontend = vNextFrontend,
             CacheDirectory = cacheDirectory,
             CacheEnabled = cacheEnabled,
         }
@@ -330,6 +342,29 @@ static string RequireValue(string[] args, ref int index, string option)
         throw new ArgumentException($"{option} requires a value");
 
     return args[++index];
+}
+
+static string ParseVNextFrontendOption(string value)
+{
+    if (value.Equals("moon", StringComparison.OrdinalIgnoreCase))
+        return "moon";
+
+    const string csharpPrefix = "csharp:";
+    if (value.StartsWith(csharpPrefix, StringComparison.OrdinalIgnoreCase))
+    {
+        var path = value[csharpPrefix.Length..];
+        if (string.IsNullOrWhiteSpace(path))
+            throw new ArgumentException("--vnext-frontend csharp:<path> requires a path");
+        return csharpPrefix + Path.GetFullPath(path);
+    }
+
+    var extension = Path.GetExtension(value);
+    if (extension is ".exe" or ".dll" or ".csproj")
+        return csharpPrefix + Path.GetFullPath(value);
+
+    throw new ArgumentException(
+        "--vnext-frontend must be 'moon', 'csharp:<exe|dll|csproj>', or an exe/dll/csproj path"
+    );
 }
 
 static int RunDotnetProject(
@@ -483,13 +518,13 @@ static int PrintUsage()
         "usage: MoonBit2CSharp.Cli [--pascal-case] <input.mbt|input.mbtx> [output.cs]"
     );
     Console.Error.WriteLine(
-        "   or: MoonBit2CSharp.Cli build [--release] [--generated-vnext-pipeline <frontend.csproj>] [input.mbt|directory|moon.mod|moon.mod.json]"
+        "   or: MoonBit2CSharp.Cli build [--release] [--vnext-frontend moon|csharp:<exe|dll|csproj>] [input.mbt|directory|moon.mod|moon.mod.json]"
     );
     Console.Error.WriteLine(
-        "   or: MoonBit2CSharp.Cli run [--release] [--generated-vnext-pipeline <frontend.csproj>] [input.mbt|directory|moon.mod|moon.mod.json] [-- app args...]"
+        "   or: MoonBit2CSharp.Cli run [--release] [--vnext-frontend moon|csharp:<exe|dll|csproj>] [input.mbt|directory|moon.mod|moon.mod.json] [-- app args...]"
     );
     Console.Error.WriteLine(
-        "   or: MoonBit2CSharp.Cli --project <output-dir> [--single-file <name.cs>] [--csproj <name>|--no-csproj] [--moon-mod <moon.mod|moon.mod.json>] [--exe] [--reference-runtime] [--runtime-project <path>] [--project-reference <path>] [--generated-vnext-pipeline <frontend.csproj>] [--namespace <namespace>] [--runtime-namespace <namespace>] [--using <namespace>] [--cache-dir <dir>|--no-cache] [--include-main-packages] [--pascal-case] <inputs...>"
+        "   or: MoonBit2CSharp.Cli --project <output-dir> [--single-file <name.cs>] [--csproj <name>|--no-csproj] [--moon-mod <moon.mod|moon.mod.json>] [--exe] [--reference-runtime] [--runtime-project <path>] [--project-reference <path>] [--vnext-frontend moon|csharp:<exe|dll|csproj>] [--namespace <namespace>] [--runtime-namespace <namespace>] [--using <namespace>] [--cache-dir <dir>|--no-cache] [--include-main-packages] [--pascal-case] <inputs...>"
     );
     return 1;
 }

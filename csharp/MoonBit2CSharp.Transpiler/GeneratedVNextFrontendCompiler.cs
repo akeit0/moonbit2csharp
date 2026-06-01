@@ -33,25 +33,67 @@ internal static class GeneratedVNextFrontendCompiler
 {
     public static string Compile(
         VNextFrontendRequest request,
-        string generatedProjectPath,
+        string frontendPath,
         string cacheDirectory
     )
     {
-        if (!File.Exists(generatedProjectPath))
+        var fullFrontendPath = Path.GetFullPath(frontendPath);
+        if (!File.Exists(fullFrontendPath))
             throw new FileNotFoundException(
-                "generated vnext pipeline project not found",
-                generatedProjectPath
+                "C# vnext frontend path not found",
+                fullFrontendPath
             );
 
+        var requestPath = RequestPath(fullFrontendPath, cacheDirectory);
+        File.WriteAllText(requestPath, JsonSerializer.Serialize(request));
+
+        var extension = Path.GetExtension(fullFrontendPath).ToLowerInvariant();
+        return extension switch
+        {
+            ".exe" => RunFrontendProcess(fullFrontendPath, requestPath),
+            ".dll" => RunDotnetFrontend(fullFrontendPath, requestPath),
+            ".csproj" => CompileWithProjectFrontend(fullFrontendPath, requestPath, cacheDirectory),
+            _ => throw new ArgumentException(
+                "C# vnext frontend must be an .exe, .dll, or .csproj: " + fullFrontendPath
+            ),
+        };
+    }
+
+    private static string CompileWithProjectFrontend(
+        string generatedProjectPath,
+        string requestPath,
+        string cacheDirectory
+    )
+    {
         var hostDirectory = HostDirectory(generatedProjectPath, cacheDirectory);
         WriteHost(hostDirectory, generatedProjectPath);
 
-        var requestPath = Path.Combine(hostDirectory, "request.json");
-        File.WriteAllText(requestPath, JsonSerializer.Serialize(request));
-
         var projectPath = Path.Combine(hostDirectory, "GeneratedVNextFrontendHost.csproj");
-        RunHostBuild(projectPath);
+        var hostDllPath = HostDllPath(hostDirectory);
+        if (!HostBuildFresh(hostDllPath, hostDirectory, generatedProjectPath))
+            RunHostBuild(projectPath);
 
+        return RunDotnetFrontend(hostDllPath, requestPath);
+    }
+
+    private static string RunFrontendProcess(string executablePath, string requestPath)
+    {
+        var startInfo = new ProcessStartInfo
+        {
+            FileName = executablePath,
+            UseShellExecute = false,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            StandardOutputEncoding = Encoding.UTF8,
+            StandardErrorEncoding = Encoding.UTF8,
+            WorkingDirectory = Path.GetDirectoryName(executablePath) ?? Environment.CurrentDirectory,
+        };
+        startInfo.ArgumentList.Add(requestPath);
+        return RunFrontendProcess(startInfo);
+    }
+
+    private static string RunDotnetFrontend(string assemblyPath, string requestPath)
+    {
         var startInfo = new ProcessStartInfo
         {
             FileName = "dotnet",
@@ -60,17 +102,18 @@ internal static class GeneratedVNextFrontendCompiler
             RedirectStandardError = true,
             StandardOutputEncoding = Encoding.UTF8,
             StandardErrorEncoding = Encoding.UTF8,
+            WorkingDirectory = Path.GetDirectoryName(assemblyPath) ?? Environment.CurrentDirectory,
         };
-        startInfo.ArgumentList.Add("run");
-        startInfo.ArgumentList.Add("--no-build");
-        startInfo.ArgumentList.Add("--project");
-        startInfo.ArgumentList.Add(projectPath);
-        startInfo.ArgumentList.Add("--");
+        startInfo.ArgumentList.Add(assemblyPath);
         startInfo.ArgumentList.Add(requestPath);
+        return RunFrontendProcess(startInfo);
+    }
 
+    private static string RunFrontendProcess(ProcessStartInfo startInfo)
+    {
         using var process =
             Process.Start(startInfo)
-            ?? throw new InvalidOperationException("failed to start generated vnext frontend host");
+            ?? throw new InvalidOperationException("failed to start C# vnext frontend");
         var stdoutTask = process.StandardOutput.ReadToEndAsync();
         var stderrTask = process.StandardError.ReadToEndAsync();
         process.WaitForExit();
@@ -85,7 +128,7 @@ internal static class GeneratedVNextFrontendCompiler
             )
         );
         throw new InvalidOperationException(
-            $"generated vnext frontend failed with exit code {process.ExitCode}:{Environment.NewLine}{output}"
+            $"C# vnext frontend failed with exit code {process.ExitCode}:{Environment.NewLine}{output}"
         );
     }
 
@@ -135,6 +178,67 @@ internal static class GeneratedVNextFrontendCompiler
             )[..16]
             .ToLowerInvariant();
         return Path.Combine(root, "generated-vnext-frontend-host", hash);
+    }
+
+    private static string RequestPath(string frontendPath, string cacheDirectory)
+    {
+        var root = string.IsNullOrWhiteSpace(cacheDirectory)
+            ? Path.Combine(Path.GetTempPath(), "moonbit2csharp-cache")
+            : Path.GetFullPath(cacheDirectory);
+        var hash = Convert
+            .ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(Path.GetFullPath(frontendPath))))[
+                ..16
+            ]
+            .ToLowerInvariant();
+        var directory = Path.Combine(root, "vnext-frontend-requests", hash);
+        Directory.CreateDirectory(directory);
+        return Path.Combine(directory, "request.json");
+    }
+
+    private static string HostDllPath(string hostDirectory) =>
+        Path.Combine(
+            hostDirectory,
+            "bin",
+            "Debug",
+            "net10.0",
+            "GeneratedVNextFrontendHost.dll"
+        );
+
+    private static bool HostBuildFresh(
+        string hostDllPath,
+        string hostDirectory,
+        string generatedProjectPath
+    )
+    {
+        if (!File.Exists(hostDllPath))
+            return false;
+
+        var outputTime = File.GetLastWriteTimeUtc(hostDllPath);
+        foreach (
+            var file in Directory
+                .EnumerateFiles(hostDirectory, "*", SearchOption.TopDirectoryOnly)
+                .Concat(GeneratedProjectDependencyFiles(generatedProjectPath))
+        )
+            if (File.GetLastWriteTimeUtc(file) > outputTime)
+                return false;
+
+        return true;
+    }
+
+    private static IEnumerable<string> GeneratedProjectDependencyFiles(string generatedProjectPath)
+    {
+        yield return generatedProjectPath;
+        var directory = Path.GetDirectoryName(Path.GetFullPath(generatedProjectPath));
+        if (string.IsNullOrWhiteSpace(directory) || !Directory.Exists(directory))
+            yield break;
+
+        foreach (var file in Directory.EnumerateFiles(directory, "*", SearchOption.AllDirectories))
+        {
+            var parts = file.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            if (parts.Any(part => part is ".git" or "bin" or "obj"))
+                continue;
+            yield return file;
+        }
     }
 
     private static void WriteHost(string hostDirectory, string generatedProjectPath)
