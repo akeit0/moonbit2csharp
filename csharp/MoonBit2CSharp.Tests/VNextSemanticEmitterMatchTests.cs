@@ -866,6 +866,108 @@ public sealed partial class VNextSemanticEmitterTests
     }
 
     [Fact]
+    public void DoesNotEmitFallbackAfterIrrefutableTupleSwitchArm()
+    {
+        var intType = """{ "kind": "Builtin", "name": "Int" }""";
+        var tupleType = $$"""{ "kind": "Tuple", "items": [{{intType}}, {{intType}}] }""";
+        var target =
+            $$"""{ "kind": "Name", "symbolId": "param:fn:Demo:first:t", "name": "t", "type": {{tupleType}} }""";
+        var json = ModuleJson(
+            $$"""
+            {
+              "kind": "Function",
+              "symbolId": "fn:Demo:first",
+              "name": "first",
+              "typeParams": [],
+              "params": [
+                { "symbolId": "param:fn:Demo:first:t", "name": "t", "type": {{tupleType}} }
+              ],
+              "returnType": {{intType}},
+              "body": {
+                "kind": "Match",
+                "target": {{target}},
+                "arms": [
+                  {
+                    "pattern": {
+                      "kind": "Tuple",
+                      "items": [
+                        {
+                          "kind": "Binding",
+                          "symbol": { "id": "local:fn:Demo:first:first", "kind": "Local", "name": "first", "type": {{intType}} }
+                        },
+                        { "kind": "Wildcard" }
+                      ]
+                    },
+                    "body": { "kind": "Name", "symbolId": "local:fn:Demo:first:first", "name": "first", "type": {{intType}} }
+                  }
+                ],
+                "type": {{intType}}
+              }
+            }
+            """
+        );
+
+        var code = VNextBackend.Emit(json);
+
+        Assert.Contains("switch", code);
+        Assert.Contains("(var first, _)", code);
+        Assert.DoesNotContain("_ => throw new System.Diagnostics.UnreachableException()", code);
+    }
+
+    [Fact]
+    public void LowersOrPatternWithBindingsAsStatements()
+    {
+        var intType = """{ "kind": "Builtin", "name": "Int" }""";
+        var optionIntType =
+            $$"""{ "kind": "Apply", "constructor": { "kind": "Builtin", "name": "Option" }, "args": [{{intType}}] }""";
+        var target =
+            $$"""{ "kind": "Name", "symbolId": "param:fn:Demo:value:x", "name": "x", "type": {{optionIntType}} }""";
+        var binding =
+            $$"""{ "kind": "Binding", "symbol": { "id": "local:fn:Demo:value:item", "kind": "Local", "name": "item", "type": {{intType}} } }""";
+        var json = ModuleJson(
+            $$"""
+            {
+              "kind": "Function",
+              "symbolId": "fn:Demo:value",
+              "name": "value",
+              "typeParams": [],
+              "params": [
+                { "symbolId": "param:fn:Demo:value:x", "name": "x", "type": {{optionIntType}} }
+              ],
+              "returnType": {{intType}},
+              "body": {
+                "kind": "Match",
+                "target": {{target}},
+                "arms": [
+                  {
+                    "pattern": {
+                      "kind": "Or",
+                      "alternatives": [
+                        { "kind": "OptionSome", "payload": {{binding}} },
+                        { "kind": "OptionSome", "payload": {{binding}} }
+                      ]
+                    },
+                    "body": { "kind": "Name", "symbolId": "local:fn:Demo:value:item", "name": "item", "type": {{intType}} }
+                  },
+                  {
+                    "pattern": { "kind": "OptionNone" },
+                    "body": { "kind": "IntLiteral", "value": "0", "type": {{intType}} }
+                  }
+                ],
+                "type": {{intType}}
+              }
+            }
+            """
+        );
+
+        var code = VNextBackend.Emit(json);
+
+        Assert.DoesNotContain(" or ", code);
+        Assert.DoesNotContain("Value: var item } or", code);
+        Assert.DoesNotContain("new System.Func", code);
+    }
+
+    [Fact]
     public void EmitsArrayMatchAsSwitchExpression()
     {
         var intType = """{ "kind": "Builtin", "name": "Int" }""";

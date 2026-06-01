@@ -33,11 +33,11 @@ public sealed partial class VNextSemanticEmitter
                 + EmitExpr(arm.GetProperty("body")).NormalizeWhitespace().ToFullString();
         }
 
-        if (!SwitchExpressionEndsWithDiscardArm(arms))
+        if (!SwitchExpressionEndsWithIrrefutableArm(targetType, arms))
             yield return "_ => throw new System.Diagnostics.UnreachableException()";
     }
 
-    private static bool SwitchExpressionEndsWithDiscardArm(JsonElement[] arms)
+    private bool SwitchExpressionEndsWithIrrefutableArm(JsonElement targetType, JsonElement[] arms)
     {
         if (arms.Length == 0)
             return false;
@@ -46,9 +46,7 @@ public sealed partial class VNextSemanticEmitter
         if (finalArm.TryGetProperty("condition", out _))
             return false;
 
-        return finalArm.GetProperty("pattern").GetProperty("kind").GetString()
-            is "Wildcard"
-                or "Binding";
+        return IsIrrefutableSwitchPattern(targetType, finalArm.GetProperty("pattern"));
     }
 
     private bool MatchNeedsStatementLowering(JsonElement expr)

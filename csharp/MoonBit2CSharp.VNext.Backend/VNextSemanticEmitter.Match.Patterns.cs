@@ -540,9 +540,20 @@ public sealed partial class VNextSemanticEmitter
 
     private bool CanEmitSwitchExpression(JsonElement targetType, JsonElement[] arms)
     {
-        foreach (var arm in arms)
+        for (var i = 0; i < arms.Length; i++)
+        {
+            var arm = arms[i];
             if (!CanEmitSwitchPatternExpression(targetType, arm.GetProperty("pattern")))
                 return false;
+
+            if (
+                i < arms.Length - 1
+                && !arm.TryGetProperty("condition", out _)
+                && IsIrrefutableSwitchPattern(targetType, arm.GetProperty("pattern"))
+            )
+                return false;
+        }
+
         return true;
     }
 
@@ -584,10 +595,13 @@ public sealed partial class VNextSemanticEmitter
             }
 
             case "Or":
-                return pattern
-                    .GetProperty("alternatives")
-                    .EnumerateArray()
-                    .All(alternative => CanEmitSwitchPatternExpression(targetType, alternative));
+            {
+                var alternatives = pattern.GetProperty("alternatives").EnumerateArray().ToArray();
+                return !alternatives.Any(PatternDeclaresVariable)
+                    && alternatives.All(alternative =>
+                        CanEmitSwitchPatternExpression(targetType, alternative)
+                    );
+            }
             case "OptionNone":
                 return true;
             case "OptionSome":
@@ -602,6 +616,62 @@ public sealed partial class VNextSemanticEmitter
                     && IsAllConstantEnum(typeDefinition);
             }
 
+            default:
+                return false;
+        }
+    }
+
+    private bool IsIrrefutableSwitchPattern(JsonElement targetType, JsonElement pattern)
+    {
+        switch (pattern.GetProperty("kind").GetString())
+        {
+            case "Wildcard":
+            case "Binding":
+                return true;
+            case "Tuple":
+            {
+                var items = pattern.GetProperty("items").EnumerateArray().ToArray();
+                for (var i = 0; i < items.Length; i++)
+                    if (!IsIrrefutableSwitchPattern(TupleItemType(targetType, i), items[i]))
+                        return false;
+                return true;
+            }
+            case "OptionSome":
+            case "OptionNone":
+            case "EnumCase":
+            case "Array":
+            case "Or":
+            case "IntLiteral":
+            case "CharLiteral":
+            case "StringLiteral":
+            case "BoolLiteral":
+            case "Range":
+            default:
+                return false;
+        }
+    }
+
+    private static bool PatternDeclaresVariable(JsonElement pattern)
+    {
+        switch (pattern.GetProperty("kind").GetString())
+        {
+            case "Binding":
+                return (pattern.GetProperty("symbol").GetProperty("name").GetString() ?? "_")
+                    != "_";
+            case "Tuple":
+                return pattern.GetProperty("items").EnumerateArray().Any(PatternDeclaresVariable);
+            case "Array":
+                return pattern.GetProperty("items").EnumerateArray().Any(PatternDeclaresVariable)
+                    || ArrayPatternSuffix(pattern).Any(PatternDeclaresVariable);
+            case "Or":
+                return pattern
+                    .GetProperty("alternatives")
+                    .EnumerateArray()
+                    .Any(PatternDeclaresVariable);
+            case "OptionSome":
+                return PatternDeclaresVariable(pattern.GetProperty("payload"));
+            case "EnumCase":
+                return pattern.GetProperty("payloads").EnumerateArray().Any(PatternDeclaresVariable);
             default:
                 return false;
         }
