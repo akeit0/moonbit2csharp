@@ -198,7 +198,7 @@ The script:
 Regenerate the current development C# frontend artifact with:
 
 ```powershell
-dnrelay run --project csharp\MoonBit2CSharp.Cli\MoonBit2CSharp.Cli.csproj -- --project artifacts\vnext_pipeline_csharp_dev --csproj frontend --namespace Generated.MoonBit --runtime-namespace Generated.MoonBit.Runtime --no-cache moonbit\src\vnext\pipeline
+dnrelay run --project csharp\MoonBit2CSharp.Cli\MoonBit2CSharp.Cli.csproj -- --project artifacts\vnext_pipeline_csharp_dev --csproj frontend --no-cache moonbit\src\vnext\pipeline
 ```
 
 Then run:

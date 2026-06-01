@@ -250,29 +250,29 @@ internal static class GeneratedVNextFrontendCompiler
             Path.Combine(hostDirectory, "Program.cs"),
             """
             using System.Text.Json;
-            using ImportRef = Generated.MoonBit.Packages.moonbit2csharp.frontend.vnext.binding.ImportRef;
-            using PackageSource = Generated.MoonBit.Packages.moonbit2csharp.frontend.vnext.package.PackageSource;
-            using Pipeline = Generated.MoonBit.Packages.moonbit2csharp.frontend.vnext.pipeline.pipeline;
-            using SourceUnit = Generated.MoonBit.Packages.moonbit2csharp.frontend.vnext.package.SourceUnit;
+            using ImportRef = moonbit2csharp.frontend.vnext.binding.ImportRef;
+            using PackageSource = moonbit2csharp.frontend.vnext.package.PackageSource;
+            using Pipeline = moonbit2csharp.frontend.vnext.pipeline.pipeline;
+            using SourceUnit = moonbit2csharp.frontend.vnext.package.SourceUnit;
 
             var request = JsonSerializer.Deserialize<VNextFrontendRequest>(
                 File.ReadAllText(args[0])
             ) ?? throw new InvalidOperationException("missing generated vnext frontend request");
 
             var result = Pipeline.compile_package_sources_with_manifests_to_json(
-                new Generated.MoonBit.Runtime.Array<SourceUnit>(
+                new MoonBit.Runtime.Array<SourceUnit>(
                     request.Sources.Select(item => new SourceUnit(item.FilePath, item.Source)).ToArray()
                 ),
                 request.ModuleName,
                 request.MoonPkgSource,
                 request.MoonPkgPath,
-                new Generated.MoonBit.Runtime.Array<PackageSource>(
+                new MoonBit.Runtime.Array<PackageSource>(
                     request.ImportedSources.Select(ToPackageSource).ToArray()
                 ),
-                new Generated.MoonBit.Runtime.Array<PackageSource>(
+                new MoonBit.Runtime.Array<PackageSource>(
                     request.ImportedDeclarationSources.Select(ToPackageSource).ToArray()
                 ),
-                new Generated.MoonBit.Runtime.Array<SourceUnit>(
+                new MoonBit.Runtime.Array<SourceUnit>(
                     request.ImportedManifestSources
                         .Select(item => new SourceUnit(item.FilePath, item.Source))
                         .ToArray()

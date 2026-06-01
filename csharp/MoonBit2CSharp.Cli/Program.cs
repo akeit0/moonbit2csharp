@@ -84,7 +84,7 @@ static MoonBitRunProjectResult PrepareGeneratedProject(
     var referenceRuntime = false;
     var includeMainPackages = false;
     var upperPascalCaseNames = false;
-    var generatedNamespace = "Generated.MoonBit";
+    var generatedNamespace = "";
     var runtimeNamespace = "MoonBit2CSharp.Runtime";
     var cacheDirectory = "";
     var cacheEnabled = true;
@@ -203,7 +203,7 @@ static int RunProject(string[] args)
     var executable = false;
     var includeMainPackages = false;
     var upperPascalCaseNames = false;
-    var generatedNamespace = "Generated.MoonBit";
+    var generatedNamespace = "";
     var runtimeNamespace = "MoonBit2CSharp.Runtime";
     var cacheDirectory = "";
     var cacheEnabled = true;

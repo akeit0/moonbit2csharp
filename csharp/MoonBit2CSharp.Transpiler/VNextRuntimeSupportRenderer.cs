@@ -108,16 +108,16 @@ internal static class VNextRuntimeSupportRenderer
 
     public static string Render(
         string template,
-        string generatedNamespace,
+        string runtimeNamespace,
         IEnumerable<string> generatedCode
     )
     {
         template = template.Replace(
             "__MOONBIT_RUNTIME_NAMESPACE__",
-            generatedNamespace + ".Runtime",
+            runtimeNamespace,
             StringComparison.Ordinal
         );
-        var required = RequiredRuntimeDeclarations(generatedNamespace, generatedCode);
+        var required = RequiredRuntimeDeclarations(runtimeNamespace, generatedCode);
         var declarations = ExtractTopLevelDeclarations(template);
         var intrinsicMethods = ExtractIntrinsicMethods(template);
 
@@ -152,13 +152,13 @@ internal static class VNextRuntimeSupportRenderer
     }
 
     private static RuntimeRequirements RequiredRuntimeDeclarations(
-        string generatedNamespace,
+        string runtimeNamespace,
         IEnumerable<string> generatedCode
     )
     {
         var declarations = new HashSet<string>(StringComparer.Ordinal);
         var intrinsics = new HashSet<string>(StringComparer.Ordinal);
-        var runtimePrefix = Regex.Escape(generatedNamespace + ".Runtime.");
+        var runtimePrefix = Regex.Escape(runtimeNamespace + ".");
         foreach (var code in generatedCode)
         {
             foreach (

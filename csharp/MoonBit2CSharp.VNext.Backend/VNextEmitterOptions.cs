@@ -1,7 +1,7 @@
 namespace MoonBit2CSharp.VNext.Backend;
 
 public sealed record VNextEmitterOptions(
-    string GeneratedNamespace = "Generated.MoonBit",
+    string GeneratedNamespace = "",
     string RuntimeNamespace = "MoonBit.Runtime",
     bool UpperPascalCaseNames = false,
     bool EmitEntryPoint = false,

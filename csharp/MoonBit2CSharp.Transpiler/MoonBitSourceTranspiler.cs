@@ -41,7 +41,7 @@ public sealed record MoonBitProjectTranspileRequest(
     public bool IncludeMainPackages { get; init; }
     public bool UpperPascalCaseNames { get; init; }
     public bool WriteProjectFile { get; init; } = true;
-    public string GeneratedNamespace { get; init; } = "Generated.MoonBit";
+    public string GeneratedNamespace { get; init; } = "";
     public string RuntimeNamespace { get; init; } = "MoonBit2CSharp.Runtime";
     public IReadOnlyList<string> AdditionalUsings { get; init; } = [];
     public IReadOnlyList<string> AdditionalProjectReferences { get; init; } = [];
@@ -338,7 +338,7 @@ public static class MoonBitSourceTranspiler
             var supportPath = Path.Combine(outputDir, "moonbit_runtime.g.cs");
             WriteAllTextIfChanged(
                 supportPath,
-                VNextRuntimeSupportSource(request.GeneratedNamespace, [generatedCode])
+                VNextRuntimeSupportSource(runtimeNamespace, [generatedCode])
             );
             writtenFiles.Add(supportPath);
 
@@ -385,10 +385,7 @@ public static class MoonBitSourceTranspiler
 
         WriteAllTextIfChanged(
             runtimePath,
-            VNextRuntimeSupportSource(
-                request.GeneratedNamespace,
-                generatedFiles.Select(file => file.Code)
-            )
+            VNextRuntimeSupportSource(runtimeNamespace, generatedFiles.Select(file => file.Code))
         );
         writtenFiles.Add(runtimePath);
 
@@ -424,7 +421,7 @@ public static class MoonBitSourceTranspiler
     }
 
     private static string VNextRuntimeSupportSource(
-        string generatedNamespace,
+        string runtimeNamespace,
         IEnumerable<string> generatedCode
     )
     {
@@ -436,7 +433,7 @@ public static class MoonBitSourceTranspiler
                 "VNextRuntimeSupportTemplate.cs.txt"
             )
         );
-        return VNextRuntimeSupportRenderer.Render(template, generatedNamespace, generatedCode);
+        return VNextRuntimeSupportRenderer.Render(template, runtimeNamespace, generatedCode);
     }
 
     private static bool IsExecutableVNextTarget(

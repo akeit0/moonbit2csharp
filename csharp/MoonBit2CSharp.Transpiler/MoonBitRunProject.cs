@@ -17,7 +17,7 @@ public sealed record MoonBitRunProjectRequest(IReadOnlyList<string> Inputs)
     public bool ReferenceRuntime { get; init; }
     public bool IncludeMainPackages { get; init; }
     public bool UpperPascalCaseNames { get; init; }
-    public string GeneratedNamespace { get; init; } = "Generated.MoonBit";
+    public string GeneratedNamespace { get; init; } = "";
     public string RuntimeNamespace { get; init; } = "MoonBit2CSharp.Runtime";
     public IReadOnlyList<string> AdditionalUsings { get; init; } = [];
     public IReadOnlyList<string> AdditionalProjectReferences { get; init; } = [];

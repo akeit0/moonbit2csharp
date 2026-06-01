@@ -336,11 +336,13 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
     {
         var unit = CompilationUnit()
             .WithUsings(SingletonList(UsingDirective(ParseName("System"))))
-            .AddUsings(UsingDirective(ParseName(options.GeneratedNamespace + ".Runtime")))
-            .WithMembers(
+            .AddUsings(UsingDirective(ParseName(options.RuntimeNamespace)));
+        var memberArray = members.ToArray();
+        unit = string.IsNullOrWhiteSpace(namespaceName)
+            ? unit.WithMembers(List(memberArray))
+            : unit.WithMembers(
                 SingletonList<MemberDeclarationSyntax>(
-                    FileScopedNamespaceDeclaration(ParseName(namespaceName))
-                        .AddMembers(members.ToArray())
+                    FileScopedNamespaceDeclaration(ParseName(namespaceName)).AddMembers(memberArray)
                 )
             );
         unit = (CompilationUnitSyntax)new RuntimeIdentifierQualifier(options).Visit(unit)!;
@@ -7008,9 +7010,13 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
 
     private string PackageNamespace(string packageName)
     {
-        return packageName.Length == 0
-            ? options.GeneratedNamespace
-            : options.GeneratedNamespace + ".Packages." + PackageNamespacePath(packageName);
+        if (packageName.Length == 0)
+            return options.GeneratedNamespace;
+
+        var packageNamespace = PackageNamespacePath(packageName);
+        return string.IsNullOrWhiteSpace(options.GeneratedNamespace)
+            ? packageNamespace
+            : options.GeneratedNamespace + "." + packageNamespace;
     }
 
     private string CoreBuiltinTypeName(string name)
@@ -7523,12 +7529,12 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
 
         private NameSyntax RuntimeNamespaceName()
         {
-            return ParseName("global::" + options.GeneratedNamespace + ".Runtime");
+            return ParseName("global::" + options.RuntimeNamespace);
         }
 
         private NameSyntax RuntimeQualifiedName(string name)
         {
-            return ParseName("global::" + options.GeneratedNamespace + ".Runtime." + name);
+            return ParseName("global::" + options.RuntimeNamespace + "." + name);
         }
 
         private static SimpleNameSyntax RenameSimpleName(SimpleNameSyntax name, string target)
