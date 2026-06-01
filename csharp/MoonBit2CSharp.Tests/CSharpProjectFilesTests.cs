@@ -16,7 +16,11 @@ public sealed class CSharpProjectFilesTests
         );
 
         Assert.Contains("<OutputType>Exe</OutputType>", project, StringComparison.Ordinal);
-        Assert.DoesNotContain("<OutputType>Library</OutputType>", project, StringComparison.Ordinal);
+        Assert.DoesNotContain(
+            "<OutputType>Library</OutputType>",
+            project,
+            StringComparison.Ordinal
+        );
     }
 
     [Fact]
