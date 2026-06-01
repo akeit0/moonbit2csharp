@@ -29,8 +29,12 @@ public static class CSharpProjectFiles
         var builder = new StringBuilder();
         builder.Append("<Project Sdk=\"Microsoft.NET.Sdk\">").Append(newLine);
         builder.Append(indent).Append("<PropertyGroup>").Append(newLine);
-        if (executable)
-            builder.Append(indent2).Append("<OutputType>Exe</OutputType>").Append(newLine);
+        builder
+            .Append(indent2)
+            .Append("<OutputType>")
+            .Append(executable ? "Exe" : "Library")
+            .Append("</OutputType>")
+            .Append(newLine);
 
         builder
             .Append(indent2)

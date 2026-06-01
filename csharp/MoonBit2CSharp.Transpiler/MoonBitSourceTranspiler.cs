@@ -287,11 +287,12 @@ public static class MoonBitSourceTranspiler
             importedRoots,
             moonModPath
         );
+        var targetExecutable = IsExecutableVNextTarget(request, fullInputs, mainRoot);
         var options = new VNextEmitterOptions(
             request.GeneratedNamespace,
             runtimeNamespace,
             request.UpperPascalCaseNames,
-            request.Executable
+            targetExecutable
         );
 
         var projectName = request.ProjectName;
@@ -335,7 +336,7 @@ public static class MoonBitSourceTranspiler
                         outputDir,
                         Path.GetFullPath(runtimeProjectPath),
                         false,
-                        request.Executable,
+                        targetExecutable,
                         request.AdditionalProjectReferences,
                         formattingOptions: new(
                             GeneratedNamespace: request.GeneratedNamespace,
@@ -392,7 +393,7 @@ public static class MoonBitSourceTranspiler
                     outputDir,
                     Path.GetFullPath(runtimeProjectPath),
                     false,
-                    request.Executable,
+                    targetExecutable,
                     request.AdditionalProjectReferences,
                     formattingOptions: new(
                         GeneratedNamespace: request.GeneratedNamespace,
@@ -421,6 +422,24 @@ public static class MoonBitSourceTranspiler
             )
         );
         return VNextRuntimeSupportRenderer.Render(template, generatedNamespace, generatedCode);
+    }
+
+    private static bool IsExecutableVNextTarget(
+        MoonBitProjectTranspileRequest request,
+        IReadOnlyList<string> fullInputs,
+        string mainRoot
+    )
+    {
+        return !string.IsNullOrWhiteSpace(request.SingleFileName)
+            || IsSingleFileInputTarget(fullInputs)
+            || IsMainPackage(mainRoot);
+    }
+
+    private static bool IsSingleFileInputTarget(IReadOnlyList<string> fullInputs)
+    {
+        return fullInputs.Count == 1
+            && File.Exists(fullInputs[0])
+            && Path.GetExtension(fullInputs[0]) is ".mbt" or ".mbtx";
     }
 
     private static IReadOnlyList<string> ResolveVNextImportedPackageRoots(
@@ -1762,6 +1781,24 @@ public static class MoonBitSourceTranspiler
             );
     }
 
+    private static bool JsonMoonPkgBoolOption(string moonPkgSource, string optionName)
+    {
+        using var document = JsonDocument.Parse(moonPkgSource);
+        return JsonObjectBoolOption(document.RootElement, optionName)
+            || (
+                document.RootElement.TryGetProperty("options", out var options)
+                && options.ValueKind == JsonValueKind.Object
+                && JsonObjectBoolOption(options, optionName)
+            );
+    }
+
+    private static bool JsonObjectBoolOption(JsonElement obj, string optionName)
+    {
+        return obj.ValueKind == JsonValueKind.Object
+            && obj.TryGetProperty(optionName, out var option)
+            && option.ValueKind == JsonValueKind.True;
+    }
+
     private static IEnumerable<string> TextMoonPkgImportPaths(string moonPkgSource)
     {
         var source = RemoveMoonPkgLineComments(moonPkgSource);
@@ -1791,6 +1828,39 @@ public static class MoonBitSourceTranspiler
         var source = RemoveMoonPkgLineComments(moonPkgSource);
         return source.Contains("\"virtual\"", StringComparison.Ordinal)
             || IndexOfWord(source, "virtual", 0) >= 0;
+    }
+
+    private static bool TextMoonPkgBoolOption(string moonPkgSource, string optionName)
+    {
+        var source = RemoveMoonPkgLineComments(moonPkgSource);
+        for (var index = 0; index < source.Length; )
+        {
+            var optionsIndex = IndexOfWord(source, "options", index);
+            if (optionsIndex < 0)
+                return false;
+
+            var parenStart = source.IndexOf('(', optionsIndex + "options".Length);
+            if (parenStart < 0)
+                return false;
+
+            var parenEnd = MatchingDelimitedEnd(source, parenStart, '(', ')');
+            if (parenEnd < 0)
+                return false;
+
+            var body = source[(parenStart + 1)..parenEnd];
+            var optionPattern =
+                @"(?:"""
+                + Regex.Escape(optionName)
+                + @"""|"
+                + Regex.Escape(optionName)
+                + @")\s*:\s*true\b";
+            if (Regex.IsMatch(body, optionPattern, RegexOptions.CultureInvariant))
+                return true;
+
+            index = parenEnd + 1;
+        }
+
+        return false;
     }
 
     private static string RemoveMoonPkgLineComments(string source)
@@ -1862,10 +1932,15 @@ public static class MoonBitSourceTranspiler
 
     private static int MatchingBraceEnd(string source, int braceStart)
     {
+        return MatchingDelimitedEnd(source, braceStart, '{', '}');
+    }
+
+    private static int MatchingDelimitedEnd(string source, int start, char open, char close)
+    {
         var depth = 0;
         var inString = false;
         var escaped = false;
-        for (var i = braceStart; i < source.Length; i++)
+        for (var i = start; i < source.Length; i++)
         {
             var ch = source[i];
             if (inString)
@@ -1884,11 +1959,11 @@ public static class MoonBitSourceTranspiler
             {
                 inString = true;
             }
-            else if (ch == '{')
+            else if (ch == open)
             {
                 depth++;
             }
-            else if (ch == '}')
+            else if (ch == close)
             {
                 depth--;
                 if (depth == 0)
@@ -2092,7 +2167,15 @@ public static class MoonBitSourceTranspiler
         return new[] { "moon.pkg", "moon.pkg.json" }
             .Select(name => Path.Combine(path, name))
             .Where(File.Exists)
-            .Any(path => File.ReadAllText(path).Contains("\"is-main\"", StringComparison.Ordinal));
+            .Any(MoonPkgHasMainOption);
+    }
+
+    private static bool MoonPkgHasMainOption(string moonPkgPath)
+    {
+        var source = File.ReadAllText(moonPkgPath);
+        return Path.GetExtension(moonPkgPath).Equals(".json", StringComparison.OrdinalIgnoreCase)
+            ? JsonMoonPkgBoolOption(source, "is-main")
+            : TextMoonPkgBoolOption(source, "is-main");
     }
 
     private static void CleanGeneratedOutputs(string outputDir)
