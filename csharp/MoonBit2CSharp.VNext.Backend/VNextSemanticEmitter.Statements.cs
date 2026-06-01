@@ -61,7 +61,7 @@ public sealed partial class VNextSemanticEmitter
                 statements.Add(ReturnStatement(ParseExpression("MoonBitUnit.Value")));
                 break;
             case "Return":
-                statements.Add(ReturnStatement(ReturnValueOrUnit(expr)));
+                EmitReturnExpression(expr, statements);
                 break;
             case "Panic":
                 statements.Add(ThrowStatement(NewMoonBitPanicExpression()));
@@ -218,7 +218,7 @@ public sealed partial class VNextSemanticEmitter
                 EmitContinueStatement(expr, statements);
                 break;
             case "Return":
-                statements.Add(ReturnStatement(ReturnValueOrUnit(expr)));
+                EmitReturnExpression(expr, statements);
                 break;
             case "Panic":
                 statements.Add(ThrowStatement(NewMoonBitPanicExpression()));
@@ -531,7 +531,7 @@ public sealed partial class VNextSemanticEmitter
                 EmitGuardAsStatement(expr, statements);
                 return;
             case "Return":
-                statements.Add(ReturnStatement(ReturnValueOrUnit(expr)));
+                EmitReturnExpression(expr, statements);
                 return;
             case "Panic":
                 statements.Add(ThrowStatement(NewMoonBitPanicExpression()));
@@ -841,7 +841,7 @@ public sealed partial class VNextSemanticEmitter
         switch (expr.GetProperty("kind").GetString())
         {
             case "Return":
-                statements.Add(ReturnStatement(ReturnValueOrUnit(expr)));
+                EmitReturnExpression(expr, statements);
                 break;
             case "Break":
                 EmitBreakStatement(expr, statements);
@@ -919,6 +919,24 @@ public sealed partial class VNextSemanticEmitter
                 ? expr.GetProperty("type")
                 : value.GetProperty("type");
         return ReturnExpression(result, type);
+    }
+
+    private void EmitReturnExpression(JsonElement expr, List<StatementSyntax> statements)
+    {
+        var value = expr.GetProperty("value");
+        if (value.ValueKind == JsonValueKind.Null)
+        {
+            statements.Add(ReturnStatement(ReturnExpression(ParseExpression("MoonBitUnit.Value"), expr.GetProperty("type"))));
+            return;
+        }
+
+        if (ExprNeedsReturnStatementLowering(value) || ExprMayRaise(value))
+        {
+            EmitExprAsReturn(value, statements);
+            return;
+        }
+
+        statements.Add(ReturnStatement(ReturnExpression(EmitExpr(value), value.GetProperty("type"))));
     }
 
     private ExpressionSyntax ReturnExpression(ExpressionSyntax value, JsonElement okType)

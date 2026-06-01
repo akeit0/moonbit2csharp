@@ -761,17 +761,45 @@ public sealed partial class VNextSemanticEmitterTests
         Assert.Contains("{ IsSome: true, Value: var v }", code);
         Assert.Contains("{ IsSome: true, Value: 1 }", code);
         Assert.Contains("{ IsNone: true }", code);
-        var assembly = Compile(code);
-        var module = assembly.GetType("Generated.MoonBit.Demo", true)!;
-        var some = typeof(MoonBitOption<int>).GetMethod("Some")!.Invoke(null, [7]);
-        var someOne = typeof(MoonBitOption<int>).GetMethod("Some")!.Invoke(null, [1]);
-        var none = typeof(MoonBitOption<int>).GetMethod("None")!.Invoke(null, []);
+        Assert.DoesNotContain("System.Func", code);
+        var assembly = Compile(
+            code,
+            """
+            namespace Generated.MoonBit.Runtime
+            {
+                public readonly struct Option<T>
+                {
+                    public bool IsSome { get; }
+                    public bool IsNone => !IsSome;
+                    public T Value { get; }
 
-        Assert.Equal(7, module.GetMethod("value")!.Invoke(null, [some]));
-        Assert.Equal(0, module.GetMethod("value")!.Invoke(null, [none]));
-        Assert.Equal(10, module.GetMethod("one")!.Invoke(null, [someOne]));
-        Assert.Equal(1, module.GetMethod("one")!.Invoke(null, [some]));
-        Assert.Equal(0, module.GetMethod("one")!.Invoke(null, [none]));
+                    private Option(bool isSome, T value)
+                    {
+                        IsSome = isSome;
+                        Value = value;
+                    }
+
+                    public static Option<T> Some(T value) => new(true, value);
+                    public static Option<T> None() => new(false, default!);
+                }
+            }
+            """
+        );
+        var module = assembly.GetType("Generated.MoonBit.Demo", true)!;
+        var option = assembly.GetType("Generated.MoonBit.Runtime.Option`1", true)!
+            .MakeGenericType(typeof(int));
+        var some = option.GetMethod("Some")!.Invoke(null, [7]);
+        var someOne = option.GetMethod("Some")!.Invoke(null, [1]);
+        var none = option.GetMethod("None")!.Invoke(null, []);
+
+        var value = module.GetMethod("value", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static)!;
+        var one = module.GetMethod("one", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static)!;
+
+        Assert.Equal(7, value.Invoke(null, [some]));
+        Assert.Equal(0, value.Invoke(null, [none]));
+        Assert.Equal(10, one.Invoke(null, [someOne]));
+        Assert.Equal(1, one.Invoke(null, [some]));
+        Assert.Equal(0, one.Invoke(null, [none]));
     }
 
     [Fact]

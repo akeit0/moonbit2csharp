@@ -16,7 +16,7 @@ public sealed partial class VNextSemanticEmitter
         var arms = expr.GetProperty("arms").EnumerateArray().ToArray();
         RejectArrayRestBindingsThatNeedExpressionMaterialization(arms);
         if (!CanEmitSwitchExpression(targetType, arms))
-            return EmitMatchImmediatelyInvokedFunction(expr);
+            throw new NotSupportedException("vnext match expression requires statement lowering");
 
         return ParseExpression(
             target + " switch { " + string.Join(", ", SwitchExpressionArms(targetType, arms)) + " }"
@@ -51,27 +51,13 @@ public sealed partial class VNextSemanticEmitter
                 or "Binding";
     }
 
-    private ExpressionSyntax EmitMatchImmediatelyInvokedFunction(JsonElement expr)
-    {
-        var returnType = EmitType(expr.GetProperty("type")).NormalizeWhitespace().ToFullString();
-        var statements = new List<StatementSyntax>();
-        EmitMatchAsReturn(expr, statements);
-        return ParseExpression(
-            "new System.Func<"
-                + returnType
-                + ">(() => { "
-                + string.Join(
-                    " ",
-                    statements.Select(statement => statement.NormalizeWhitespace().ToFullString())
-                )
-                + " })()"
-        );
-    }
-
     private bool MatchNeedsStatementLowering(JsonElement expr)
     {
         var targetType = expr.GetProperty("target").GetProperty("type");
         var arms = expr.GetProperty("arms").EnumerateArray().ToArray();
+        if (!CanEmitSwitchExpression(targetType, arms))
+            return true;
+
         if (CanEmitPayloadEnumTagSwitch(targetType, arms))
             return true;
 

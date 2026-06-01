@@ -559,8 +559,7 @@ public sealed partial class VNextSemanticEmitter
             or "Range":
                 return true;
             case "Binding":
-                return (pattern.GetProperty("symbol").GetProperty("name").GetString() ?? "_")
-                    == "_";
+                return true;
             case "Tuple":
             {
                 var items = pattern.GetProperty("items").EnumerateArray().ToArray();
