@@ -355,6 +355,9 @@ fn complete_reachable_declaration_source_functions(
   collect_module_referenced_global_ids(
     local_bound, reachability_index, reachable_globals,
   )
+  collect_module_used_trait_impl_function_ids(
+    local_bound, reachability_index, reachable,
+  )
   for function in emitted_functions {
     collect_function_called_function_ids(
       function, reachability_index, reachable,
@@ -438,6 +441,9 @@ fn complete_reachable_declaration_source_functions(
                 changed = true
               }
             }
+            collect_module_used_trait_impl_function_ids(
+              bound, reachability_index, reachable,
+            )
           } else {
             for diagnostic in new_diagnostics {
               diagnostics.push(diagnostic)
@@ -481,6 +487,9 @@ fn complete_reachable_declaration_source_functions(
               changed = true
             }
           }
+          collect_module_used_trait_impl_function_ids(
+            bound, reachability_index, reachable,
+          )
         } else {
           for diagnostic in new_diagnostics {
             diagnostics.push(diagnostic)
@@ -540,6 +549,7 @@ priv struct ReachabilityIndex {
   function_packages : Map[String, String]
   global_packages : Map[String, String]
   default_impl_method_functions : Map[String, Array[String]]
+  impls : Array[@semantic.ImplDefinition]
 }
 
 ///|
@@ -549,6 +559,7 @@ fn build_reachability_index(
   let function_packages : Map[String, String] = Map([])
   let global_packages : Map[String, String] = Map([])
   let default_impl_method_functions : Map[String, Array[String]] = Map([])
+  let impls : Array[@semantic.ImplDefinition] = []
   for session in sessions {
     index_function_packages(
       function_packages,
@@ -576,8 +587,11 @@ fn build_reachability_index(
       default_impl_method_functions,
       session.binding_session.index.impls,
     )
+    for impl_ in session.binding_session.index.impls {
+      push_impl_definition_unique(impls, impl_)
+    }
   }
-  { function_packages, global_packages, default_impl_method_functions }
+  { function_packages, global_packages, default_impl_method_functions, impls }
 }
 
 ///|
@@ -1013,6 +1027,83 @@ fn collect_module_called_function_ids(
   for global in module_.globals {
     collect_expr_called_function_ids(global.value, index, result)
   }
+}
+
+///|
+fn collect_module_used_trait_impl_function_ids(
+  module_ : @ir.BoundModule,
+  index : ReachabilityIndex,
+  result : ReachableFunctionWorklist,
+) -> Unit {
+  for usage in module_.used_trait_impls {
+    collect_used_trait_impl_function_ids(usage, index, result)
+  }
+}
+
+///|
+fn collect_used_trait_impl_function_ids(
+  usage : @binding.UsedTraitImpl,
+  index : ReachabilityIndex,
+  result : ReachableFunctionWorklist,
+) -> Unit {
+  for impl_ in index.impls {
+    if !@semantic.impl_definition_matches_usage(impl_, usage) {
+      continue
+    }
+    if !type_ref_contains_type_parameter(impl_.self_type) {
+      continue
+    }
+    for impl_method in impl_.methods {
+      match impl_method.body {
+        @semantic.ImplMethodBody::Function(_) =>
+          push_reachable_function_unique(result, index, impl_method.function_id)
+        _ => ()
+      }
+    }
+  }
+}
+
+///|
+fn type_ref_contains_type_parameter(type_ : @binding.TypeRef) -> Bool {
+  match type_ {
+    @binding.TypeRef::TypeParameter(_, _) => true
+    @binding.TypeRef::Declared(_, args) =>
+      fixed_type_ref_array_contains_type_parameter(args)
+    @binding.TypeRef::Tuple(args) =>
+      fixed_type_ref_array_contains_type_parameter(args)
+    @binding.TypeRef::Apply(_, args) =>
+      fixed_type_ref_array_contains_type_parameter(args)
+    @binding.TypeRef::Function(params, return_type, _) =>
+      param_type_ref_array_contains_type_parameter(params) ||
+      type_ref_contains_type_parameter(return_type)
+    @binding.TypeRef::TraitObject(trait_ref) =>
+      fixed_type_ref_array_contains_type_parameter(trait_ref.args)
+    _ => false
+  }
+}
+
+///|
+fn fixed_type_ref_array_contains_type_parameter(
+  types : FixedArray[@binding.TypeRef],
+) -> Bool {
+  for type_ in types {
+    if type_ref_contains_type_parameter(type_) {
+      return true
+    }
+  }
+  false
+}
+
+///|
+fn param_type_ref_array_contains_type_parameter(
+  params : Array[@binding.ParamTypeRef],
+) -> Bool {
+  for param in params {
+    if type_ref_contains_type_parameter(param.type_) {
+      return true
+    }
+  }
+  false
 }
 
 ///|

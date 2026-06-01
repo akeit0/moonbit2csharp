@@ -2491,6 +2491,15 @@ fn receiver_type_shape_equal(candidate : TypeRef, actual : TypeRef) -> Bool {
 }
 
 ///|
+pub fn impl_definition_matches_usage(
+  impl_ : ImplDefinition,
+  usage : @binding.UsedTraitImpl,
+) -> Bool {
+  impl_.trait_ref.trait_.id == usage.trait_ref.trait_.id &&
+  receiver_type_shape_equal(impl_.self_type, usage.self_type)
+}
+
+///|
 fn receiver_constructor_equal(
   left : TypeConstructorRef,
   right : TypeConstructorRef,
@@ -2577,6 +2586,26 @@ pub fn find_impls_by_trait_self(
       for slot in slots {
         let impl_ = index.impls[slot]
         if @binding.type_equal(impl_.self_type, self_type) {
+          result.push(impl_)
+        }
+      }
+    None => ()
+  }
+  result
+}
+
+///|
+pub fn find_impls_by_trait_self_shape(
+  index : DeclarationIndex,
+  trait_id : String,
+  self_type : TypeRef,
+) -> Array[ImplDefinition] {
+  let result : Array[ImplDefinition] = []
+  match index.impl_indices_by_trait_id.get(trait_id) {
+    Some(slots) =>
+      for slot in slots {
+        let impl_ = index.impls[slot]
+        if receiver_type_shape_equal(impl_.self_type, self_type) {
           result.push(impl_)
         }
       }

@@ -162,7 +162,9 @@ fn choose_function(
 fn unique_function_candidates(
   candidates : Array[FunctionSignature],
 ) -> Array[FunctionSignature] {
-  let result : Array[FunctionSignature] = Array::new(capacity=candidates.length())
+  let result : Array[FunctionSignature] = Array::new(
+    capacity=candidates.length(),
+  )
   for candidate in candidates {
     let mut seen = false
     for existing in result {
@@ -271,7 +273,9 @@ fn probe_callable(
     ":" +
     span.end.to_string()
   let type_param_names = function_signature_type_param_names(signature)
-  let params : Array[ParameterDef] = Array::new(capacity=signature.parameters.length())
+  let params : Array[ParameterDef] = Array::new(
+    capacity=signature.parameters.length(),
+  )
   for param in signature.parameters {
     params.push({
       symbol: {
@@ -345,7 +349,9 @@ fn probe_callable(
       return None
     }
   }
-  let resolved_params : Array[ParameterDef] = Array::new(capacity=params.length())
+  let resolved_params : Array[ParameterDef] = Array::new(
+    capacity=params.length(),
+  )
   for param in params {
     resolved_params.push({
       symbol: {
@@ -400,7 +406,9 @@ fn resolved_generic_trait_evidence(
   signature : FunctionSignature,
   type_args : Array[TypeRef],
 ) -> Array[@semantic.ImplEvidence] {
-  let result : Array[@semantic.ImplEvidence] = Array::new(capacity=signature.type_params.length())
+  let result : Array[@semantic.ImplEvidence] = Array::new(
+    capacity=signature.type_params.length(),
+  )
   for i in 0..<signature.type_params.length() {
     if i >= type_args.length() {
       break
@@ -425,7 +433,9 @@ fn resolved_generic_trait_evidence(
 fn function_signature_type_param_names(
   signature : FunctionSignature,
 ) -> Array[String] {
-  let result : Array[String] = Array::new(capacity=signature.type_params.length())
+  let result : Array[String] = Array::new(
+    capacity=signature.type_params.length(),
+  )
   for param in signature.type_params {
     result.push(param.name)
   }
@@ -449,7 +459,7 @@ fn find_impl_evidence_for_trait(
   self_type : TypeRef,
 ) -> @semantic.ImplEvidence? {
   for
-    impl_ in @semantic.find_impls_by_trait_self(
+    impl_ in @semantic.find_impls_by_trait_self_shape(
       index,
       trait_def.symbol.id,
       self_type,
@@ -517,7 +527,9 @@ fn bound_trait_evidence(
   context : BindingContext,
   evidence : Array[@semantic.ImplEvidence],
 ) -> Array[@ir.BoundTraitEvidence] {
-  let result : Array[@ir.BoundTraitEvidence] = Array::new(capacity=evidence.length())
+  let result : Array[@ir.BoundTraitEvidence] = Array::new(
+    capacity=evidence.length(),
+  )
   for item in evidence {
     mark_used_trait_impl(context, item.trait_ref, item.self_type)
     result.push({
@@ -561,7 +573,7 @@ fn mark_used_trait_object_conversion(
         actual,
       )
       for
-        _impl in @semantic.find_impls_by_trait_self(
+        _impl in @semantic.find_impls_by_trait_self_shape(
           index,
           trait_ref.trait_.id,
           actual,

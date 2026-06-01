@@ -46,10 +46,12 @@ public sealed partial class VNextSemanticEmitter
         if (finalArm.TryGetProperty("condition", out _))
             return false;
 
-        if (IsBuiltinApply(targetType, "Option"))
-            return FinalOptionArmCoversRemainder(arms, arms.Length - 1);
+        var finalPattern = finalArm.GetProperty("pattern");
+        if (IsIrrefutableSwitchPattern(targetType, finalPattern))
+            return true;
 
-        return IsIrrefutableSwitchPattern(targetType, finalArm.GetProperty("pattern"));
+        return IsBuiltinApply(targetType, "Option")
+            && FinalOptionArmCoversRemainder(arms, arms.Length - 1);
     }
 
     private bool MatchNeedsStatementLowering(JsonElement expr)
@@ -175,7 +177,7 @@ public sealed partial class VNextSemanticEmitter
             .Append("if (")
             .Append(PayloadPatternCondition(matchName, targetType, pattern))
             .Append(") { ");
-        EmitPatternBindings(builder, matchName, pattern);
+        EmitPatternBindings(builder, matchName, targetType, pattern);
         var condition = MatchArmConditionExpression(arm);
         if (condition.Length > 0)
             builder.Append("if (").Append(condition).Append(") { ");
@@ -313,7 +315,7 @@ public sealed partial class VNextSemanticEmitter
             .Append("if (")
             .Append(PayloadPatternCondition(matchName, targetType, pattern))
             .Append(") { ");
-        EmitPatternBindings(builder, matchName, pattern);
+        EmitPatternBindings(builder, matchName, targetType, pattern);
         var condition = MatchArmConditionExpression(arm);
         if (condition.Length > 0)
             builder.Append("if (").Append(condition).Append(") { ");
@@ -406,7 +408,7 @@ public sealed partial class VNextSemanticEmitter
                     .Append("if (")
                     .Append(PayloadPatternCondition(matchName, targetType, pattern))
                     .Append(") { ");
-            EmitPatternBindings(builder, matchName, pattern);
+            EmitPatternBindings(builder, matchName, targetType, pattern);
             AppendStatementBody(builder, arm.GetProperty("body"));
             builder.Append("} ");
         }
@@ -429,7 +431,7 @@ public sealed partial class VNextSemanticEmitter
             .Append(" && (")
             .Append(PayloadPatternCondition(matchName, targetType, pattern))
             .Append(")) { ");
-        EmitPatternBindings(builder, matchName, pattern);
+        EmitPatternBindings(builder, matchName, targetType, pattern);
         var condition = MatchArmConditionExpression(arm);
         if (condition.Length > 0)
             builder.Append("if (").Append(condition).Append(") { ");
@@ -555,13 +557,13 @@ public sealed partial class VNextSemanticEmitter
     {
         if (UseDefaultBranchForFinalArm(targetType, arms, armIndex))
         {
-            EmitPatternBindings(builder, value, pattern);
+            EmitPatternBindings(builder, value, targetType, pattern);
             return;
         }
 
         if (pattern.GetProperty("kind").GetString() is "Wildcard" or "Binding")
         {
-            EmitPatternBindings(builder, value, pattern);
+            EmitPatternBindings(builder, value, targetType, pattern);
             return;
         }
 

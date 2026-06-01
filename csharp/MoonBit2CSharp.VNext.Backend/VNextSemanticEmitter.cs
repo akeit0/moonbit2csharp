@@ -29,6 +29,10 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
     private readonly Dictionary<string, string> staticTraitImplAdapterTypes = new(
         StringComparer.Ordinal
     );
+    private readonly Dictionary<
+        string,
+        GenericStaticTraitImplAdapter
+    > genericStaticTraitImplAdapters = new(StringComparer.Ordinal);
 
     private readonly Dictionary<string, string[]> traitSymbolIdsByName = new(
         StringComparer.Ordinal
@@ -109,6 +113,7 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
         functionContainers.Clear();
         bytesLiteralCaches.Clear();
         staticTraitImplAdapterTypes.Clear();
+        genericStaticTraitImplAdapters.Clear();
         functionEffects.Clear();
         functionsBySymbolId.Clear();
         requiredCoreBuiltinEvidence.Clear();
@@ -298,6 +303,7 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
                 )
                 .Concat(EmitCoreBuiltinEvidenceMembers(packageName))
                 .Concat(EmitCoreDebugEvidenceMembers(packageName))
+                .Concat(EmitGenericStaticTraitImplAdapterMembers(packageName))
                 .Concat(moduleClasses)
                 .ToArray();
             if (members.Length == 0)
@@ -451,35 +457,12 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
     )
     {
         yield return EmitTypeDefinition(typeDefinition);
-        foreach (var member in EmitCoreRefShowMembers(typeDefinition))
-            yield return member;
         foreach (var member in EmitDerivedEqMembers(typeDefinition))
             yield return member;
         foreach (var member in EmitDerivedHashMembers(typeDefinition))
             yield return member;
         foreach (var member in EmitDerivedDebugMembers(typeDefinition))
             yield return member;
-    }
-
-    private IEnumerable<MemberDeclarationSyntax> EmitCoreRefShowMembers(JsonElement typeDefinition)
-    {
-        var symbol = typeDefinition.GetProperty("symbol");
-        if (
-            symbol.GetProperty("packageId").GetString() != "pkg:moonbitlang/core/ref"
-            || symbol.GetProperty("name").GetString() != "Ref"
-        )
-            yield break;
-
-        var showImplInterfaceName = CoreBuiltinTypeName("IShowImpl");
-        yield return ParseMemberDeclaration(
-            $$"""
-            public sealed class RefShowImpl<T, TShow> : {{showImplInterfaceName}}<Ref<T>, RefShowImpl<T, TShow>>
-                where TShow : {{showImplInterfaceName}}<T, TShow>
-            {
-                public static string to_string(Ref<T> self) => "{val: " + TShow.to_string(self.val) + "}";
-            }
-            """
-        )!;
     }
 
     private IEnumerable<MemberDeclarationSyntax> EmitDerivedHashMembers(JsonElement typeDefinition)
@@ -1274,6 +1257,162 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
             string.Equals(adapter.TraitName, "Show", StringComparison.Ordinal)
             && !StaticTraitImplAdapterHasMethod(adapter, "output")
         ) { }
+    }
+
+    private IEnumerable<MemberDeclarationSyntax> EmitGenericStaticTraitImplAdapterMembers(
+        string packageName
+    )
+    {
+        foreach (
+            var adapter in genericStaticTraitImplAdapters
+                .Values.Where(adapter => PackageNameFromSymbolId(adapter.SymbolId) == packageName)
+                .OrderBy(adapter => adapter.AdapterTypeName, StringComparer.Ordinal)
+        )
+        {
+            var functions = adapter
+                .FunctionSymbolIds.Distinct(StringComparer.Ordinal)
+                .Select(functionId => functionsBySymbolId[functionId])
+                .ToArray();
+            var staticAdapter = new StaticTraitImplAdapter(
+                adapter.TraitSymbolId,
+                adapter.TraitName,
+                adapter.SelfType,
+                functions
+            );
+            if (!StaticTraitImplAdapterSatisfiesStaticInterface(staticAdapter))
+                continue;
+
+            yield return ParseMemberDeclaration(
+                EmitGenericStaticTraitImplAdapterSource(adapter, functions)
+            )!;
+        }
+    }
+
+    private string EmitGenericStaticTraitImplAdapterSource(
+        GenericStaticTraitImplAdapter adapter,
+        IReadOnlyList<JsonElement> functions
+    )
+    {
+        var typeParameterList = GenericStaticTraitImplAdapterTypeParameterList(adapter.TypeParams);
+        var adapterTypeName = adapter.AdapterTypeName + typeParameterList;
+        var selfTypeName = EmitType(adapter.SelfType).NormalizeWhitespace().ToFullString();
+        var interfaceName = QualifyPackageTypeName(
+            adapter.TraitSymbolId,
+            "I" + ToPublicIdentifier(adapter.TraitName) + "Impl"
+        );
+        var constraints = GenericStaticTraitImplAdapterConstraintClauses(adapter.TypeParams);
+        var methods = string.Join(
+            Environment.NewLine,
+            functions.Select(function => EmitGenericStaticTraitImplAdapterMethodSource(function))
+        );
+        return $$"""
+            public sealed class {{adapter.AdapterTypeName}}{{typeParameterList}} : {{interfaceName}}<{{selfTypeName}}, {{adapterTypeName}}>
+                {{constraints}}
+            {
+            {{methods}}
+            }
+            """;
+    }
+
+    private string EmitGenericStaticTraitImplAdapterMethodSource(JsonElement function)
+    {
+        var functionId = function.GetProperty("symbolId").GetString() ?? "";
+        var returnType = EmitFunctionReturnType(function).NormalizeWhitespace().ToFullString();
+        var methodName = ToTraitMethodIdentifier(
+            UnqualifiedMoonBitFunctionName(function.GetProperty("name").GetString() ?? "")
+        );
+        var parameters = function.GetProperty("params").EnumerateArray().ToArray();
+        var parameterNames = parameters
+            .Select((param, index) => GenericStaticTraitImplAdapterParameterName(param, index))
+            .ToArray();
+        var parameterList = string.Join(
+            ", ",
+            parameters.Select(
+                (param, index) =>
+                    EmitType(param.GetProperty("type")).NormalizeWhitespace().ToFullString()
+                    + " "
+                    + parameterNames[index]
+            )
+        );
+        var callTarget = GenericStaticTraitImplAdapterCallTarget(function);
+        return $"    public static {returnType} {methodName}({parameterList}) => {callTarget}({string.Join(", ", parameterNames)});";
+    }
+
+    private string GenericStaticTraitImplAdapterCallTarget(JsonElement function)
+    {
+        var functionId = function.GetProperty("symbolId").GetString() ?? "";
+        var methodName = FunctionMethodName(functionId);
+        var typeParamInfos = function.TryGetProperty("typeParams", out var typeParams)
+            ? ReadTypeParamInfos(typeParams)
+            : [];
+        var typeArguments = GenericStaticTraitImplAdapterTypeArgumentNames(typeParamInfos);
+        var memberName =
+            typeArguments.Length == 0
+                ? methodName
+                : methodName + "<" + string.Join(", ", typeArguments) + ">";
+        if (!functionContainers.TryGetValue(functionId, out var containerName))
+            throw new InvalidOperationException(
+                "VNXB001: unresolved function target in executable IR: " + functionId
+            );
+
+        var packageName = PackageNameFromSymbolId(functionId);
+        var container =
+            packageName.Length > 0 && packageName != currentPackageName
+                ? "global::" + PackageNamespace(packageName) + "." + containerName
+                : containerName;
+        return container + "." + memberName;
+    }
+
+    private static string GenericStaticTraitImplAdapterParameterName(JsonElement param, int index)
+    {
+        var name = param.TryGetProperty("name", out var nameNode) ? nameNode.GetString() ?? "" : "";
+        return name.Length == 0
+            ? "arg" + index.ToString(CultureInfo.InvariantCulture)
+            : SafeIdentifier(name);
+    }
+
+    private string[] GenericStaticTraitImplAdapterTypeArgumentNames(TypeParamInfo[] typeParams)
+    {
+        return typeParams
+            .Select(param => SafeIdentifier(param.Name))
+            .Concat(
+                typeParams.SelectMany(param =>
+                    param.Constraints.Select(trait =>
+                        StaticTraitImplTypeParameterName(param.Name, trait)
+                    )
+                )
+            )
+            .ToArray();
+    }
+
+    private static string GenericStaticTraitImplAdapterTypeParameterList(TypeParamInfo[] typeParams)
+    {
+        var names = typeParams
+            .Select(param => SafeIdentifier(param.Name))
+            .Concat(
+                typeParams.SelectMany(param =>
+                    param.Constraints.Select(trait =>
+                        StaticTraitImplTypeParameterName(param.Name, trait)
+                    )
+                )
+            )
+            .ToArray();
+        return names.Length == 0 ? "" : "<" + string.Join(", ", names) + ">";
+    }
+
+    private string GenericStaticTraitImplAdapterConstraintClauses(TypeParamInfo[] typeParams)
+    {
+        return string.Join(
+            Environment.NewLine,
+            typeParams.SelectMany(param =>
+                param.Constraints.Select(trait =>
+                    "where "
+                    + StaticTraitImplTypeParameterName(param.Name, trait)
+                    + " : "
+                    + StaticTraitConstraintType(param.Name, trait)
+                )
+            )
+        );
     }
 
     private static bool StaticTraitImplAdapterHasMethod(
@@ -4000,6 +4139,15 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
         )
             return adapterType;
 
+        if (
+            TryGenericStaticTraitImplAdapterTypeArgument(
+                type,
+                traitName,
+                out var genericAdapterType
+            )
+        )
+            return genericAdapterType;
+
         if (traitName == "Show" && IsBuiltinApply(type, "Option"))
         {
             var elementType = OptionElementType(type);
@@ -4011,9 +4159,6 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
             requiredCoreBuiltinEvidence.Add(implName);
             return $"{CoreBuiltinTypeName(implName)}<{elementTypeName}, {elementShowType}>";
         }
-
-        if (traitName == "Show" && TryCoreRefShowEvidenceName(type, out var refShowEvidence))
-            return refShowEvidence;
 
         if (
             traitName == "Eq"
@@ -4099,36 +4244,6 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
         };
     }
 
-    private bool TryCoreRefShowEvidenceName(JsonElement type, out string evidenceName)
-    {
-        evidenceName = "";
-        if (type.GetProperty("kind").GetString() != "Declared")
-            return false;
-
-        var symbol = type.GetProperty("symbol");
-        if (
-            symbol.GetProperty("packageId").GetString() != "pkg:moonbitlang/core/ref"
-            || symbol.GetProperty("name").GetString() != "Ref"
-            || !type.TryGetProperty("args", out var argsElement)
-        )
-            return false;
-
-        var args = argsElement.EnumerateArray().ToArray();
-        if (args.Length != 1)
-            return false;
-
-        var valueType = EmitType(args[0]).NormalizeWhitespace().ToFullString();
-        var valueShow = TraitEvidenceTypeArgument(args[0], "Show");
-        evidenceName =
-            QualifyPackageTypeName(symbol.GetProperty("id").GetString() ?? "", "RefShowImpl")
-            + "<"
-            + valueType
-            + ", "
-            + valueShow
-            + ">";
-        return true;
-    }
-
     private static string StaticTraitImplAdapterKey(string traitName, JsonElement type)
     {
         return traitName + "|" + TypeEvidenceKey(type);
@@ -4141,6 +4256,123 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
         {
             "Declared" when type.TryGetProperty("symbol", out var symbol) => "Declared:"
                 + (symbol.GetProperty("id").GetString() ?? ""),
+            "Builtin" => "Builtin:" + (type.GetProperty("name").GetString() ?? ""),
+            "TypeParameter" => "TypeParameter:" + (type.GetProperty("name").GetString() ?? ""),
+            _ => kind + ":" + type.GetRawText(),
+        };
+    }
+
+    private bool TryGenericStaticTraitImplAdapterTypeArgument(
+        JsonElement type,
+        string traitName,
+        out string evidenceName
+    )
+    {
+        evidenceName = "";
+        if (
+            !genericStaticTraitImplAdapters.TryGetValue(
+                StaticTraitImplAdapterKey(traitName, type),
+                out var adapter
+            )
+        )
+            return false;
+
+        var substitutions = new Dictionary<string, JsonElement>(StringComparer.Ordinal);
+        if (!TryBuildTypeParameterSubstitutions(adapter.SelfType, type, substitutions))
+            return false;
+
+        var typeArguments = new List<string>();
+        foreach (var typeParam in adapter.TypeParams)
+        {
+            if (!substitutions.TryGetValue(typeParam.Name, out var actualType))
+                return false;
+
+            typeArguments.Add(EmitType(actualType).NormalizeWhitespace().ToFullString());
+            foreach (var constraint in typeParam.Constraints)
+                typeArguments.Add(TraitEvidenceTypeArgument(actualType, constraint));
+        }
+
+        var adapterTypeName = QualifyPackageTypeName(adapter.SymbolId, adapter.AdapterTypeName);
+        evidenceName =
+            typeArguments.Count == 0
+                ? adapterTypeName
+                : adapterTypeName + "<" + string.Join(", ", typeArguments) + ">";
+        return true;
+    }
+
+    private static bool TryBuildTypeParameterSubstitutions(
+        JsonElement pattern,
+        JsonElement actual,
+        Dictionary<string, JsonElement> substitutions
+    )
+    {
+        var patternKind = pattern.GetProperty("kind").GetString() ?? "";
+        var actualKind = actual.GetProperty("kind").GetString() ?? "";
+        if (patternKind == "TypeParameter")
+        {
+            var name = pattern.GetProperty("name").GetString() ?? "";
+            if (substitutions.TryGetValue(name, out var previous))
+                return TypeStructuralKey(previous) == TypeStructuralKey(actual);
+
+            substitutions[name] = actual;
+            return true;
+        }
+
+        if (patternKind != actualKind)
+            return false;
+
+        if (patternKind == "Declared")
+        {
+            if (
+                pattern.GetProperty("symbol").GetProperty("id").GetString()
+                != actual.GetProperty("symbol").GetProperty("id").GetString()
+            )
+                return false;
+
+            var patternArgs = pattern.TryGetProperty("args", out var patternArgsNode)
+                ? patternArgsNode.EnumerateArray().ToArray()
+                : [];
+            var actualArgs = actual.TryGetProperty("args", out var actualArgsNode)
+                ? actualArgsNode.EnumerateArray().ToArray()
+                : [];
+            if (patternArgs.Length != actualArgs.Length)
+                return false;
+
+            for (var i = 0; i < patternArgs.Length; i++)
+                if (
+                    !TryBuildTypeParameterSubstitutions(
+                        patternArgs[i],
+                        actualArgs[i],
+                        substitutions
+                    )
+                )
+                    return false;
+
+            return true;
+        }
+
+        if (patternKind == "Builtin")
+            return pattern.GetProperty("name").GetString()
+                == actual.GetProperty("name").GetString();
+
+        return TypeEvidenceKey(pattern) == TypeEvidenceKey(actual);
+    }
+
+    private static string TypeStructuralKey(JsonElement type)
+    {
+        var kind = type.GetProperty("kind").GetString() ?? "";
+        return kind switch
+        {
+            "Declared" when type.TryGetProperty("symbol", out var symbol) => "Declared:"
+                + (symbol.GetProperty("id").GetString() ?? "")
+                + "<"
+                + string.Join(
+                    ",",
+                    type.TryGetProperty("args", out var args)
+                        ? args.EnumerateArray().Select(TypeStructuralKey)
+                        : Enumerable.Empty<string>()
+                )
+                + ">",
             "Builtin" => "Builtin:" + (type.GetProperty("name").GetString() ?? ""),
             "TypeParameter" => "TypeParameter:" + (type.GetProperty("name").GetString() ?? ""),
             _ => kind + ":" + type.GetRawText(),
@@ -6536,11 +6768,63 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
             return;
 
         var selfType = function.GetProperty("params")[0].GetProperty("type");
+        var key = StaticTraitImplAdapterKey(impl.Value.TraitName, selfType);
         if (ContainsTypeParameter(selfType))
+        {
+            RememberGenericStaticTraitImplAdapter(
+                key,
+                impl.Value,
+                selfType,
+                symbolId,
+                containerName,
+                function
+            );
             return;
+        }
 
-        staticTraitImplAdapterTypes[StaticTraitImplAdapterKey(impl.Value.TraitName, selfType)] =
-            QualifyPackageTypeName(symbolId, containerName);
+        staticTraitImplAdapterTypes[key] = QualifyPackageTypeName(symbolId, containerName);
+    }
+
+    private void RememberGenericStaticTraitImplAdapter(
+        string key,
+        TraitImplSymbol impl,
+        JsonElement selfType,
+        string symbolId,
+        string containerName,
+        JsonElement function
+    )
+    {
+        if (!genericStaticTraitImplAdapters.TryGetValue(key, out var adapter))
+        {
+            adapter = new(
+                impl.TraitSymbolId,
+                impl.TraitName,
+                selfType,
+                symbolId,
+                containerName,
+                GenericStaticTraitImplAdapterTypeName(impl.TraitName, selfType),
+                function.TryGetProperty("typeParams", out var typeParams)
+                    ? ReadTypeParamInfos(typeParams)
+                    : []
+            );
+            genericStaticTraitImplAdapters[key] = adapter;
+        }
+
+        adapter.FunctionSymbolIds.Add(symbolId);
+    }
+
+    private string GenericStaticTraitImplAdapterTypeName(string traitName, JsonElement selfType)
+    {
+        var kind = selfType.GetProperty("kind").GetString() ?? "";
+        var receiverName = kind switch
+        {
+            "Declared" when selfType.TryGetProperty("symbol", out var symbol) => TypeDefinitionName(
+                symbol
+            ),
+            "Builtin" => selfType.GetProperty("name").GetString() ?? "Value",
+            _ => "Value",
+        };
+        return ToPublicIdentifier(receiverName + traitName + "Impl");
     }
 
     private ExpressionSyntax FunctionMemberAccess(string functionId)
@@ -7011,6 +7295,26 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
         JsonElement SelfType,
         IReadOnlyList<JsonElement> Functions
     );
+
+    private sealed class GenericStaticTraitImplAdapter(
+        string traitSymbolId,
+        string traitName,
+        JsonElement selfType,
+        string symbolId,
+        string containerName,
+        string adapterTypeName,
+        TypeParamInfo[] typeParams
+    )
+    {
+        public string TraitSymbolId { get; } = traitSymbolId;
+        public string TraitName { get; } = traitName;
+        public JsonElement SelfType { get; } = selfType;
+        public string SymbolId { get; } = symbolId;
+        public string ContainerName { get; } = containerName;
+        public string AdapterTypeName { get; } = adapterTypeName;
+        public TypeParamInfo[] TypeParams { get; } = typeParams;
+        public List<string> FunctionSymbolIds { get; } = [];
+    }
 
     private readonly record struct ForInSource(ForInSourceKind Kind, JsonElement Expression);
 

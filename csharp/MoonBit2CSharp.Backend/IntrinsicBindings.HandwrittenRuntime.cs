@@ -1,3 +1,4 @@
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
 
 namespace MoonBit2CSharp.Backend;
@@ -133,7 +134,7 @@ public static partial class IntrinsicBindings
         yield return Direct(
             "%array_last",
             ["_"],
-            (_, args, _) => ParseExpression($"MoonBitIntrinsics.ArrayLast({args[0]})")
+            (_, args, returnType) => EmitArrayLast(args[0], returnType)
         );
         yield return Direct(
             "%array_filter",
@@ -384,5 +385,15 @@ public static partial class IntrinsicBindings
             (_, args, _) =>
                 ParseExpression($"MoonBitIntrinsics.StringViewTrimEnd({args[0]}, {args[1]})")
         );
+    }
+
+    private static ExpressionSyntax EmitArrayLast(string array, TypeSyntax returnType)
+    {
+        if (returnType is NullableTypeSyntax)
+            return ParseExpression(
+                $"ArrayUtility.IsEmpty({array}) ? null : ArrayUtility.UnsafeGet({array}, {array}.Length - 1)"
+            );
+
+        return ParseExpression($"MoonBitIntrinsics.ArrayLast({array})");
     }
 }
