@@ -792,8 +792,8 @@ public sealed partial class VNextSemanticEmitterTests
         var someOne = option.GetMethod("Some")!.Invoke(null, [1]);
         var none = option.GetMethod("None")!.Invoke(null, []);
 
-        var value = module.GetMethod("value", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static)!;
-        var one = module.GetMethod("one", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static)!;
+        var value = StaticMethod(module, "value");
+        var one = StaticMethod(module, "one");
 
         Assert.Equal(7, value.Invoke(null, [some]));
         Assert.Equal(0, value.Invoke(null, [none]));

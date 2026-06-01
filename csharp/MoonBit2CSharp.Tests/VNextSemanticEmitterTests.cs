@@ -4016,6 +4016,14 @@ public sealed partial class VNextSemanticEmitterTests
         return assembly.GetType(candidates[0], true)!;
     }
 
+    private static MethodInfo StaticMethod(Type type, string name)
+    {
+        return type.GetMethod(name, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static)
+            ?? throw new InvalidOperationException(
+                "Generated static method not found: " + type.FullName + "." + name
+            );
+    }
+
     private static string SafeNamespacePath(string packageName)
     {
         return string.Join(
