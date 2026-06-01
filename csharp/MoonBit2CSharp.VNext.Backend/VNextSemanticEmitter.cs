@@ -3189,9 +3189,8 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
 
             case "ConcreteImpl":
             {
-                var allArguments = new[] { Argument(receiver) }
-                    .Concat(args.Select(Argument))
-                    .ToArray();
+                var allArgumentExpressions = new[] { receiver }.Concat(args).ToArray();
+                var allArguments = allArgumentExpressions.Select(Argument).ToArray();
                 if (IsDerivedDebugTraitDispatch(expr, dispatch))
                     return EmitDebugImplReprCall(
                         receiver,
@@ -3218,6 +3217,15 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
                     }
 
                 var functionId = dispatch.GetProperty("functionId").GetString() ?? "";
+                var argElements = new[] { expr.GetProperty("receiver") }
+                    .Concat(expr.GetProperty("args").EnumerateArray())
+                    .ToArray();
+                var adaptedArguments = AdaptCallArguments(
+                        functionId,
+                        argElements,
+                        allArgumentExpressions
+                    )
+                    .Select(Argument);
                 return InvocationExpression(
                     FunctionMemberAccess(
                         functionId,
@@ -3225,7 +3233,7 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
                             expr.GetProperty("receiver").GetProperty("type")
                         )
                     ),
-                    ArgumentList(SeparatedList(allArguments))
+                    ArgumentList(SeparatedList(adaptedArguments))
                 );
             }
 
@@ -3921,6 +3929,41 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
                 }
                 """
             )!;
+        if (CoreBuiltinEvidenceRequired("OptionEqImpl"))
+            yield return ParseMemberDeclaration(
+                """
+                public sealed class OptionEqImpl<T, TEq> : IEqImpl<Option<T>, OptionEqImpl<T, TEq>>
+                    where TEq : IEqImpl<T, TEq>
+                {
+                    public static bool equal(Option<T> self, Option<T> arg0)
+                    {
+                        if (self.IsNone || arg0.IsNone)
+                            return self.IsNone && arg0.IsNone;
+                        return TEq.equal(self.Value, arg0.Value);
+                    }
+
+                    public static bool not_equal(Option<T> self, Option<T> arg0) => !equal(self, arg0);
+                }
+                """
+            )!;
+        if (CoreBuiltinEvidenceRequired("NullableOptionEqImpl"))
+            yield return ParseMemberDeclaration(
+                """
+                public sealed class NullableOptionEqImpl<T, TEq> : IEqImpl<T?, NullableOptionEqImpl<T, TEq>>
+                    where T : class
+                    where TEq : IEqImpl<T, TEq>
+                {
+                    public static bool equal(T? self, T? arg0)
+                    {
+                        if (self is null || arg0 is null)
+                            return self is null && arg0 is null;
+                        return TEq.equal(self, arg0);
+                    }
+
+                    public static bool not_equal(T? self, T? arg0) => !equal(self, arg0);
+                }
+                """
+            )!;
         if (CoreBuiltinEvidenceRequired("IntHashImpl"))
             yield return ParseMemberDeclaration(
                 """
@@ -4383,6 +4426,9 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
 
     private static bool ContainsTypeParameter(JsonElement type)
     {
+        if (type.ValueKind != JsonValueKind.Object)
+            return false;
+
         var kind = type.GetProperty("kind").GetString() ?? "";
         if (kind == "TypeParameter")
             return true;
@@ -4391,6 +4437,20 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
             foreach (var arg in args.EnumerateArray())
                 if (ContainsTypeParameter(arg))
                     return true;
+
+        if (kind == "Tuple")
+            return type.GetProperty("items").EnumerateArray().Any(ContainsTypeParameter);
+
+        if (kind == "Function")
+            return type.GetProperty("params")
+                    .EnumerateArray()
+                    .Any(param => ContainsTypeParameter(param.GetProperty("type")))
+                || ContainsTypeParameter(type.GetProperty("return"));
+
+        if (kind == "TraitObject")
+            return type.TryGetProperty("trait", out var trait)
+                && trait.TryGetProperty("args", out var traitArgs)
+                && traitArgs.EnumerateArray().Any(ContainsTypeParameter);
 
         return false;
     }
@@ -4518,6 +4578,11 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
         if (functionId.Length == 0)
             return false;
 
+        var adaptedArgs = AdaptCallArguments(
+            functionId,
+            [expr.GetProperty("left"), expr.GetProperty("right")],
+            [left, right]
+        );
         result = InvocationExpression(
             FunctionMemberAccess(
                 functionId,
@@ -4525,7 +4590,7 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
                     ? typeArgs.EnumerateArray().ToArray()
                     : []
             ),
-            ArgumentList(SeparatedList([Argument(left), Argument(right)]))
+            ArgumentList(SeparatedList(adaptedArgs.Select(Argument)))
         );
         return true;
     }
@@ -4628,15 +4693,13 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
         var elementType = OptionElementType(optionType);
         var elementTypeName = EmitType(elementType).NormalizeWhitespace().ToFullString();
         var elementEqEvidenceName = EqEvidenceName(elementType);
-        var helperName = UseNullableReferenceOption(optionType)
-            ? "equal_nullable_reference"
-            : "equal";
-        var equalityTarget = UseNullableReferenceOption(optionType)
-            ? SupportTypeName("OptionEq")
-            : CoreBuiltinTypeName("impl_Eq_Option_X_");
-        var equality = ParseExpression(
-            $"{equalityTarget}.{helperName}<{elementTypeName}, {elementEqEvidenceName}>({left.NormalizeWhitespace()}, {right.NormalizeWhitespace()})"
-        );
+        var useNullableOption = UseNullableReferenceOption(optionType);
+        if (useNullableOption)
+            requiredCoreBuiltinEvidence.Add("NullableOptionEqImpl");
+        var equalityCall = useNullableOption
+            ? $"{CoreBuiltinTypeName("NullableOptionEqImpl")}<{elementTypeName}, {elementEqEvidenceName}>.equal({left.NormalizeWhitespace()}, {right.NormalizeWhitespace()})"
+            : $"{CoreBuiltinTypeName("impl_Eq_Option_X_")}.equal<{elementTypeName}, {elementEqEvidenceName}>({left.NormalizeWhitespace()}, {right.NormalizeWhitespace()})";
+        var equality = ParseExpression(equalityCall);
         return (expr.GetProperty("op").GetString() ?? "") == "!="
             ? ParenthesizedExpression(
                 PrefixUnaryExpression(SyntaxKind.LogicalNotExpression, equality)
@@ -4947,22 +5010,23 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
 
     private ExpressionSyntax EmitCall(JsonElement expr)
     {
-        var args = expr.GetProperty("args").EnumerateArray().Select(EmitExpr).ToArray();
-        return EmitCallWithArguments(expr, args);
+        var argElements = expr.GetProperty("args").EnumerateArray().ToArray();
+        var args = argElements.Select(EmitExpr).ToArray();
+        return EmitCallWithArguments(expr, argElements, args);
     }
 
     private ExpressionSyntax EmitCallWithArguments(
         JsonElement expr,
+        IReadOnlyList<JsonElement> argElements,
         IReadOnlyList<ExpressionSyntax> emittedArgs
     )
     {
-        var args = emittedArgs.Select(Argument).ToArray();
         if (
             expr.TryGetProperty("selectedIntrinsic", out var intrinsic)
             && intrinsic.ValueKind == JsonValueKind.String
             && IntrinsicBindings.TryEmit(
                 intrinsic.GetString() ?? "",
-                args,
+                emittedArgs.Select(Argument).ToArray(),
                 EmitType(expr.GetProperty("type")),
                 out var intrinsicExpr
             )
@@ -4979,15 +5043,75 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
         if (TryEmitCoreOptionUnwrapOr(expr, functionId, emittedArgs, out var optionExpr))
             return optionExpr;
 
-        return InvocationExpression(
+        var callArgs = AdaptCallArguments(functionId, argElements, emittedArgs);
+        var invocation = InvocationExpression(
             FunctionMemberAccess(
                 functionId,
                 expr.TryGetProperty("typeArgs", out var typeArgs)
                     ? typeArgs.EnumerateArray().ToArray()
                     : []
             ),
-            ArgumentList(SeparatedList(args))
+            ArgumentList(SeparatedList(callArgs.Select(Argument)))
         );
+        return AdaptCallResult(functionId, invocation, expr.GetProperty("type"));
+    }
+
+    private IReadOnlyList<ExpressionSyntax> AdaptCallArguments(
+        string functionId,
+        IReadOnlyList<JsonElement> argElements,
+        IReadOnlyList<ExpressionSyntax> emittedArgs
+    )
+    {
+        if (!functionsBySymbolId.TryGetValue(functionId, out var function))
+            return emittedArgs;
+
+        var parameters = function.GetProperty("params").EnumerateArray().ToArray();
+        if (parameters.Length == 0 || argElements.Count == 0)
+            return emittedArgs;
+
+        var result = new ExpressionSyntax[emittedArgs.Count];
+        for (var i = 0; i < emittedArgs.Count; i++)
+        {
+            result[i] = emittedArgs[i];
+            if (i >= parameters.Length || !argElements[i].TryGetProperty("type", out var argType))
+                continue;
+
+            var parameterType = parameters[i].GetProperty("type");
+            if (UsesRuntimeOptionAbi(parameterType) && UseNullableReferenceOption(argType))
+                result[i] = NullableToRuntimeOption(emittedArgs[i], argType);
+        }
+
+        return result;
+    }
+
+    private ExpressionSyntax AdaptCallResult(
+        string functionId,
+        ExpressionSyntax invocation,
+        JsonElement expressionType
+    )
+    {
+        if (
+            !functionsBySymbolId.TryGetValue(functionId, out var function)
+            || !function.TryGetProperty("returnType", out var returnType)
+        )
+            return invocation;
+
+        return UsesRuntimeOptionAbi(returnType) && UseNullableReferenceOption(expressionType)
+            ? RuntimeOptionToNullable(invocation)
+            : invocation;
+    }
+
+    private ExpressionSyntax NullableToRuntimeOption(ExpressionSyntax value, JsonElement optionType)
+    {
+        var elementType = OptionElementTypeName(optionType);
+        return ParseExpression(
+            $"Option<{elementType}>.FromNullable({value.NormalizeWhitespace().ToFullString()})"
+        );
+    }
+
+    private static ExpressionSyntax RuntimeOptionToNullable(ExpressionSyntax value)
+    {
+        return ParseExpression($"({value.NormalizeWhitespace().ToFullString()}).ToNullable()");
     }
 
     private bool TryEmitCoreOptionUnwrapOr(
@@ -5844,9 +5968,10 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
             var elementType = type.GetProperty("args")[0];
             var elementTypeName = EmitType(elementType).NormalizeWhitespace().ToFullString();
             var implName = UseNullableReferenceOption(type)
-                ? SupportTypeName("NullableOptionEqImpl")
-                : SupportTypeName("OptionEqImpl");
-            return $"{implName}<{elementTypeName}, {EqEvidenceName(elementType)}>";
+                ? "NullableOptionEqImpl"
+                : "OptionEqImpl";
+            requiredCoreBuiltinEvidence.Add(implName);
+            return $"{CoreBuiltinTypeName(implName)}<{elementTypeName}, {EqEvidenceName(elementType)}>";
         }
 
         if (type.GetProperty("kind").GetString() == "Declared" && DeclaredTypeDerives(type, "Eq"))
@@ -6326,6 +6451,15 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
 
         var elementType = OptionElementType(optionType);
         return !IsBuiltinApply(elementType, "Option") && IsNonNullableReferenceType(elementType);
+    }
+
+    private bool UsesRuntimeOptionAbi(JsonElement optionType)
+    {
+        if (!IsBuiltinApply(optionType, "Option"))
+            return false;
+
+        return ContainsTypeParameter(OptionElementType(optionType))
+            || !UseNullableReferenceOption(optionType);
     }
 
     private bool IsNonNullableReferenceType(JsonElement type)
@@ -7044,8 +7178,6 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
         {
             "MoonBitIntrinsics" => RuntimeTypeName("MoonBitIntrinsics"),
             "OptionEq" => RuntimeTypeName("OptionEq"),
-            "OptionEqImpl" => RuntimeTypeName("OptionEqImpl"),
-            "NullableOptionEqImpl" => RuntimeTypeName("NullableOptionEqImpl"),
             _ => throw new NotSupportedException("unknown vnext support type: " + name),
         };
     }
@@ -7374,8 +7506,6 @@ public sealed partial class VNextSemanticEmitter(VNextEmitterOptions options)
                 ["MutArrayView"] = "MutArrayView",
                 ["Option"] = "Option",
                 ["OptionEq"] = "OptionEq",
-                ["OptionEqImpl"] = "OptionEqImpl",
-                ["NullableOptionEqImpl"] = "NullableOptionEqImpl",
                 ["Panic"] = "Panic",
                 ["Result"] = "Result",
                 ["StringBuilder"] = "StringBuilder",

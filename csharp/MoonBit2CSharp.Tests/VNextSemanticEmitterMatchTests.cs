@@ -786,7 +786,8 @@ public sealed partial class VNextSemanticEmitterTests
             """
         );
         var module = assembly.GetType("Generated.MoonBit.Demo", true)!;
-        var option = assembly.GetType("Generated.MoonBit.Runtime.Option`1", true)!
+        var option = assembly
+            .GetType("Generated.MoonBit.Runtime.Option`1", true)!
             .MakeGenericType(typeof(int));
         var some = option.GetMethod("Some")!.Invoke(null, [7]);
         var someOne = option.GetMethod("Some")!.Invoke(null, [1]);

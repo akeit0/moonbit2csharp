@@ -43,6 +43,9 @@ public readonly struct Option<T>
     public bool IsEmpty() => IsNone;
     public static Option<T> Some(T value) => new(value, true);
     public static Option<T> None() => new(default, false);
+    public static Option<T> FromNullable(T? value) =>
+        value is null ? None() : Some(value);
+    public T? ToNullable() => IsSome ? value! : default;
     public override string ToString() => IsSome ? "Some(" + value!.ToString() + ")" : "None";
 }
 

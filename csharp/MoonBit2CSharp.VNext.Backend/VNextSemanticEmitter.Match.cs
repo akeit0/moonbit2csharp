@@ -567,6 +567,12 @@ public sealed partial class VNextSemanticEmitter
             return;
         }
 
+        if (StatementCasePatternDropsBindings(targetType, pattern))
+        {
+            EmitPatternBindings(builder, value, targetType, pattern);
+            return;
+        }
+
         EmitArrayRestPatternBindings(builder, value, pattern);
     }
 }

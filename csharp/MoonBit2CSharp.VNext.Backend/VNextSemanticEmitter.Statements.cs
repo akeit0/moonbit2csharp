@@ -926,7 +926,11 @@ public sealed partial class VNextSemanticEmitter
         var value = expr.GetProperty("value");
         if (value.ValueKind == JsonValueKind.Null)
         {
-            statements.Add(ReturnStatement(ReturnExpression(ParseExpression("MoonBitUnit.Value"), expr.GetProperty("type"))));
+            statements.Add(
+                ReturnStatement(
+                    ReturnExpression(ParseExpression("MoonBitUnit.Value"), expr.GetProperty("type"))
+                )
+            );
             return;
         }
 
@@ -936,7 +940,9 @@ public sealed partial class VNextSemanticEmitter
             return;
         }
 
-        statements.Add(ReturnStatement(ReturnExpression(EmitExpr(value), value.GetProperty("type"))));
+        statements.Add(
+            ReturnStatement(ReturnExpression(EmitExpr(value), value.GetProperty("type")))
+        );
     }
 
     private ExpressionSyntax ReturnExpression(ExpressionSyntax value, JsonElement okType)
@@ -1465,7 +1471,7 @@ public sealed partial class VNextSemanticEmitter
             return EmitExpr(expr);
 
         var loweredArgs = args.Select(arg => EmitExprAsStatementValue(arg, statements)).ToArray();
-        return EmitCallWithArguments(expr, loweredArgs);
+        return EmitCallWithArguments(expr, args, loweredArgs);
     }
 
     private ExpressionSyntax TryErrorExpression(
@@ -1532,7 +1538,7 @@ public sealed partial class VNextSemanticEmitter
                 EmitExprAsTryStatementValue(arg, errorName, tryErrorType, catchLabel, statements)
             )
             .ToArray();
-        return EmitCallWithArguments(expr, loweredArgs);
+        return EmitCallWithArguments(expr, args, loweredArgs);
     }
 
     private ExpressionSyntax EmitExprAsTryStatementValue(

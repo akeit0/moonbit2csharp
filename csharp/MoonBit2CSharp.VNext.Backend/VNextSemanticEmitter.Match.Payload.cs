@@ -69,6 +69,7 @@ public sealed partial class VNextSemanticEmitter
                         "",
                         MatchArmConditionExpression(arm),
                         "",
+                        [],
                         []
                     );
                     if (caseReturns)
@@ -110,6 +111,7 @@ public sealed partial class VNextSemanticEmitter
                         condition,
                         MatchArmConditionExpression(arm),
                         payloadName,
+                        payloadTypes,
                         payloads
                     )
                 )
@@ -192,6 +194,7 @@ public sealed partial class VNextSemanticEmitter
                         MatchArmConditionExpression(arm),
                         "",
                         [],
+                        [],
                         destination,
                         doneLabel
                     );
@@ -236,6 +239,7 @@ public sealed partial class VNextSemanticEmitter
                         condition,
                         MatchArmConditionExpression(arm),
                         payloadName,
+                        payloadTypes,
                         payloads,
                         destination,
                         doneLabel
@@ -344,6 +348,7 @@ public sealed partial class VNextSemanticEmitter
                     condition,
                     MatchArmConditionExpression(arm),
                     payloadName,
+                    payloadTypes,
                     alternativePayloads
                 )
             )
@@ -386,6 +391,7 @@ public sealed partial class VNextSemanticEmitter
                     condition,
                     MatchArmConditionExpression(arm),
                     payloadName,
+                    payloadTypes,
                     alternativePayloads,
                     destination,
                     doneLabel
@@ -443,6 +449,7 @@ public sealed partial class VNextSemanticEmitter
                 matchedName,
                 MatchArmConditionExpression(arm),
                 "",
+                [],
                 [],
                 arm.GetProperty("body")
             );
@@ -537,6 +544,7 @@ public sealed partial class VNextSemanticEmitter
             matchedName,
             condition,
             payloadName,
+            payloadTypes,
             payloads,
             arm.GetProperty("body")
         );
@@ -548,6 +556,7 @@ public sealed partial class VNextSemanticEmitter
         string matchedName,
         string condition,
         string payloadName,
+        JsonElement[] payloadTypes,
         JsonElement[] payloads,
         JsonElement body
     )
@@ -557,7 +566,7 @@ public sealed partial class VNextSemanticEmitter
             builder.Append(" && ").Append(condition);
         builder.Append(") { ");
         builder.Append(matchedName).Append(" = true; ");
-        EmitPayloadPatternBindings(builder, payloadName, payloads);
+        EmitPayloadPatternBindings(builder, payloadName, payloadTypes, payloads);
         AppendStatementBody(builder, body);
         builder.Append("} ");
     }
@@ -664,7 +673,7 @@ public sealed partial class VNextSemanticEmitter
                 + (
                     suppressBindings
                         ? MatchConditionPatternExpression(targetType, pattern)
-                        : MatchTestPatternExpression(targetType, pattern)
+                        : MatchPatternExpression(targetType, pattern)
                 );
 
         var targetTypeName = EmitType(targetType).NormalizeWhitespace().ToFullString();
@@ -801,6 +810,7 @@ public sealed partial class VNextSemanticEmitter
         string payloadCondition,
         string armCondition,
         string payloadName,
+        JsonElement[] payloadTypes,
         JsonElement[] payloads
     )
     {
@@ -810,7 +820,7 @@ public sealed partial class VNextSemanticEmitter
         if (!payloadIsUnconditional)
             builder.Append("if (").Append(payloadCondition).Append(") { ");
 
-        EmitPayloadPatternBindings(builder, payloadName, payloads);
+        EmitPayloadPatternBindings(builder, payloadName, payloadTypes, payloads);
         if (!armIsUnconditional)
             builder.Append("if (").Append(armCondition).Append(") { ");
         AppendReturnBody(builder, body);
@@ -880,6 +890,7 @@ public sealed partial class VNextSemanticEmitter
         string payloadCondition,
         string armCondition,
         string payloadName,
+        JsonElement[] payloadTypes,
         JsonElement[] payloads,
         string destination,
         string doneLabel
@@ -891,7 +902,7 @@ public sealed partial class VNextSemanticEmitter
         if (!payloadIsUnconditional)
             builder.Append("if (").Append(payloadCondition).Append(") { ");
 
-        EmitPayloadPatternBindings(builder, payloadName, payloads);
+        EmitPayloadPatternBindings(builder, payloadName, payloadTypes, payloads);
         if (!armIsUnconditional)
             builder.Append("if (").Append(armCondition).Append(") { ");
         AppendAssignmentBody(builder, body, destination, doneLabel);

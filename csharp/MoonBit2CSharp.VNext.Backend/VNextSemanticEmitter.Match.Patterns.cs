@@ -194,7 +194,9 @@ public sealed partial class VNextSemanticEmitter
             case "OptionSome":
             {
                 var elementType = OptionElementType(type);
-                var payloadValue = UseNullableReferenceOption(type) ? value + "!" : value + ".Value";
+                var payloadValue = UseNullableReferenceOption(type)
+                    ? value + "!"
+                    : value + ".Value";
                 var payloadCondition = PayloadPatternCondition(
                     payloadValue,
                     elementType,
@@ -272,6 +274,7 @@ public sealed partial class VNextSemanticEmitter
     private void EmitPayloadPatternBindings(
         StringBuilder builder,
         string payloadName,
+        JsonElement[] payloadTypes,
         JsonElement[] payloads
     )
     {
@@ -279,6 +282,7 @@ public sealed partial class VNextSemanticEmitter
             EmitPatternBindings(
                 builder,
                 payloadName + ".Item" + i.ToString(CultureInfo.InvariantCulture),
+                i < payloadTypes.Length ? EnumPayloadType(payloadTypes[i]) : default,
                 payloads[i]
             );
     }
@@ -329,6 +333,7 @@ public sealed partial class VNextSemanticEmitter
                 EmitPatternBindings(
                     builder,
                     value + ".Item" + (i + 1).ToString(CultureInfo.InvariantCulture),
+                    type.ValueKind == JsonValueKind.Object ? TupleItemType(type, i) : default,
                     items[i]
                 );
             return;
@@ -344,6 +349,7 @@ public sealed partial class VNextSemanticEmitter
                     value
                         + "."
                         + ToPublicIdentifier(fieldRef.GetProperty("name").GetString() ?? ""),
+                    fieldRef.GetProperty("type"),
                     field.GetProperty("pattern")
                 );
             }
@@ -359,6 +365,7 @@ public sealed partial class VNextSemanticEmitter
                 EmitPatternBindings(
                     builder,
                     value + "[" + i.ToString(CultureInfo.InvariantCulture) + "]",
+                    type.ValueKind == JsonValueKind.Object ? ArrayElementType(type) : default,
                     items[i]
                 );
             for (var i = 0; i < suffix.Length; i++)
@@ -372,6 +379,7 @@ public sealed partial class VNextSemanticEmitter
                         + ".Length - "
                         + offset.ToString(CultureInfo.InvariantCulture)
                         + "]",
+                    type.ValueKind == JsonValueKind.Object ? ArrayElementType(type) : default,
                     suffix[i]
                 );
             }
@@ -413,6 +421,14 @@ public sealed partial class VNextSemanticEmitter
                 typeName,
                 pattern.GetProperty("name").GetString() ?? ""
             );
+            var variant = FindVariantDefinition(
+                typeDefinition,
+                pattern.GetProperty("name").GetString() ?? ""
+            );
+            var payloadTypes =
+                variant.ValueKind == JsonValueKind.Undefined
+                    ? Array.Empty<JsonElement>()
+                    : variant.GetProperty("payloads").EnumerateArray().ToArray();
             var payloadName =
                 "__moonbitPayload" + tempNameIndex++.ToString(CultureInfo.InvariantCulture);
             builder
@@ -423,7 +439,7 @@ public sealed partial class VNextSemanticEmitter
                 .Append(">(")
                 .Append(value)
                 .Append("); ");
-            EmitPayloadPatternBindings(builder, payloadName, payloads);
+            EmitPayloadPatternBindings(builder, payloadName, payloadTypes, payloads);
         }
     }
 
@@ -694,7 +710,68 @@ public sealed partial class VNextSemanticEmitter
             case "OptionSome":
                 return PatternDeclaresVariable(pattern.GetProperty("payload"));
             case "EnumCase":
-                return pattern.GetProperty("payloads").EnumerateArray().Any(PatternDeclaresVariable);
+                return pattern
+                    .GetProperty("payloads")
+                    .EnumerateArray()
+                    .Any(PatternDeclaresVariable);
+            default:
+                return false;
+        }
+    }
+
+    private bool StatementCasePatternDropsBindings(JsonElement targetType, JsonElement pattern)
+    {
+        var kind = pattern.GetProperty("kind").GetString();
+        switch (kind)
+        {
+            case "OptionSome":
+            {
+                var payload = pattern.GetProperty("payload");
+                if (UseNullableReferenceOption(targetType) && PatternDeclaresVariable(payload))
+                    return true;
+
+                return targetType.ValueKind == JsonValueKind.Object
+                    && StatementCasePatternDropsBindings(OptionElementType(targetType), payload);
+            }
+            case "Tuple":
+            {
+                var items = pattern.GetProperty("items").EnumerateArray().ToArray();
+                for (var i = 0; i < items.Length; i++)
+                    if (StatementCasePatternDropsBindings(TupleItemType(targetType, i), items[i]))
+                        return true;
+                return false;
+            }
+            case "Record":
+            {
+                foreach (var field in pattern.GetProperty("fields").EnumerateArray())
+                    if (
+                        StatementCasePatternDropsBindings(
+                            field.GetProperty("field").GetProperty("type"),
+                            field.GetProperty("pattern")
+                        )
+                    )
+                        return true;
+                return false;
+            }
+            case "Array":
+            {
+                if (targetType.ValueKind != JsonValueKind.Object)
+                    return false;
+
+                var itemType = ArrayElementType(targetType);
+                foreach (var item in pattern.GetProperty("items").EnumerateArray())
+                    if (StatementCasePatternDropsBindings(itemType, item))
+                        return true;
+                foreach (var item in ArrayPatternSuffix(pattern))
+                    if (StatementCasePatternDropsBindings(itemType, item))
+                        return true;
+                return false;
+            }
+            case "Or":
+                return pattern
+                    .GetProperty("alternatives")
+                    .EnumerateArray()
+                    .Any(alternative => StatementCasePatternDropsBindings(targetType, alternative));
             default:
                 return false;
         }
@@ -741,7 +818,7 @@ public sealed partial class VNextSemanticEmitter
                 var payload = pattern.GetProperty("payload");
                 var payloadPattern = MatchPatternExpression(OptionElementType(targetType), payload);
                 if (UseNullableReferenceOption(targetType))
-                    return NullableOptionSomePatternExpression(payload, payloadPattern);
+                    return NullableOptionSomePatternExpression(payload, payloadPattern, true);
 
                 return payloadPattern == "_"
                     ? "{ IsSome: true }"
@@ -889,7 +966,8 @@ public sealed partial class VNextSemanticEmitter
                 if (UseNullableReferenceOption(targetType))
                     return NullableOptionSomePatternExpression(
                         pattern.GetProperty("payload"),
-                        payloadPattern
+                        payloadPattern,
+                        false
                     );
 
                 return payloadPattern == "_"
@@ -978,7 +1056,8 @@ public sealed partial class VNextSemanticEmitter
                 if (UseNullableReferenceOption(targetType))
                     return NullableOptionSomePatternExpression(
                         pattern.GetProperty("payload"),
-                        payloadPattern
+                        payloadPattern,
+                        false
                     );
 
                 return payloadPattern == "_"
@@ -1247,10 +1326,17 @@ public sealed partial class VNextSemanticEmitter
         return targetType.GetProperty("args").EnumerateArray().First();
     }
 
-    private string NullableOptionSomePatternExpression(JsonElement payload, string payloadPattern)
+    private string NullableOptionSomePatternExpression(
+        JsonElement payload,
+        string payloadPattern,
+        bool bindPayload
+    )
     {
         if (payload.GetProperty("kind").GetString() == "Binding")
         {
+            if (!bindPayload)
+                return "{ }";
+
             var symbol = payload.GetProperty("symbol");
             var name = symbol.GetProperty("name").GetString() ?? "_";
             return name == "_" ? "{ }" : "{ } " + LocalIdentifier(symbol);

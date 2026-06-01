@@ -4055,27 +4055,27 @@ public sealed partial class VNextSemanticEmitterTests
 
     private static string OptionRuntimeSupportCode() =>
         """
-        namespace Generated.MoonBit.Runtime
-        {
-            public readonly struct Option<T>
+            namespace Generated.MoonBit.Runtime
             {
-                private readonly T? value;
-                private Option(T? value, bool isSome)
+                public readonly struct Option<T>
                 {
-                    this.value = value;
-                    IsSome = isSome;
-                }
+                    private readonly T? value;
+                    private Option(T? value, bool isSome)
+                    {
+                        this.value = value;
+                        IsSome = isSome;
+                    }
 
-                public bool IsSome { get; }
-                public bool IsNone => !IsSome;
-                public T Value => IsSome ? value! : throw new System.InvalidOperationException();
-                public T Unwrap() => Value;
-                public static Option<T> Some(T value) => new(value, true);
-                public static Option<T> None() => new(default, false);
-                public override string ToString() => IsSome ? "Some(" + value!.ToString() + ")" : "None";
+                    public bool IsSome { get; }
+                    public bool IsNone => !IsSome;
+                    public T Value => IsSome ? value! : throw new System.InvalidOperationException();
+                    public T Unwrap() => Value;
+                    public static Option<T> Some(T value) => new(value, true);
+                    public static Option<T> None() => new(default, false);
+                    public override string ToString() => IsSome ? "Some(" + value!.ToString() + ")" : "None";
+                }
             }
-        }
-        """;
+            """;
 
     private static Assembly Compile(params string[] sources)
     {
@@ -4134,7 +4134,10 @@ public sealed partial class VNextSemanticEmitterTests
 
     private static MethodInfo StaticMethod(Type type, string name)
     {
-        return type.GetMethod(name, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static)
+        return type.GetMethod(
+                name,
+                BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static
+            )
             ?? throw new InvalidOperationException(
                 "Generated static method not found: " + type.FullName + "." + name
             );
