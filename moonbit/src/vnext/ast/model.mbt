@@ -33,7 +33,7 @@ pub(all) struct UsingItem {
 ///|
 pub(all) struct StructDecl {
   name : String
-  type_params : Array[String]
+  type_params : FixedArray[String]
   fields : Array[StructField]
   derives : Array[String]
   valtype : Bool
@@ -51,14 +51,14 @@ pub(all) struct StructField {
 ///|
 pub(all) struct OpaqueTypeDecl {
   name : String
-  type_params : Array[String]
+  type_params : FixedArray[String]
   span : @common.SourceSpan
 } derive(Eq, Debug)
 
 ///|
 pub(all) struct EnumDecl {
   name : String
-  type_params : Array[String]
+  type_params : FixedArray[String]
   variants : Array[EnumVariant]
   derives : Array[String]
   span : @common.SourceSpan
@@ -96,7 +96,7 @@ pub(all) struct TraitMethodDecl {
 
 ///|
 pub(all) struct ImplDecl {
-  type_params : Array[TypeParamSyntax]
+  type_params : FixedArray[TypeParamSyntax]
   trait_name : String
   self_type : TypeSyntax
   methods : Array[ImplMethodDecl]

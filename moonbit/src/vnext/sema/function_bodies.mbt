@@ -229,7 +229,7 @@ fn bind_default_trait_impl_method_body(
         None => return None
       }
       let binding_type_params = @semantic.default_trait_impl_type_params(
-        type_param_constraints(impl_decl.type_params),
+        fixed_type_param_constraints(impl_decl.type_params),
         trait_def.symbol.name,
       )
       let trait_ref : TraitRef = { trait_: trait_def.symbol, args: [] }
@@ -253,12 +253,14 @@ fn bind_default_trait_impl_method_body(
         signature.return_type,
         ast,
       )
-      let params : Array[BoundParam] = []
-      for
-        param in impl_method_parameters(
-          signature.parameters,
-          impl_method.params,
-        ) {
+      let impl_method_params = impl_method_parameters(
+        signature.parameters,
+        impl_method.params,
+      )
+      let params : Array[BoundParam] = Array::new(
+        capacity=impl_method_params.length(),
+      )
+      for param in impl_method_params {
         params.push({
           symbol_id: param.symbol.id,
           name: param.symbol.name,
@@ -294,7 +296,7 @@ fn default_trait_impl_type_param_defs(
   trait_name : String,
 ) -> Array[@ir.BoundTypeParam] {
   let constraints = @semantic.default_trait_impl_type_params(
-    type_param_constraints(impl_decl.type_params),
+    fixed_type_param_constraints(impl_decl.type_params),
     trait_name,
   )
   let result : Array[@ir.BoundTypeParam] = []
@@ -350,7 +352,7 @@ fn bind_concrete_impl_method_body(
         context,
         index,
         impl_decl.self_type,
-        type_param_names(impl_decl.type_params),
+        fixed_type_param_names(impl_decl.type_params),
       )
       let selected_concrete_signature = if selected_function_ids.length() > 0 {
         find_selected_concrete_impl_method_signature(
@@ -463,7 +465,7 @@ fn bind_concrete_impl_method_body(
       let typing = @semantic.typing_context()
       let function_context = context_with_type_params(
         context,
-        type_param_constraints(impl_decl.type_params),
+        fixed_type_param_constraints(impl_decl.type_params),
         Some(signature.return_type),
         signature.effect,
         Some(signature.function_id),
@@ -477,11 +479,12 @@ fn bind_concrete_impl_method_body(
         signature.return_type,
         ast,
       )
-      let params : Array[BoundParam] = []
+
       let impl_params = impl_method_parameters(
         signature.parameters,
         impl_method.params,
       )
+      let params : Array[BoundParam] = Array::new(capacity=impl_params.length())
       for param in impl_params {
         params.push({
           symbol_id: param.symbol.id,
@@ -497,7 +500,7 @@ fn bind_concrete_impl_method_body(
         symbol_id: signature.function_id,
         name: impl_method.name,
         is_public: signature.is_public,
-        type_params: type_param_defs(impl_decl.type_params),
+        type_params: fixed_type_param_defs(impl_decl.type_params),
         params,
         return_type: signature.return_type,
         effect: signature.effect,
@@ -694,10 +697,23 @@ fn impl_method_parameter_symbols(
 }
 
 ///|
-fn type_param_names(type_params : Array[@ast.TypeParamSyntax]) -> Array[String] {
-  let names : Array[String] = []
-  for param in type_params {
-    names.push(param.name)
+fn type_param_names(
+  type_params : Array[@ast.TypeParamSyntax],
+) -> FixedArray[String] {
+  let names : FixedArray[String] = FixedArray::make(type_params.length(), "")
+  for i in 0..<type_params.length() {
+    names[i] = type_params[i].name
+  }
+  names
+}
+
+///|
+fn fixed_type_param_names(
+  type_params : FixedArray[@ast.TypeParamSyntax],
+) -> FixedArray[String] {
+  let names : FixedArray[String] = FixedArray::make(type_params.length(), "")
+  for i in 0..<type_params.length() {
+    names[i] = type_params[i].name
   }
   names
 }
@@ -715,7 +731,22 @@ fn string_set(items : Array[String]) -> Set[String] {
 fn type_param_defs(
   type_params : Array[@ast.TypeParamSyntax],
 ) -> Array[@ir.BoundTypeParam] {
-  let result : Array[@ir.BoundTypeParam] = []
+  let result : Array[@ir.BoundTypeParam] = Array::new(
+    capacity=type_params.length(),
+  )
+  for param in type_params {
+    result.push({ name: param.name, constraints: param.constraints })
+  }
+  result
+}
+
+///|
+fn fixed_type_param_defs(
+  type_params : FixedArray[@ast.TypeParamSyntax],
+) -> Array[@ir.BoundTypeParam] {
+  let result : Array[@ir.BoundTypeParam] = Array::new(
+    capacity=type_params.length(),
+  )
   for param in type_params {
     result.push({ name: param.name, constraints: param.constraints })
   }
@@ -726,7 +757,22 @@ fn type_param_defs(
 fn type_param_constraints(
   type_params : Array[@ast.TypeParamSyntax],
 ) -> Array[TypeParamConstraint] {
-  let result : Array[TypeParamConstraint] = []
+  let result : Array[TypeParamConstraint] = Array::new(
+    capacity=type_params.length(),
+  )
+  for param in type_params {
+    result.push({ name: param.name, constraints: param.constraints })
+  }
+  result
+}
+
+///|
+fn fixed_type_param_constraints(
+  type_params : FixedArray[@ast.TypeParamSyntax],
+) -> Array[TypeParamConstraint] {
+  let result : Array[TypeParamConstraint] = Array::new(
+    capacity=type_params.length(),
+  )
   for param in type_params {
     result.push({ name: param.name, constraints: param.constraints })
   }
@@ -808,3 +854,4 @@ fn infer_global_body_type(value : @ast.Expr) -> TypeRef {
     _ => @binding.error_type()
   }
 }
+

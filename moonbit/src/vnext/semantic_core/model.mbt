@@ -23,7 +23,7 @@ using @ir {type BoundExpr, type BoundModule}
 ///|
 pub(all) struct TypeHeader {
   symbol : TypeSymbolRef
-  type_params : Array[String]
+  type_params : FixedArray[String]
   span : SourceSpan
 } derive(Eq, Debug)
 

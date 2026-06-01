@@ -537,7 +537,7 @@ fn Parser::parse_derive_clause(self : Parser) -> Array[String] {
 ///|
 fn Parser::parse_impl(self : Parser) -> @ast.ImplDecl {
   let start = self.expect(TokenKind::Impl)
-  let type_params = self.parse_type_params()
+  let type_params = fixed_type_params(self.parse_type_params())
   let trait_name = self.parse_impl_trait_name()
   let self_type = if self.current().kind == TokenKind::For {
     ignore(self.bump())
@@ -924,10 +924,30 @@ fn Parser::parse_type_param_constraint_name(self : Parser) -> String {
 }
 
 ///|
-fn Parser::parse_nominal_type_params(self : Parser) -> Array[String] {
-  let result : Array[String] = []
-  for param in self.parse_type_params() {
-    result.push(param.name)
+fn Parser::parse_nominal_type_params(self : Parser) -> FixedArray[String] {
+  let type_params = self.parse_type_params()
+  let result : FixedArray[String] = FixedArray::make(type_params.length(), "")
+  for i in 0..<type_params.length() {
+    result[i] = type_params[i].name
+  }
+  result
+}
+
+///|
+fn fixed_type_params(
+  type_params : Array[@ast.TypeParamSyntax],
+) -> FixedArray[@ast.TypeParamSyntax] {
+  let empty : @ast.TypeParamSyntax = {
+    name: "",
+    constraints: [],
+    span: @common.source_span("", 0, 0, 1, 1),
+  }
+  let result = FixedArray::make(
+    type_params.length(),
+    empty,
+  )
+  for i in 0..<type_params.length() {
+    result[i] = type_params[i]
   }
   result
 }

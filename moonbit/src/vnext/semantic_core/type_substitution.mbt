@@ -1,6 +1,6 @@
 ///|
 pub fn substitute_type(
-  params : Array[String],
+  params : FixedArray[String],
   args : FixedArray[TypeRef],
   type_ : TypeRef,
 ) -> TypeRef {
@@ -63,7 +63,7 @@ pub fn substitute_type(
 
 ///|
 fn substitute_effect(
-  params : Array[String],
+  params : FixedArray[String],
   args : FixedArray[TypeRef],
   effect : EffectRef,
 ) -> EffectRef {

@@ -349,7 +349,7 @@ fn enum_type_args(type_ : TypeRef) -> FixedArray[TypeRef] {
 ///|
 fn enum_case_type(
   symbol : @binding.TypeSymbolRef,
-  type_params : Array[String],
+  type_params : FixedArray[String],
   expected : TypeRef,
 ) -> TypeRef {
   match expected {
@@ -364,7 +364,7 @@ fn enum_case_type(
 }
 
 ///|
-fn type_param_refs(type_params : Array[String]) -> FixedArray[TypeRef] {
+fn type_param_refs(type_params : FixedArray[String]) -> FixedArray[TypeRef] {
   let refs = FixedArray::make(type_params.length(), @binding.unresolved_type_ref())
   for i in 0..<type_params.length() {
     let param = type_params[i]

@@ -13,10 +13,11 @@ fn resolve_type(
 }
 
 ///|
-fn current_type_param_names(context : BindingContext) -> Array[String] {
-  let names : Array[String] = []
-  for param in context.current_type_params {
-    names.push(param.name)
+fn current_type_param_names(context : BindingContext) -> FixedArray[String] {
+  let current_params = context.current_type_params
+  let names : FixedArray[String] = FixedArray::make(current_params.length(), "")
+  for i in 0..<current_params.length() {
+    names[i] = current_params[i].name
   }
   names
 }
@@ -26,7 +27,7 @@ fn resolve_type_with_params(
   context : BindingContext,
   index : DeclarationIndex,
   type_ : TypeSyntax,
-  type_params : Array[String],
+  type_params : FixedArray[String],
 ) -> TypeRef {
   resolve_type_with_params_and_self(context, index, type_, type_params, None)
 }
@@ -36,7 +37,7 @@ fn resolve_type_with_self(
   context : BindingContext,
   index : DeclarationIndex,
   type_ : TypeSyntax,
-  type_params : Array[String],
+  type_params : FixedArray[String],
   self_type : TypeRef,
 ) -> TypeRef {
   resolve_type_with_params_and_self(
@@ -53,7 +54,7 @@ fn resolve_type_with_params_and_self(
   context : BindingContext,
   index : DeclarationIndex,
   type_ : TypeSyntax,
-  type_params : Array[String],
+  type_params : FixedArray[String],
   self_type : TypeRef?,
 ) -> TypeRef {
   if type_.is_trait_object {
@@ -127,14 +128,17 @@ fn resolve_self_type_syntax(
   index : DeclarationIndex,
   self_type : TypeRef,
   type_ : TypeSyntax,
-  type_params : Array[String],
+  type_params : FixedArray[String],
 ) -> TypeRef {
   if type_.args.length() == 0 {
     return self_type
   }
   match self_type {
     TypeRef::Declared(symbol, _) => {
-      let args = FixedArray::make(type_.args.length(), @binding.unresolved_type_ref())
+      let args = FixedArray::make(
+        type_.args.length(),
+        @binding.unresolved_type_ref(),
+      )
       for i in 0..<type_.args.length() {
         args[i] = resolve_type_with_params_and_self(
           context,
@@ -186,7 +190,10 @@ fn resolve_self_type_syntax(
       self_type
     }
     TypeRef::Apply(type_constructor, _) => {
-      let args = FixedArray::make(type_.args.length(), @binding.unresolved_type_ref())
+      let args = FixedArray::make(
+        type_.args.length(),
+        @binding.unresolved_type_ref(),
+      )
       for i in 0..<type_.args.length() {
         args[i] = resolve_type_with_params_and_self(
           context,
@@ -246,12 +253,20 @@ fn resolve_declared_type_header(
   context : BindingContext,
   index : DeclarationIndex,
   type_ : TypeSyntax,
-  type_params : Array[String],
+  type_params : FixedArray[String],
   header : @semantic.TypeHeader,
 ) -> TypeRef {
-  let args = FixedArray::make(type_.args.length(), @binding.unresolved_type_ref())
+  let args = FixedArray::make(
+    type_.args.length(),
+    @binding.unresolved_type_ref(),
+  )
   for i in 0..<type_.args.length() {
-    args[i] = resolve_type_with_params(context, index, type_.args[i], type_params)
+    args[i] = resolve_type_with_params(
+      context,
+      index,
+      type_.args[i],
+      type_params,
+    )
   }
   TypeRef::Declared(header.symbol, args)
 }
@@ -261,13 +276,21 @@ fn resolve_trait_object_type(
   context : BindingContext,
   index : DeclarationIndex,
   type_ : TypeSyntax,
-  type_params : Array[String],
+  type_params : FixedArray[String],
 ) -> TypeRef {
   match @semantic.find_visible_trait(index, type_.package_alias, type_.name) {
     Some(trait_def) => {
-      let args = FixedArray::make(type_.args.length(), @binding.unresolved_type_ref())
+      let args = FixedArray::make(
+        type_.args.length(),
+        @binding.unresolved_type_ref(),
+      )
       for i in 0..<type_.args.length() {
-        args[i] = resolve_type_with_params(context, index, type_.args[i], type_params)
+        args[i] = resolve_type_with_params(
+          context,
+          index,
+          type_.args[i],
+          type_params,
+        )
       }
       TypeRef::TraitObject({ trait_: trait_def.symbol, args })
     }
@@ -283,7 +306,7 @@ fn resolve_builtin_scalar_type_with_self(
   context : BindingContext,
   index : DeclarationIndex,
   type_ : TypeSyntax,
-  type_params : Array[String],
+  type_params : FixedArray[String],
   self_type : TypeRef?,
 ) -> TypeRef? {
   match type_.package_alias {
@@ -291,10 +314,17 @@ fn resolve_builtin_scalar_type_with_self(
     None => ()
   }
   if type_.name == "Tuple" {
-    let items = FixedArray::make(type_.args.length(), @binding.unresolved_type_ref())
+    let items = FixedArray::make(
+      type_.args.length(),
+      @binding.unresolved_type_ref(),
+    )
     for i in 0..<type_.args.length() {
       items[i] = resolve_type_with_params_and_self(
-        context, index, type_.args[i], type_params, self_type,
+        context,
+        index,
+        type_.args[i],
+        type_params,
+        self_type,
       )
     }
     return Some(TypeRef::Tuple(items))
@@ -341,7 +371,7 @@ fn resolve_builtin_constructed_type_with_self(
   context : BindingContext,
   index : DeclarationIndex,
   type_ : TypeSyntax,
-  type_params : Array[String],
+  type_params : FixedArray[String],
   self_type : TypeRef?,
 ) -> TypeRef? {
   match type_.package_alias {

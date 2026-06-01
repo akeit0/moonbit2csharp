@@ -116,13 +116,13 @@ pub(all) enum TypeDefinition {
 ///|
 pub(all) struct OpaqueTypeDefinition {
   symbol : TypeSymbolRef
-  type_params : Array[String]
+  type_params : FixedArray[String]
 } derive(Eq, Debug)
 
 ///|
 pub(all) struct StructDefinition {
   symbol : TypeSymbolRef
-  type_params : Array[String]
+  type_params : FixedArray[String]
   fields : Array[FieldDef]
   derives : Array[String]
   valtype : Bool
@@ -144,7 +144,7 @@ pub(all) struct EnumPayloadDef {
 ///|
 pub(all) struct EnumDefinition {
   symbol : TypeSymbolRef
-  type_params : Array[String]
+  type_params : FixedArray[String]
   variants : Array[EnumVariantDef]
   derives : Array[String]
 } derive(Eq, Debug)
@@ -152,7 +152,7 @@ pub(all) struct EnumDefinition {
 ///|
 pub fn type_definition_header(
   def : TypeDefinition,
-) -> (TypeSymbolRef, Array[String]) {
+) -> (TypeSymbolRef, FixedArray[String]) {
   match def {
     Opaque(opaque_def) => (opaque_def.symbol, opaque_def.type_params)
     Struct(struct_def) => (struct_def.symbol, struct_def.type_params)

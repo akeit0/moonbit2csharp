@@ -1188,7 +1188,7 @@ fn constructor_local_struct_def(
   value_type : TypeRef,
   type_syntax : @ast.TypeSyntax?,
   name : String,
-) -> (String, Array[FieldDef], Array[String], FixedArray[TypeRef])? {
+) -> (String, Array[FieldDef], FixedArray[String], FixedArray[TypeRef])? {
   match value_type {
     TypeRef::Declared(symbol, args) =>
       match @semantic.find_type_definition(index, symbol.id) {

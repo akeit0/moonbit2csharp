@@ -25,7 +25,7 @@ fn collect_impl(
               index,
               impl_decl.trait_name,
               impl_method.name,
-              type_param_constraints(impl_decl.type_params),
+              fixed_type_param_constraints(impl_decl.type_params),
               impl_method.span,
             )
           }
@@ -37,7 +37,7 @@ fn collect_impl(
     context,
     index,
     impl_decl.self_type,
-    type_param_names(impl_decl.type_params),
+    fixed_type_param_names(impl_decl.type_params),
   )
   if impl_decl.methods.length() == 0 {
     if impl_decl.is_interface {
@@ -66,7 +66,7 @@ fn collect_impl(
           index,
           impl_decl.trait_name,
           self_type,
-          type_param_constraints(impl_decl.type_params),
+          fixed_type_param_constraints(impl_decl.type_params),
           impl_method.name,
           @semantic.ImplMethodBody::Intrinsic(intrinsic),
           impl_method.span,
@@ -76,7 +76,7 @@ fn collect_impl(
           index,
           impl_decl.trait_name,
           self_type,
-          type_param_constraints(impl_decl.type_params),
+          fixed_type_param_constraints(impl_decl.type_params),
           impl_method.name,
           if impl_method.body is Some(_) {
             @semantic.ImplMethodBody::Function("")
@@ -97,3 +97,4 @@ fn is_default_impl_self_type(self_type : TypeSyntax) -> Bool {
 }
 
 ///|
+

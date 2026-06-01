@@ -111,7 +111,7 @@ fn resolve_function_receiver_type(
   context : BindingContext,
   index : DeclarationIndex,
   receiver : @ast.TypeSyntax,
-  type_params : Array[String],
+  type_params : FixedArray[String],
 ) -> TypeRef {
   if receiver.args.length() > 0 {
     return resolve_type_with_params(context, index, receiver, type_params)
@@ -192,7 +192,7 @@ fn declared_receiver_type(
   context : BindingContext,
   index : DeclarationIndex,
   receiver : @ast.TypeSyntax,
-  type_params : Array[String],
+  type_params : FixedArray[String],
   header : @semantic.TypeHeader,
 ) -> TypeRef {
   if header.type_params.length() > 0 &&
@@ -254,7 +254,7 @@ fn resolve_function_member_type(
   context : BindingContext,
   index : DeclarationIndex,
   type_ : @ast.TypeSyntax,
-  type_params : Array[String],
+  type_params : FixedArray[String],
   receiver_type : TypeRef?,
 ) -> TypeRef {
   match receiver_type {

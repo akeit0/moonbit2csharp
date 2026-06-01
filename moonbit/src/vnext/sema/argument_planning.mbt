@@ -61,7 +61,7 @@ fn bind_argument_plan(
   plan : ArgumentPlan,
   ast : Module,
 ) -> Array[BoundExpr] {
-  let bound_args : Array[BoundExpr] = []
+  let bound_args : Array[BoundExpr] = Array::new(capacity = plan.items.length())
   for item in plan.items {
     match item {
       ArgumentPlanItem::Supplied(parameter, arg) => {

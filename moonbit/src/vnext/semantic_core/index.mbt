@@ -111,7 +111,22 @@ fn function_type_param_names(
 fn type_param_constraints_from_names(
   type_params : Array[String],
 ) -> Array[@binding.TypeParamConstraint] {
-  let result : Array[@binding.TypeParamConstraint] = []
+  let result : Array[@binding.TypeParamConstraint] = Array::new(
+    capacity=type_params.length(),
+  )
+  for param in type_params {
+    result.push({ name: param, constraints: [] })
+  }
+  result
+}
+
+///|
+fn type_param_constraints_from_fixed_names(
+  type_params : FixedArray[String],
+) -> Array[@binding.TypeParamConstraint] {
+  let result : Array[@binding.TypeParamConstraint] = Array::new(
+    capacity=type_params.length(),
+  )
   for param in type_params {
     result.push({ name: param, constraints: [] })
   }
@@ -179,7 +194,7 @@ pub fn declare_impl_method_with_type_params(
   index : DeclarationIndex,
   trait_name : String,
   self_type : TypeRef,
-  type_params : Array[String],
+  type_params : FixedArray[String],
   method_name : String,
   body : ImplMethodBody,
   span : SourceSpan,
@@ -188,7 +203,7 @@ pub fn declare_impl_method_with_type_params(
     index,
     trait_name,
     self_type,
-    type_param_constraints_from_names(type_params),
+    type_param_constraints_from_fixed_names(type_params),
     method_name,
     body,
     span,
@@ -513,7 +528,7 @@ pub fn declare_derived_compare_operator_impls(
 pub fn declare_derived_hash_impl(
   index : DeclarationIndex,
   self_type : TypeRef,
-  type_params : Array[String],
+  type_params : FixedArray[String],
   span : SourceSpan,
 ) -> Unit {
   declare_derived_non_operator_impl(
@@ -525,7 +540,7 @@ pub fn declare_derived_hash_impl(
 pub fn declare_derived_default_impl(
   index : DeclarationIndex,
   self_type : TypeRef,
-  type_params : Array[String],
+  type_params : FixedArray[String],
   span : SourceSpan,
 ) -> Unit {
   declare_derived_non_operator_impl(
@@ -537,7 +552,7 @@ pub fn declare_derived_default_impl(
 pub fn declare_derived_debug_impl(
   index : DeclarationIndex,
   self_type : TypeRef,
-  type_params : Array[String],
+  type_params : FixedArray[String],
   span : SourceSpan,
 ) -> Unit {
   declare_derived_non_operator_impl(
@@ -551,7 +566,7 @@ fn declare_derived_non_operator_impl(
   trait_name : String,
   method_name : String,
   self_type : TypeRef,
-  type_params : Array[String],
+  type_params : FixedArray[String],
   span : SourceSpan,
 ) -> Unit {
   match find_derived_trait(index, trait_name) {
@@ -579,7 +594,7 @@ fn declare_derived_non_operator_impl(
               index,
               function_id,
               derived_impl_function_name(trait_name, method_name, self_type),
-              type_param_constraints_from_names(type_params),
+              type_param_constraints_from_fixed_names(type_params),
               parameters,
               return_type,
               span,
@@ -1780,7 +1795,7 @@ pub fn resolve_import_alias(
 pub fn declare_type_header(
   index : DeclarationIndex,
   symbol : TypeSymbolRef,
-  type_params : Array[String],
+  type_params : FixedArray[String],
   span : SourceSpan,
 ) -> Unit {
   match find_visible_type_header(index, None, symbol.name) {
@@ -1806,7 +1821,7 @@ pub fn declare_type_header(
 fn same_type_header(
   existing : TypeHeader,
   symbol : TypeSymbolRef,
-  type_params : Array[String],
+  type_params : FixedArray[String],
   span : SourceSpan,
 ) -> Bool {
   existing.symbol.id == symbol.id &&
@@ -1815,7 +1830,7 @@ fn same_type_header(
 }
 
 ///|
-fn same_string_array(left : Array[String], right : Array[String]) -> Bool {
+fn same_string_array(left : FixedArray[String], right : FixedArray[String]) -> Bool {
   if left.length() != right.length() {
     return false
   }

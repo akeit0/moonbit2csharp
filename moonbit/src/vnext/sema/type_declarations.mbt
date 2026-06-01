@@ -66,7 +66,7 @@ fn collect_structs(
 ) -> Unit {
   for decl in ast.structs {
     let symbol = @binding.local_type_symbol(context, decl.name)
-    let fields : Array[FieldDef] = []
+    let fields : Array[FieldDef] = Array::new(capacity = decl.fields.length())
     for field in decl.fields {
       fields.push({
         id: symbol.id + ":field:" + field.name,
@@ -110,7 +110,7 @@ fn collect_structs(
 fn declare_struct_derives(
   index : @semantic.DeclarationIndex,
   symbol : @binding.TypeSymbolRef,
-  type_params : Array[String],
+  type_params : FixedArray[String],
   derives : Array[String],
   span : SourceSpan,
 ) -> Unit {
@@ -141,9 +141,9 @@ fn collect_enums(
 ) -> Unit {
   for decl in ast.enums {
     let symbol = @binding.local_type_symbol(context, decl.name)
-    let variants : Array[EnumVariantDef] = []
+    let variants : Array[EnumVariantDef] = Array::new(capacity = decl.variants.length())
     for variant in decl.variants {
-      let payloads : Array[@binding.EnumPayloadDef] = []
+      let payloads : Array[@binding.EnumPayloadDef] = Array::new(capacity = variant.payloads.length())
       for payload in variant.payloads {
         payloads.push({
           label: payload.label,
@@ -191,7 +191,7 @@ fn collect_enums(
 fn declare_enum_derives(
   index : @semantic.DeclarationIndex,
   symbol : @binding.TypeSymbolRef,
-  type_params : Array[String],
+  type_params : FixedArray[String],
   variants : Array[EnumVariantDef],
   derives : Array[String],
   span : SourceSpan,
@@ -267,7 +267,7 @@ fn default_derive_error_message(
 ///|
 fn declared_type_with_params(
   symbol : @binding.TypeSymbolRef,
-  type_params : Array[String],
+  type_params : FixedArray[String],
 ) -> TypeRef {
   let args = FixedArray::make(type_params.length(), @binding.unresolved_type_ref())
   for i in 0..<type_params.length() {
