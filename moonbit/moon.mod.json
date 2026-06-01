@@ -5,6 +5,6 @@
     "moonbitlang/x": "0.4.40"
   },
   "source": "src",
-  "preferred-target": "native",
+  "preferred-target": "wasm-gc",
   "supported-targets": "+native+js+wasm-gc"
 }

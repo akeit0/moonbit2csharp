@@ -489,6 +489,7 @@ public static class MoonBitSourceTranspiler
         startInfo.ArgumentList.Add(moonbitDirectory);
         startInfo.ArgumentList.Add("run");
         startInfo.ArgumentList.Add("./src/vnext_cli");
+        startInfo.ArgumentList.Add("--release");
         startInfo.ArgumentList.Add("--");
         startInfo.ArgumentList.Add(request.Sources[0].FilePath);
         startInfo.ArgumentList.Add(request.ModuleName);
@@ -543,10 +544,16 @@ public static class MoonBitSourceTranspiler
             );
         }
 
+        var stdout = stdoutTask.Result;
+        if (TranspilerProfiler.Enabled)
+        {
+            stdout = StripVNextMoonProfile(stdout);
+        }
+
         if (TranspilerProfiler.Enabled && !string.IsNullOrWhiteSpace(stderrTask.Result))
             LogVNextMoonProfile(stderrTask.Result);
 
-        return stdoutTask.Result;
+        return stdout;
     }
 
     private static bool VNextFrontendIsMoon(string frontend) =>
@@ -566,6 +573,26 @@ public static class MoonBitSourceTranspiler
         throw new ArgumentException(
             "unsupported vnext frontend: expected 'moon' or 'csharp:<exe|dll|csproj>'"
         );
+    }
+
+    private static string StripVNextMoonProfile(string stdout)
+    {
+        if (string.IsNullOrWhiteSpace(stdout) || !stdout.Contains("vnext-profile:", StringComparison.Ordinal))
+            return stdout;
+
+        var result = new StringBuilder();
+        foreach (var line in stdout.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries))
+        {
+            if (line.StartsWith("vnext-profile:", StringComparison.Ordinal))
+            {
+                LogVNextMoonProfile(line);
+                continue;
+            }
+
+            result.AppendLine(line);
+        }
+
+        return result.ToString();
     }
 
     private static VNextFrontendRequest BuildVNextFrontendRequest(

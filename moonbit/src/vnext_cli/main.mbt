@@ -8,10 +8,10 @@ fn main {
   } else {
     let path = args[1]
     let module_name = if args.length() > 2 { args[2] } else { "Main" }
-    let source = @host.read_text_file(path)
+    let source = read_text_file(path)
     if args.length() > 3 {
       let moon_pkg_path = args[3]
-      let moon_pkg_source = @host.read_text_file(moon_pkg_path)
+      let moon_pkg_source = read_text_file(moon_pkg_path)
       let manifest = @package.parse_moon_pkg(moon_pkg_source, moon_pkg_path)
       let local_sources : Array[@package.SourceUnit] = [
         { file_path: path, source },
@@ -30,7 +30,7 @@ fn main {
           let source_path = args[i + 1]
           local_sources.push({
             file_path: source_path,
-            source: @host.read_text_file(source_path),
+            source: read_text_file(source_path),
           })
           i = i + 2
           continue
@@ -49,7 +49,7 @@ fn main {
           imported_sources.push({
             import_ref: { alias_name, package_id, module_path },
             file_path: imported_path,
-            source: @host.read_text_file(imported_path),
+            source: read_text_file(imported_path),
           })
           i = i + 5
           continue
@@ -62,7 +62,7 @@ fn main {
           let manifest_path = args[i + 1]
           imported_manifest_sources.push({
             file_path: manifest_path,
-            source: @host.read_text_file(manifest_path),
+            source: read_text_file(manifest_path),
           })
           i = i + 2
           continue
@@ -81,14 +81,14 @@ fn main {
           imported_declaration_sources.push({
             import_ref: { alias_name, package_id, module_path },
             file_path: imported_path,
-            source: @host.read_text_file(imported_path),
+            source: read_text_file(imported_path),
           })
           i = i + 5
           continue
         }
         let import_index = positional_index
         let imported_path = args[i]
-        let imported_source = @host.read_text_file(imported_path)
+        let imported_source = read_text_file(imported_path)
         match
           import_ref_for_source(
             manifest.imports,
@@ -141,13 +141,18 @@ fn emit_compile_result(result : @pipeline.ProfiledCompileResult) -> Unit {
   match @env.get_env_var("MOONBIT2CSHARP_VNEXT_PROFILE") {
     Some(value) =>
       if value == "1" || value == "true" || value == "TRUE" {
-        @host.write_stderr("vnext-profile: ")
-        @host.write_stderr(result.profile_json)
-        @host.write_stderr("\n")
+        println("vnext-profile: " + result.profile_json)
       }
     None => ()
   }
   println(result.ir_json)
+}
+
+///|
+fn read_text_file(path : String) -> String {
+  @fs.read_file_to_string(path) catch {
+    error => abort("failed to read file " + path + ": " + error.to_string())
+  }
 }
 
 ///|
@@ -166,7 +171,7 @@ fn default_core_declaration_sources() -> Array[@package.PackageSource] {
   result.push({
     import_ref: abort_import_ref,
     file_path: "../moonbitlang/core/abort/pkg.mbti",
-    source: @host.read_text_file("../moonbitlang/core/abort/pkg.mbti"),
+    source: read_text_file("../moonbitlang/core/abort/pkg.mbti"),
   })
   for
     path in [
@@ -190,7 +195,7 @@ fn default_core_declaration_sources() -> Array[@package.PackageSource] {
     result.push({
       import_ref,
       file_path: path,
-      source: @host.read_text_file(path),
+      source: read_text_file(path),
     })
   }
   let debug_import_ref : @binding.ImportRef = {
@@ -201,7 +206,7 @@ fn default_core_declaration_sources() -> Array[@package.PackageSource] {
   result.push({
     import_ref: debug_import_ref,
     file_path: "../moonbitlang/core/debug/pkg.generated.mbti",
-    source: @host.read_text_file("../moonbitlang/core/debug/pkg.generated.mbti"),
+    source: read_text_file("../moonbitlang/core/debug/pkg.generated.mbti"),
   })
   let set_import_ref : @binding.ImportRef = {
     alias_name: "set",
@@ -211,7 +216,7 @@ fn default_core_declaration_sources() -> Array[@package.PackageSource] {
   result.push({
     import_ref: set_import_ref,
     file_path: "../moonbitlang/core/set/pkg.generated.mbti",
-    source: @host.read_text_file("../moonbitlang/core/set/pkg.generated.mbti"),
+    source: read_text_file("../moonbitlang/core/set/pkg.generated.mbti"),
   })
   let ref_import_ref : @binding.ImportRef = {
     alias_name: "ref",
@@ -221,7 +226,7 @@ fn default_core_declaration_sources() -> Array[@package.PackageSource] {
   result.push({
     import_ref: ref_import_ref,
     file_path: "../moonbitlang/core/ref/pkg.generated.mbti",
-    source: @host.read_text_file("../moonbitlang/core/ref/pkg.generated.mbti"),
+    source: read_text_file("../moonbitlang/core/ref/pkg.generated.mbti"),
   })
   result
 }
@@ -246,3 +251,4 @@ fn import_ref_for_source(
     None => None
   }
 }
+

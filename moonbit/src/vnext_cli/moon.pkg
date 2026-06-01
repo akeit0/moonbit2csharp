@@ -1,6 +1,6 @@
 import {
   "moonbitlang/core/env",
-  "moonbit2csharp/frontend/host_support" @host,
+  "moonbitlang/x/fs",
   "moonbit2csharp/frontend/vnext/binding" @binding,
   "moonbit2csharp/frontend/vnext/package" @package,
   "moonbit2csharp/frontend/vnext/pipeline" @pipeline,
