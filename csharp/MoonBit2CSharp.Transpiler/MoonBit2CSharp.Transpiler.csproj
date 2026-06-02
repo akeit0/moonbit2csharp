@@ -12,6 +12,6 @@
         <ProjectReference Include="..\MoonBit2CSharp.GeneratedSyntax\MoonBit2CSharp.GeneratedSyntax.csproj" /> -->
     </ItemGroup>
     <ItemGroup>
-        <EmbeddedResource Include="CoreSourceGraph.json" />
+        <EmbeddedResource Include="CoreOverrideManifest.json" />
     </ItemGroup>
 </Project>

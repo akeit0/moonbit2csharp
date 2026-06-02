@@ -148,62 +148,6 @@ public static class MoonBitSourceTranspiler
         throw new DirectoryNotFoundException("could not find repository root containing moonbit");
     }
 
-    private static IReadOnlyList<string> OfficialCorePackageSourceFilesForTarget(
-        string packagePath,
-        string target
-    )
-    {
-        var excluded = OfficialCoreFilesExcludedForSourceTarget(packagePath, target);
-        return PackageSourceFiles(packagePath)
-            .Where(path => !excluded.Contains(Path.GetFileName(path)))
-            .Select(Path.GetFullPath)
-            .ToArray();
-    }
-
-    private static HashSet<string> OfficialCoreFilesExcludedForSourceTarget(
-        string packagePath,
-        string target
-    )
-    {
-        var excluded = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        var moonPkgPath = Path.Combine(packagePath, "moon.pkg");
-        if (!File.Exists(moonPkgPath))
-            return excluded;
-
-        var source = File.ReadAllText(moonPkgPath);
-        foreach (
-            Match match in Regex.Matches(
-                source,
-                "\"(?<file>[^\"]+\\.mbt)\"\\s*:\\s*\\[(?<targets>[^\\]]*)\\]"
-            )
-        )
-        {
-            var fileName = match.Groups["file"].Value;
-            var targets = Regex
-                .Matches(match.Groups["targets"].Value, "\"(?<target>[^\"]+)\"")
-                .Select(item => item.Groups["target"].Value)
-                .ToArray();
-            if (!OfficialCoreTargetSpecAllowsSourceTarget(targets, target))
-                excluded.Add(fileName);
-        }
-
-        return excluded;
-    }
-
-    private static bool OfficialCoreTargetSpecAllowsSourceTarget(
-        IReadOnlyList<string> targets,
-        string target
-    )
-    {
-        if (targets.Count == 0)
-            return true;
-
-        if (targets.Contains("not", StringComparer.Ordinal))
-            return !targets.Contains(target, StringComparer.Ordinal);
-
-        return targets.Contains(target, StringComparer.Ordinal);
-    }
-
     private static bool IsVirtualPackage(string packagePath)
     {
         foreach (var fileName in new[] { "moon.pkg", "moon.pkg.json" })
@@ -842,47 +786,8 @@ public static class MoonBitSourceTranspiler
 
     private static IReadOnlyList<VNextDeclarationSource> VNextCoreSources(VNextCoreSourceStage stage)
     {
-        var root = RepositoryRoot();
-        var result = new List<VNextDeclarationSource>();
-        foreach (var node in VNextCoreSourceGraphLoader.Load().Where(node => node.Stage == stage))
-        {
-            var path = RepositoryPath(root, node.RelativePath);
-            if (node.Kind == VNextCoreSourceNodeKind.OfficialPackage)
-                AddOfficialCorePackageDeclarationSources(result, node.Alias, node.ModulePath, path);
-            else
-                AddDeclarationSource(result, node.Alias, "pkg:" + node.ModulePath, node.ModulePath, path);
-        }
-
-        return result;
-    }
-
-    private static string RepositoryPath(string root, string relativePath)
-    {
-        return Path.Combine([root, .. relativePath.Split('/')]);
-    }
-
-    private static void AddOfficialCorePackageDeclarationSources(
-        List<VNextDeclarationSource> result,
-        string alias,
-        string modulePath,
-        string packageRoot
-    )
-    {
-        foreach (var path in OfficialCorePackageSourceFilesForTarget(packageRoot, "csharp"))
-        {
-            if (
-                modulePath == "moonbitlang/core/builtin"
-                && Path.GetFileName(path)
-                    .StartsWith("stringbuilder", StringComparison.OrdinalIgnoreCase)
-            )
-                continue;
-            if (
-                modulePath == "moonbitlang/core/builtin"
-                && Path.GetFileName(path).Equals("iterator.mbt", StringComparison.OrdinalIgnoreCase)
-            )
-                continue;
-            AddDeclarationSource(result, alias, "pkg:" + modulePath, modulePath, path);
-        }
+        return new VNextCoreSourceSelector(RepositoryRoot(), VNextCoreOverrideManifestLoader.Load())
+            .Select(stage);
     }
     private static void AddDeclarationSource(
         List<VNextDeclarationSource> sources,

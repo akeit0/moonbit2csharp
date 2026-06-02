@@ -1,0 +1,240 @@
+{
+  "version": "moonbit2csharp-vnext-core-overrides-v1",
+  "seeds": {
+    "Declaration": [
+      "moonbitlang/core/prelude"
+    ],
+    "Implementation": [
+      "moonbitlang/core/builtin"
+    ]
+  },
+  "backendRequiredPackages": [
+    "moonbitlang/core/builtin",
+    "moonbitlang/core/debug",
+    "moonbitlang/core/env",
+    "moonbitlang/core/error",
+    "moonbitlang/core/ref",
+    "moonbitlang/core/set",
+    "moonbitlang/core/abort"
+  ],
+  "packages": [
+    {
+      "stage": "Implementation",
+      "modulePath": "moonbitlang/core/abort",
+      "alias": "abort",
+      "official": true
+    },
+    {
+      "stage": "Implementation",
+      "modulePath": "moonbitlang/core/env",
+      "alias": "env",
+      "replaceAll": [
+        "moonbit/overrides/core_env_env_csharp.mbt"
+      ]
+    },
+    {
+      "stage": "Implementation",
+      "modulePath": "moonbitlang/core/set",
+      "alias": "set",
+      "official": true,
+      "exclude": [
+        "deprecated.mbt"
+      ]
+    },
+    {
+      "stage": "Declaration",
+      "modulePath": "moonbitlang/core/prelude",
+      "alias": "prelude",
+      "replaceAll": [
+        "moonbit/overrides/core_prelude_csharp.mbt"
+      ]
+    },
+    {
+      "stage": "Declaration",
+      "modulePath": "moonbitlang/core/set",
+      "alias": "set",
+      "official": true
+    },
+    {
+      "stage": "Declaration",
+      "modulePath": "moonbitlang/core/builtin",
+      "alias": "builtin",
+      "official": true,
+      "add": [
+        "moonbit/overrides/core_array.mbt",
+        "moonbit/overrides/core_iterable.mbt",
+        "moonbit/overrides/core_string.mbt",
+        "moonbit/overrides/core_stringview.mbt",
+        "moonbit/overrides/core_bytesview_csharp.mbt",
+        "moonbit/overrides/core_traits_csharp.mbt",
+        "moonbit/overrides/core_stringbuilder_traits.mbt"
+      ],
+      "exclude": [
+        "iter.mbt",
+        "iterator.mbt",
+        "stringbuilder.mbt",
+        "stringbuilder_buffer.mbt",
+        "stringbuilder_concat.mbt"
+      ]
+    },
+    {
+      "stage": "Implementation",
+      "modulePath": "moonbitlang/core/error",
+      "alias": "error",
+      "replaceAll": [
+        "moonbit/overrides/core_error.mbt"
+      ]
+    },
+    {
+      "stage": "Implementation",
+      "modulePath": "moonbitlang/core/ref",
+      "alias": "ref",
+      "replaceAll": [
+        "moonbit/overrides/core_ref_csharp.mbt"
+      ]
+    },
+    {
+      "stage": "Declaration",
+      "modulePath": "moonbitlang/core/env",
+      "alias": "env",
+      "replaceAll": [
+        "moonbit/overrides/core_env_env_csharp.mbt"
+      ]
+    },
+    {
+      "stage": "Declaration",
+      "modulePath": "moonbitlang/core/abort",
+      "alias": "abort",
+      "official": true
+    },
+    {
+      "stage": "Declaration",
+      "modulePath": "moonbitlang/core/error",
+      "alias": "error",
+      "official": true,
+      "add": [
+        "moonbit/overrides/core_error.mbt"
+      ]
+    },
+    {
+      "stage": "Declaration",
+      "modulePath": "moonbitlang/core/debug",
+      "alias": "debug",
+      "official": true,
+      "add": [
+        "moonbit/overrides/core_debug_show.mbt"
+      ]
+    },
+    {
+      "stage": "Declaration",
+      "modulePath": "moonbitlang/core/ref",
+      "alias": "ref",
+      "replaceAll": [
+        "moonbit/overrides/core_ref_csharp.mbt"
+      ]
+    },
+    {
+      "stage": "Implementation",
+      "modulePath": "moonbitlang/core/builtin",
+      "alias": "builtin",
+      "official": true,
+      "exclude": [
+        "array_block.mbt",
+        "array_sort_by_impl.mbt",
+        "array_sort_impl.mbt",
+        "array_sort.mbt",
+        "array.mbt",
+        "arraycore_nonjs.mbt",
+        "arrayview.mbt",
+        "assert_release.mbt",
+        "assert.mbt",
+        "autoloc.mbt",
+        "bitstring.mbt",
+        "bool.mbt",
+        "byte.mbt",
+        "bytes_find.mbt",
+        "bytes_unsafe.mbt",
+        "bytes.mbt",
+        "bytesview.mbt",
+        "char.mbt",
+        "console.mbt",
+        "deprecated.mbt",
+        "double_limits.mbt",
+        "double_mod_nonjs.mbt",
+        "double_pow_nonjs.mbt",
+        "double_round.mbt",
+        "double_ryu_nonjs.mbt",
+        "double_scalbn.mbt",
+        "double_to_int.mbt",
+        "double_to_uint.mbt",
+        "double.mbt",
+        "failure.mbt",
+        "fixedarray_block.mbt",
+        "fixedarray.mbt",
+        "hasher.mbt",
+        "int.mbt",
+        "int64.mbt",
+        "iter.mbt",
+        "iterator.mbt",
+        "json.mbt",
+        "mutarrayview.mbt",
+        "op.mbt",
+        "operators.mbt",
+        "option.mbt",
+        "range.mbt",
+        "readonlyarray.mbt",
+        "result.mbt",
+        "show.mbt",
+        "string_like.mbt",
+        "string_methods.mbt",
+        "string.mbt",
+        "stringbuilder_buffer.mbt",
+        "stringbuilder.mbt",
+        "stringview.mbt",
+        "to_string.mbt",
+        "tuple_compare.mbt",
+        "tuple_eq.mbt",
+        "tuple_hash.mbt",
+        "tuple_show.mbt",
+        "tuple_to_json.mbt",
+        "uint.mbt",
+        "uint16_char.mbt",
+        "uint64.mbt",
+        "uninitialized_array.mbt",
+        "unit.mbt"
+      ],
+      "add": [
+        "moonbit/overrides/core_traits_csharp.mbt",
+        "moonbit/overrides/core_stringbuilder_traits.mbt",
+        "moonbit/overrides/core_stringbuilder.mbt",
+        "moonbit/overrides/core_bool.mbt",
+        "moonbit/overrides/core_char.mbt",
+        "moonbit/overrides/core_array.mbt",
+        "moonbit/overrides/core_arrayview.mbt",
+        "moonbit/overrides/core_int.mbt",
+        "moonbit/overrides/core_numeric_intrinsics.mbt",
+        "moonbit/overrides/core_intrinsics_csharp.mbt",
+        "moonbit/overrides/core_numeric_ops.mbt",
+        "moonbit/overrides/core_builtin_to_string_csharp.mbt",
+        "moonbit/overrides/core_iterable.mbt",
+        "moonbit/overrides/core_option.mbt",
+        "moonbit/overrides/core_string.mbt",
+        "moonbit/overrides/core_stringview.mbt",
+        "moonbit/overrides/core_bytesview_csharp.mbt"
+      ]
+    },
+    {
+      "stage": "Implementation",
+      "modulePath": "moonbitlang/core/debug",
+      "alias": "debug",
+      "official": true,
+      "exclude": [
+        "delta.mbt",
+        "tuple_debug.mbt"
+      ],
+      "add": [
+        "moonbit/overrides/core_debug_show.mbt"
+      ]
+    }
+  ]
+}
