@@ -14,7 +14,7 @@ The override sources are now unified under `moonbit/overrides`. The next goal is
 - `Ref` and `prelude` should come from official core once package import/public-using behavior is fully root-cause correct, instead of C# override package stubs.
 - `Map` / linked-hash-map override remains because official collection source still exposes backend/runtime gaps around arrays, hashing, mutation, and generated shape.
 - Debug/Repr has only a small bridge left, but removing it needs generated Show/Debug evidence to come entirely from official source.
-- `CoreBuiltinImplementationCatalog.json` still names individual override inputs. Replace the large manual list with graph-driven core source selection.
+- Core source selection is now graph-driven in `MoonBitSourceTranspiler`. Continue reducing graph file nodes by replacing overrides with official core source.
 
 ### Immediate cleanup direction
 

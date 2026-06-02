@@ -1,0 +1,341 @@
+{
+  "version": "moonbit2csharp-vnext-core-source-graph-v1",
+  "nodes": [
+    {
+      "stage": "Declaration",
+      "kind": "File",
+      "alias": "abort",
+      "modulePath": "moonbitlang/core/abort",
+      "relativePath": "moonbitlang/core/abort/abort.mbt"
+    },
+    {
+      "stage": "Declaration",
+      "kind": "OfficialPackage",
+      "alias": "builtin",
+      "modulePath": "moonbitlang/core/builtin",
+      "relativePath": "moonbitlang/core/builtin"
+    },
+    {
+      "stage": "Declaration",
+      "kind": "File",
+      "alias": "builtin",
+      "modulePath": "moonbitlang/core/builtin",
+      "relativePath": "moonbit/overrides/core_array.mbt"
+    },
+    {
+      "stage": "Declaration",
+      "kind": "File",
+      "alias": "builtin",
+      "modulePath": "moonbitlang/core/builtin",
+      "relativePath": "moonbit/overrides/core_iterable.mbt"
+    },
+    {
+      "stage": "Declaration",
+      "kind": "File",
+      "alias": "builtin",
+      "modulePath": "moonbitlang/core/builtin",
+      "relativePath": "moonbit/overrides/core_string.mbt"
+    },
+    {
+      "stage": "Declaration",
+      "kind": "File",
+      "alias": "builtin",
+      "modulePath": "moonbitlang/core/builtin",
+      "relativePath": "moonbit/overrides/core_stringview.mbt"
+    },
+    {
+      "stage": "Declaration",
+      "kind": "File",
+      "alias": "builtin",
+      "modulePath": "moonbitlang/core/builtin",
+      "relativePath": "moonbit/overrides/core_bytesview_csharp.mbt"
+    },
+    {
+      "stage": "Declaration",
+      "kind": "OfficialPackage",
+      "alias": "debug",
+      "modulePath": "moonbitlang/core/debug",
+      "relativePath": "moonbitlang/core/debug"
+    },
+    {
+      "stage": "Declaration",
+      "kind": "OfficialPackage",
+      "alias": "error",
+      "modulePath": "moonbitlang/core/error",
+      "relativePath": "moonbitlang/core/error"
+    },
+    {
+      "stage": "Declaration",
+      "kind": "File",
+      "alias": "error",
+      "modulePath": "moonbitlang/core/error",
+      "relativePath": "moonbit/overrides/core_error.mbt"
+    },
+    {
+      "stage": "Declaration",
+      "kind": "OfficialPackage",
+      "alias": "set",
+      "modulePath": "moonbitlang/core/set",
+      "relativePath": "moonbitlang/core/set"
+    },
+    {
+      "stage": "Declaration",
+      "kind": "File",
+      "alias": "ref",
+      "modulePath": "moonbitlang/core/ref",
+      "relativePath": "moonbit/overrides/core_ref_csharp.mbt"
+    },
+    {
+      "stage": "Declaration",
+      "kind": "File",
+      "alias": "prelude",
+      "modulePath": "moonbitlang/core/prelude",
+      "relativePath": "moonbit/overrides/core_prelude_csharp.mbt"
+    },
+    {
+      "stage": "Declaration",
+      "kind": "File",
+      "alias": "env",
+      "modulePath": "moonbitlang/core/env",
+      "relativePath": "moonbit/overrides/core_env_env_csharp.mbt"
+    },
+    {
+      "stage": "Declaration",
+      "kind": "File",
+      "alias": "builtin",
+      "modulePath": "moonbitlang/core/builtin",
+      "relativePath": "moonbit/overrides/core_traits_csharp.mbt"
+    },
+    {
+      "stage": "Declaration",
+      "kind": "File",
+      "alias": "builtin",
+      "modulePath": "moonbitlang/core/builtin",
+      "relativePath": "moonbit/overrides/core_stringbuilder_traits.mbt"
+    },
+    {
+      "stage": "Declaration",
+      "kind": "File",
+      "alias": "debug",
+      "modulePath": "moonbitlang/core/debug",
+      "relativePath": "moonbit/overrides/core_debug_show.mbt"
+    },
+    {
+      "stage": "Implementation",
+      "kind": "File",
+      "alias": "builtin",
+      "modulePath": "moonbitlang/core/builtin",
+      "relativePath": "moonbitlang/core/builtin/traits.mbt"
+    },
+    {
+      "stage": "Implementation",
+      "kind": "File",
+      "alias": "builtin",
+      "modulePath": "moonbitlang/core/builtin",
+      "relativePath": "moonbitlang/core/builtin/intrinsics.mbt"
+    },
+    {
+      "stage": "Implementation",
+      "kind": "File",
+      "alias": "builtin",
+      "modulePath": "moonbitlang/core/builtin",
+      "relativePath": "moonbit/overrides/core_traits_csharp.mbt"
+    },
+    {
+      "stage": "Implementation",
+      "kind": "File",
+      "alias": "builtin",
+      "modulePath": "moonbitlang/core/builtin",
+      "relativePath": "moonbit/overrides/core_stringbuilder_traits.mbt"
+    },
+    {
+      "stage": "Implementation",
+      "kind": "File",
+      "alias": "builtin",
+      "modulePath": "moonbitlang/core/builtin",
+      "relativePath": "moonbit/overrides/core_stringbuilder.mbt"
+    },
+    {
+      "stage": "Implementation",
+      "kind": "File",
+      "alias": "builtin",
+      "modulePath": "moonbitlang/core/builtin",
+      "relativePath": "moonbit/overrides/core_bool.mbt"
+    },
+    {
+      "stage": "Implementation",
+      "kind": "File",
+      "alias": "builtin",
+      "modulePath": "moonbitlang/core/builtin",
+      "relativePath": "moonbit/overrides/core_char.mbt"
+    },
+    {
+      "stage": "Implementation",
+      "kind": "File",
+      "alias": "builtin",
+      "modulePath": "moonbitlang/core/builtin",
+      "relativePath": "moonbit/overrides/core_array.mbt"
+    },
+    {
+      "stage": "Implementation",
+      "kind": "File",
+      "alias": "builtin",
+      "modulePath": "moonbitlang/core/builtin",
+      "relativePath": "moonbit/overrides/core_arrayview.mbt"
+    },
+    {
+      "stage": "Implementation",
+      "kind": "File",
+      "alias": "builtin",
+      "modulePath": "moonbitlang/core/builtin",
+      "relativePath": "moonbit/overrides/core_int.mbt"
+    },
+    {
+      "stage": "Implementation",
+      "kind": "File",
+      "alias": "builtin",
+      "modulePath": "moonbitlang/core/builtin",
+      "relativePath": "moonbit/overrides/core_numeric_intrinsics.mbt"
+    },
+    {
+      "stage": "Implementation",
+      "kind": "File",
+      "alias": "builtin",
+      "modulePath": "moonbitlang/core/builtin",
+      "relativePath": "moonbit/overrides/core_intrinsics_csharp.mbt"
+    },
+    {
+      "stage": "Implementation",
+      "kind": "File",
+      "alias": "builtin",
+      "modulePath": "moonbitlang/core/builtin",
+      "relativePath": "moonbit/overrides/core_numeric_ops.mbt"
+    },
+    {
+      "stage": "Implementation",
+      "kind": "File",
+      "alias": "builtin",
+      "modulePath": "moonbitlang/core/builtin",
+      "relativePath": "moonbit/overrides/core_builtin_to_string_csharp.mbt"
+    },
+    {
+      "stage": "Implementation",
+      "kind": "File",
+      "alias": "builtin",
+      "modulePath": "moonbitlang/core/builtin",
+      "relativePath": "moonbit/overrides/core_iterable.mbt"
+    },
+    {
+      "stage": "Implementation",
+      "kind": "File",
+      "alias": "builtin",
+      "modulePath": "moonbitlang/core/builtin",
+      "relativePath": "moonbit/overrides/core_option.mbt"
+    },
+    {
+      "stage": "Implementation",
+      "kind": "File",
+      "alias": "builtin",
+      "modulePath": "moonbitlang/core/builtin",
+      "relativePath": "moonbit/overrides/core_string.mbt"
+    },
+    {
+      "stage": "Implementation",
+      "kind": "File",
+      "alias": "builtin",
+      "modulePath": "moonbitlang/core/builtin",
+      "relativePath": "moonbit/overrides/core_stringview.mbt"
+    },
+    {
+      "stage": "Implementation",
+      "kind": "File",
+      "alias": "builtin",
+      "modulePath": "moonbitlang/core/builtin",
+      "relativePath": "moonbit/overrides/core_bytesview_csharp.mbt"
+    },
+    {
+      "stage": "Implementation",
+      "kind": "File",
+      "alias": "builtin",
+      "modulePath": "moonbitlang/core/builtin",
+      "relativePath": "moonbitlang/core/builtin/linked_hash_map.mbt"
+    },
+    {
+      "stage": "Implementation",
+      "kind": "File",
+      "alias": "debug",
+      "modulePath": "moonbitlang/core/debug",
+      "relativePath": "moonbit/overrides/core_debug_show.mbt"
+    },
+    {
+      "stage": "Implementation",
+      "kind": "File",
+      "alias": "debug",
+      "modulePath": "moonbitlang/core/debug",
+      "relativePath": "moonbitlang/core/debug/repr.mbt"
+    },
+    {
+      "stage": "Implementation",
+      "kind": "File",
+      "alias": "debug",
+      "modulePath": "moonbitlang/core/debug",
+      "relativePath": "moonbitlang/core/debug/debug.mbt"
+    },
+    {
+      "stage": "Implementation",
+      "kind": "File",
+      "alias": "debug",
+      "modulePath": "moonbitlang/core/debug",
+      "relativePath": "moonbitlang/core/debug/printer.mbt"
+    },
+    {
+      "stage": "Implementation",
+      "kind": "File",
+      "alias": "debug",
+      "modulePath": "moonbitlang/core/debug",
+      "relativePath": "moonbitlang/core/debug/pretty_print.mbt"
+    },
+    {
+      "stage": "Implementation",
+      "kind": "File",
+      "alias": "error",
+      "modulePath": "moonbitlang/core/error",
+      "relativePath": "moonbit/overrides/core_error.mbt"
+    },
+    {
+      "stage": "Implementation",
+      "kind": "File",
+      "alias": "set",
+      "modulePath": "moonbitlang/core/set",
+      "relativePath": "moonbitlang/core/set/grow_heuristic.mbt"
+    },
+    {
+      "stage": "Implementation",
+      "kind": "File",
+      "alias": "set",
+      "modulePath": "moonbitlang/core/set",
+      "relativePath": "moonbitlang/core/set/linked_hash_set.mbt"
+    },
+    {
+      "stage": "Implementation",
+      "kind": "File",
+      "alias": "set",
+      "modulePath": "moonbitlang/core/set",
+      "relativePath": "moonbitlang/core/set/debug.mbt"
+    },
+    {
+      "stage": "Implementation",
+      "kind": "File",
+      "alias": "ref",
+      "modulePath": "moonbitlang/core/ref",
+      "relativePath": "moonbit/overrides/core_ref_csharp.mbt"
+    },
+    {
+      "stage": "Implementation",
+      "kind": "File",
+      "alias": "env",
+      "modulePath": "moonbitlang/core/env",
+      "relativePath": "moonbit/overrides/core_env_env_csharp.mbt"
+    }
+  ]
+}

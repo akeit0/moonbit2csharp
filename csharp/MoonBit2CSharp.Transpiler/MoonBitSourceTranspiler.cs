@@ -832,125 +832,33 @@ public static class MoonBitSourceTranspiler
 
     private static IReadOnlyList<VNextDeclarationSource> VNextCoreDeclarationSources()
     {
+        return VNextCoreSources(VNextCoreSourceStage.Declaration);
+    }
+
+    private static IReadOnlyList<VNextDeclarationSource> VNextCoreImplementationSources()
+    {
+        return VNextCoreSources(VNextCoreSourceStage.Implementation);
+    }
+
+    private static IReadOnlyList<VNextDeclarationSource> VNextCoreSources(VNextCoreSourceStage stage)
+    {
         var root = RepositoryRoot();
         var result = new List<VNextDeclarationSource>();
-        AddDeclarationSource(
-            result,
-            "abort",
-            "pkg:moonbitlang/core/abort",
-            "moonbitlang/core/abort",
-            Path.Combine(root, "moonbitlang", "core", "abort", "abort.mbt")
-        );
-        AddOfficialCorePackageDeclarationSources(
-            result,
-            "builtin",
-            "moonbitlang/core/builtin",
-            Path.Combine(root, "moonbitlang", "core", "builtin")
-        );
-        AddDeclarationSource(
-            result,
-            "builtin",
-            "pkg:moonbitlang/core/builtin",
-            "moonbitlang/core/builtin",
-            Path.Combine(root, "moonbit", "overrides", "core_array.mbt")
-        );
-        AddDeclarationSource(
-            result,
-            "builtin",
-            "pkg:moonbitlang/core/builtin",
-            "moonbitlang/core/builtin",
-            Path.Combine(root, "moonbit", "overrides", "core_iterable.mbt")
-        );
-        AddDeclarationSource(
-            result,
-            "builtin",
-            "pkg:moonbitlang/core/builtin",
-            "moonbitlang/core/builtin",
-            Path.Combine(root, "moonbit", "overrides", "core_string.mbt")
-        );
-        AddDeclarationSource(
-            result,
-            "builtin",
-            "pkg:moonbitlang/core/builtin",
-            "moonbitlang/core/builtin",
-            Path.Combine(root, "moonbit", "overrides", "core_stringview.mbt")
-        );
-        AddDeclarationSource(
-            result,
-            "builtin",
-            "pkg:moonbitlang/core/builtin",
-            "moonbitlang/core/builtin",
-            Path.Combine(root, "moonbit", "overrides", "core_bytesview_csharp.mbt")
-        );
-        AddOfficialCorePackageDeclarationSources(
-            result,
-            "debug",
-            "moonbitlang/core/debug",
-            Path.Combine(root, "moonbitlang", "core", "debug")
-        );
-        AddOfficialCorePackageDeclarationSources(
-            result,
-            "error",
-            "moonbitlang/core/error",
-            Path.Combine(root, "moonbitlang", "core", "error")
-        );
-        AddDeclarationSource(
-            result,
-            "error",
-            "pkg:moonbitlang/core/error",
-            "moonbitlang/core/error",
-            Path.Combine(root, "moonbit", "overrides", "core_error.mbt")
-        );
-        AddOfficialCorePackageDeclarationSources(
-            result,
-            "set",
-            "moonbitlang/core/set",
-            Path.Combine(root, "moonbitlang", "core", "set")
-        );
-        AddDeclarationSource(
-            result,
-            "ref",
-            "pkg:moonbitlang/core/ref",
-            "moonbitlang/core/ref",
-            Path.Combine(root, "moonbit", "overrides", "core_ref_csharp.mbt")
-        );
-        AddDeclarationSource(
-            result,
-            "prelude",
-            "pkg:moonbitlang/core/prelude",
-            "moonbitlang/core/prelude",
-            Path.Combine(root, "moonbit", "overrides", "core_prelude_csharp.mbt")
-        );
-        AddDeclarationSource(
-            result,
-            "env",
-            "pkg:moonbitlang/core/env",
-            "moonbitlang/core/env",
-            Path.Combine(root, "moonbit", "overrides", "core_env_env_csharp.mbt")
-        );
-        AddDeclarationSource(
-            result,
-            "builtin",
-            "pkg:moonbitlang/core/builtin",
-            "moonbitlang/core/builtin",
-            Path.Combine(root, "moonbit", "overrides", "core_traits_csharp.mbt")
-        );
-        AddDeclarationSource(
-            result,
-            "builtin",
-            "pkg:moonbitlang/core/builtin",
-            "moonbitlang/core/builtin",
-            Path.Combine(root, "moonbit", "overrides", "core_stringbuilder_traits.mbt")
-        );
-        AddDeclarationSource(
-            result,
-            "debug",
-            "pkg:moonbitlang/core/debug",
-            "moonbitlang/core/debug",
-            Path.Combine(root, "moonbit", "overrides", "core_debug_show.mbt")
-        );
+        foreach (var node in VNextCoreSourceGraphLoader.Load().Where(node => node.Stage == stage))
+        {
+            var path = RepositoryPath(root, node.RelativePath);
+            if (node.Kind == VNextCoreSourceNodeKind.OfficialPackage)
+                AddOfficialCorePackageDeclarationSources(result, node.Alias, node.ModulePath, path);
+            else
+                AddDeclarationSource(result, node.Alias, "pkg:" + node.ModulePath, node.ModulePath, path);
+        }
 
         return result;
+    }
+
+    private static string RepositoryPath(string root, string relativePath)
+    {
+        return Path.Combine([root, .. relativePath.Split('/')]);
     }
 
     private static void AddOfficialCorePackageDeclarationSources(
@@ -976,231 +884,6 @@ public static class MoonBitSourceTranspiler
             AddDeclarationSource(result, alias, "pkg:" + modulePath, modulePath, path);
         }
     }
-
-    private static IReadOnlyList<VNextDeclarationSource> VNextCoreImplementationSources()
-    {
-        var root = RepositoryRoot();
-        var result = new List<VNextDeclarationSource>();
-        AddDeclarationSource(
-            result,
-            "builtin",
-            "pkg:moonbitlang/core/builtin",
-            "moonbitlang/core/builtin",
-            Path.Combine(root, "moonbitlang", "core", "builtin", "traits.mbt")
-        );
-        AddDeclarationSource(
-            result,
-            "builtin",
-            "pkg:moonbitlang/core/builtin",
-            "moonbitlang/core/builtin",
-            Path.Combine(root, "moonbitlang", "core", "builtin", "intrinsics.mbt")
-        );
-        AddDeclarationSource(
-            result,
-            "builtin",
-            "pkg:moonbitlang/core/builtin",
-            "moonbitlang/core/builtin",
-            Path.Combine(root, "moonbit", "overrides", "core_traits_csharp.mbt")
-        );
-        AddDeclarationSource(
-            result,
-            "builtin",
-            "pkg:moonbitlang/core/builtin",
-            "moonbitlang/core/builtin",
-            Path.Combine(root, "moonbit", "overrides", "core_stringbuilder_traits.mbt")
-        );
-        AddDeclarationSource(
-            result,
-            "builtin",
-            "pkg:moonbitlang/core/builtin",
-            "moonbitlang/core/builtin",
-            Path.Combine(root, "moonbit", "overrides", "core_stringbuilder.mbt")
-        );
-        AddDeclarationSource(
-            result,
-            "builtin",
-            "pkg:moonbitlang/core/builtin",
-            "moonbitlang/core/builtin",
-            Path.Combine(root, "moonbit", "overrides", "core_bool.mbt")
-        );
-        AddDeclarationSource(
-            result,
-            "builtin",
-            "pkg:moonbitlang/core/builtin",
-            "moonbitlang/core/builtin",
-            Path.Combine(root, "moonbit", "overrides", "core_char.mbt")
-        );
-        AddDeclarationSource(
-            result,
-            "builtin",
-            "pkg:moonbitlang/core/builtin",
-            "moonbitlang/core/builtin",
-            Path.Combine(root, "moonbit", "overrides", "core_array.mbt")
-        );
-        AddDeclarationSource(
-            result,
-            "builtin",
-            "pkg:moonbitlang/core/builtin",
-            "moonbitlang/core/builtin",
-            Path.Combine(root, "moonbit", "overrides", "core_arrayview.mbt")
-        );
-        AddDeclarationSource(
-            result,
-            "builtin",
-            "pkg:moonbitlang/core/builtin",
-            "moonbitlang/core/builtin",
-            Path.Combine(root, "moonbit", "overrides", "core_int.mbt")
-        );
-        AddDeclarationSource(
-            result,
-            "builtin",
-            "pkg:moonbitlang/core/builtin",
-            "moonbitlang/core/builtin",
-            Path.Combine(root, "moonbit", "overrides", "core_numeric_intrinsics.mbt")
-        );
-        AddDeclarationSource(
-            result,
-            "builtin",
-            "pkg:moonbitlang/core/builtin",
-            "moonbitlang/core/builtin",
-            Path.Combine(root, "moonbit", "overrides", "core_intrinsics_csharp.mbt")
-        );
-        AddDeclarationSource(
-            result,
-            "builtin",
-            "pkg:moonbitlang/core/builtin",
-            "moonbitlang/core/builtin",
-            Path.Combine(root, "moonbit", "overrides", "core_numeric_ops.mbt")
-        );
-        AddDeclarationSource(
-            result,
-            "builtin",
-            "pkg:moonbitlang/core/builtin",
-            "moonbitlang/core/builtin",
-            Path.Combine(root, "moonbit", "overrides", "core_builtin_to_string_csharp.mbt")
-        );
-        AddDeclarationSource(
-            result,
-            "builtin",
-            "pkg:moonbitlang/core/builtin",
-            "moonbitlang/core/builtin",
-            Path.Combine(root, "moonbit", "overrides", "core_iterable.mbt")
-        );
-        AddDeclarationSource(
-            result,
-            "builtin",
-            "pkg:moonbitlang/core/builtin",
-            "moonbitlang/core/builtin",
-            Path.Combine(root, "moonbit", "overrides", "core_option.mbt")
-        );
-        AddDeclarationSource(
-            result,
-            "builtin",
-            "pkg:moonbitlang/core/builtin",
-            "moonbitlang/core/builtin",
-            Path.Combine(root, "moonbit", "overrides", "core_string.mbt")
-        );
-        AddDeclarationSource(
-            result,
-            "builtin",
-            "pkg:moonbitlang/core/builtin",
-            "moonbitlang/core/builtin",
-            Path.Combine(root, "moonbit", "overrides", "core_stringview.mbt")
-        );
-        AddDeclarationSource(
-            result,
-            "builtin",
-            "pkg:moonbitlang/core/builtin",
-            "moonbitlang/core/builtin",
-            Path.Combine(root, "moonbit", "overrides", "core_bytesview_csharp.mbt")
-        );
-        AddDeclarationSource(
-            result,
-            "builtin",
-            "pkg:moonbitlang/core/builtin",
-            "moonbitlang/core/builtin",
-            Path.Combine(root, "moonbitlang", "core", "builtin", "linked_hash_map.mbt")
-        );
-        AddDeclarationSource(
-            result,
-            "debug",
-            "pkg:moonbitlang/core/debug",
-            "moonbitlang/core/debug",
-            Path.Combine(root, "moonbit", "overrides", "core_debug_show.mbt")
-        );
-        AddDeclarationSource(
-            result,
-            "debug",
-            "pkg:moonbitlang/core/debug",
-            "moonbitlang/core/debug",
-            Path.Combine(root, "moonbitlang", "core", "debug", "repr.mbt")
-        );
-        AddDeclarationSource(
-            result,
-            "debug",
-            "pkg:moonbitlang/core/debug",
-            "moonbitlang/core/debug",
-            Path.Combine(root, "moonbitlang", "core", "debug", "debug.mbt")
-        );
-        AddDeclarationSource(
-            result,
-            "debug",
-            "pkg:moonbitlang/core/debug",
-            "moonbitlang/core/debug",
-            Path.Combine(root, "moonbitlang", "core", "debug", "printer.mbt")
-        );
-        AddDeclarationSource(
-            result,
-            "debug",
-            "pkg:moonbitlang/core/debug",
-            "moonbitlang/core/debug",
-            Path.Combine(root, "moonbitlang", "core", "debug", "pretty_print.mbt")
-        );
-        AddDeclarationSource(
-            result,
-            "error",
-            "pkg:moonbitlang/core/error",
-            "moonbitlang/core/error",
-            Path.Combine(root, "moonbit", "overrides", "core_error.mbt")
-        );
-        AddDeclarationSource(
-            result,
-            "set",
-            "pkg:moonbitlang/core/set",
-            "moonbitlang/core/set",
-            Path.Combine(root, "moonbitlang", "core", "set", "grow_heuristic.mbt")
-        );
-        AddDeclarationSource(
-            result,
-            "set",
-            "pkg:moonbitlang/core/set",
-            "moonbitlang/core/set",
-            Path.Combine(root, "moonbitlang", "core", "set", "linked_hash_set.mbt")
-        );
-        AddDeclarationSource(
-            result,
-            "set",
-            "pkg:moonbitlang/core/set",
-            "moonbitlang/core/set",
-            Path.Combine(root, "moonbitlang", "core", "set", "debug.mbt")
-        );
-        AddDeclarationSource(
-            result,
-            "ref",
-            "pkg:moonbitlang/core/ref",
-            "moonbitlang/core/ref",
-            Path.Combine(root, "moonbit", "overrides", "core_ref_csharp.mbt")
-        );
-        AddDeclarationSource(
-            result,
-            "env",
-            "pkg:moonbitlang/core/env",
-            "moonbitlang/core/env",
-            Path.Combine(root, "moonbit", "overrides", "core_env_env_csharp.mbt")
-        );
-        return result;
-    }
-
     private static void AddDeclarationSource(
         List<VNextDeclarationSource> sources,
         string alias,
