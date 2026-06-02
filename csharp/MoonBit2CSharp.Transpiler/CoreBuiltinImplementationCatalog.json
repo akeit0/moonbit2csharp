@@ -1,841 +1,1109 @@
 {
-  "version": "moonbit2csharp-core-implementation-metadata-v1",
-  "sourceIndexInputs": [
-    "moonbitlang/core",
-    "moonbit/builtin/overrides/core_iterable.mbt",
-    "moonbit/builtin/overrides/core_arrayview_csharp.mbt"
-  ],
-  "nodes": [
-    {
-      "symbol": "Failure",
-      "inputs": [
-        "moonbit/builtin/overrides/core_error_types.mbt",
-        "moonbitlang/core/builtin/traits.mbt"
-      ],
-      "implementedCoreBuiltins": [],
-      "mode": "TranspileCore",
-      "runtimeFeatures": [],
-      "semanticTestFamily": "error-types"
-    },
-    {
-      "symbol": "Json",
-      "inputs": [
-        "moonbitlang/core/builtin/json.mbt",
-        "moonbitlang/core/json/json.mbt",
-        "moonbitlang/core/builtin/int.mbt",
-        "moonbitlang/core/builtin/intrinsics.mbt",
-        "moonbitlang/core/builtin/traits.mbt"
-      ],
-      "implementedCoreBuiltins": ["Json"],
-      "mode": "TranspileCore",
-      "runtimeFeatures": [],
-      "semanticTestFamily": "json-builtin"
-    },
-    {
-      "symbol": "Map",
-      "inputs": [
-        "moonbit/builtin/overrides/core_linked_hash_map_csharp.mbt",
-        "moonbitlang/core/builtin/int.mbt",
-        "moonbitlang/core/builtin/intrinsics.mbt",
-        "moonbitlang/core/builtin/hasher.mbt",
-        "moonbitlang/core/builtin/traits.mbt"
-      ],
-      "implementedCoreBuiltins": ["Map"],
-      "mode": "TranspileCore",
-      "runtimeFeatures": [],
-      "semanticTestFamily": "map-mutation"
-    },
-    {
-      "symbol": "Map::Map",
-      "inputs": [
-        "moonbit/builtin/overrides/core_linked_hash_map_csharp.mbt",
-        "moonbitlang/core/builtin/int.mbt",
-        "moonbitlang/core/builtin/intrinsics.mbt",
-        "moonbitlang/core/builtin/hasher.mbt",
-        "moonbitlang/core/builtin/traits.mbt"
-      ],
-      "implementedCoreBuiltins": ["Map"],
-      "mode": "TranspileCore",
-      "runtimeFeatures": [],
-      "semanticTestFamily": "map-mutation"
-    },
-    {
-      "symbol": "Unit::hash_combine",
-      "inputs": [
-        "moonbitlang/core/builtin/unit.mbt",
-        "moonbitlang/core/builtin/hasher.mbt",
-        "moonbitlang/core/builtin/traits.mbt"
-      ],
-      "implementedCoreBuiltins": [],
-      "mode": "FrameworkCall",
-      "runtimeFeatures": [],
-      "semanticTestFamily": "map-mutation"
-    },
-    {
-      "symbol": "Bool::hash_combine",
-      "inputs": [
-        "moonbitlang/core/builtin/bool.mbt",
-        "moonbitlang/core/builtin/hasher.mbt",
-        "moonbitlang/core/builtin/intrinsics.mbt",
-        "moonbitlang/core/builtin/traits.mbt"
-      ],
-      "implementedCoreBuiltins": [],
-      "mode": "FrameworkCall",
-      "runtimeFeatures": [],
-      "semanticTestFamily": "map-mutation"
-    },
-    {
-      "symbol": "Byte::hash_combine",
-      "inputs": [
-        "moonbitlang/core/builtin/byte.mbt",
-        "moonbitlang/core/builtin/hasher.mbt",
-        "moonbitlang/core/builtin/intrinsics.mbt",
-        "moonbitlang/core/builtin/traits.mbt"
-      ],
-      "implementedCoreBuiltins": [],
-      "mode": "TranspileCore",
-      "runtimeFeatures": [],
-      "semanticTestFamily": "map-mutation"
-    },
-    {
-      "symbol": "Char::hash_combine",
-      "inputs": [
-        "moonbit/builtin/overrides/core_builtin_char_hash_csharp.mbt",
-        "moonbitlang/core/builtin/hasher.mbt",
-        "moonbitlang/core/builtin/intrinsics.mbt",
-        "moonbitlang/core/builtin/traits.mbt"
-      ],
-      "implementedCoreBuiltins": [],
-      "mode": "TranspileCore",
-      "runtimeFeatures": [],
-      "semanticTestFamily": "map-mutation"
-    },
-    {
-      "symbol": "Iter",
-      "inputs": ["moonbit/builtin/overrides/core_iterable.mbt"],
-      "implementedCoreBuiltins": [],
-      "mode": "GeneratedAdapter",
-      "runtimeFeatures": [],
-      "semanticTestFamily": "iterators"
-    },
-    {
-      "symbol": "Iter::next",
-      "inputs": ["moonbit/builtin/overrides/core_iterable.mbt"],
-      "implementedCoreBuiltins": [],
-      "mode": "GeneratedAdapter",
-      "runtimeFeatures": [],
-      "semanticTestFamily": "iterators"
-    },
-    {
-      "symbol": "Iter::new",
-      "inputs": ["moonbit/builtin/overrides/core_iterable.mbt"],
-      "implementedCoreBuiltins": [],
-      "mode": "GeneratedAdapter",
-      "runtimeFeatures": [],
-      "semanticTestFamily": "iterators"
-    },
-    {
-      "symbol": "Ref::Ref",
-      "inputs": ["moonbitlang/core/ref/ref.mbt"],
-      "implementedCoreBuiltins": [],
-      "mode": "TranspileCore",
-      "runtimeFeatures": ["Ref"],
-      "semanticTestFamily": "ref"
-    },
-    {
-      "symbol": "ArrayView::iter",
-      "inputs": ["moonbit/builtin/overrides/core_iterable.mbt"],
-      "implementedCoreBuiltins": [],
-      "mode": "GeneratedAdapter",
-      "runtimeFeatures": [],
-      "semanticTestFamily": "iterators"
-    },
-    {
-      "symbol": "Array::new",
-      "inputs": ["moonbit/builtin/overrides/core_arraycore_csharp.mbt"],
-      "implementedCoreBuiltins": [],
-      "mode": "FrameworkCall",
-      "runtimeFeatures": ["ArrayView"],
-      "semanticTestFamily": "array-views"
-    },
-    {
-      "symbol": "Array::make",
-      "inputs": ["moonbit/builtin/overrides/core_arraycore_csharp.mbt"],
-      "implementedCoreBuiltins": [],
-      "mode": "GeneratedAdapter",
-      "runtimeFeatures": ["ArrayView"],
-      "semanticTestFamily": "array-views"
-    },
-    {
-      "symbol": "Array::make_uninit",
-      "inputs": ["moonbit/builtin/overrides/core_arraycore_csharp.mbt"],
-      "implementedCoreBuiltins": [],
-      "mode": "FrameworkCall",
-      "runtimeFeatures": ["ArrayView"],
-      "semanticTestFamily": "array-views"
-    },
-    {
-      "symbol": "Array::length",
-      "inputs": ["moonbit/builtin/overrides/core_arraycore_csharp.mbt"],
-      "implementedCoreBuiltins": [],
-      "mode": "FrameworkCall",
-      "runtimeFeatures": ["ArrayView"],
-      "semanticTestFamily": "array-views"
-    },
-    {
-      "symbol": "Array::is_empty",
-      "inputs": ["moonbit/builtin/overrides/core_arraycore_csharp.mbt"],
-      "implementedCoreBuiltins": [],
-      "mode": "FrameworkCall",
-      "runtimeFeatures": ["ArrayView"],
-      "semanticTestFamily": "array-views"
-    },
-    {
-      "symbol": "Array::filter",
-      "inputs": ["moonbit/builtin/overrides/core_builtin_array_methods_csharp.mbt"],
-      "implementedCoreBuiltins": [],
-      "mode": "FrameworkCall",
-      "runtimeFeatures": ["ArrayView"],
-      "semanticTestFamily": "array-methods"
-    },
-    {
-      "symbol": "Array::remove",
-      "inputs": ["moonbit/builtin/overrides/core_builtin_array_methods_csharp.mbt"],
-      "implementedCoreBuiltins": [],
-      "mode": "FrameworkCall",
-      "runtimeFeatures": ["ArrayView"],
-      "semanticTestFamily": "array-methods"
-    },
-    {
-      "symbol": "Array::append",
-      "inputs": ["moonbit/builtin/overrides/core_builtin_array_methods_csharp.mbt"],
-      "implementedCoreBuiltins": [],
-      "mode": "FrameworkCall",
-      "runtimeFeatures": ["ArrayView"],
-      "semanticTestFamily": "array-methods"
-    },
-    {
-      "symbol": "Array::all",
-      "inputs": ["moonbit/builtin/overrides/core_builtin_array_methods_csharp.mbt"],
-      "implementedCoreBuiltins": [],
-      "mode": "FrameworkCall",
-      "runtimeFeatures": ["ArrayView"],
-      "semanticTestFamily": "array-methods"
-    },
-    {
-      "symbol": "Array::map",
-      "inputs": ["moonbit/builtin/overrides/core_builtin_array_methods_csharp.mbt"],
-      "implementedCoreBuiltins": [],
-      "mode": "FrameworkCall",
-      "runtimeFeatures": ["ArrayView"],
-      "semanticTestFamily": "array-methods"
-    },
-    {
-      "symbol": "Array::get",
-      "inputs": ["moonbit/builtin/overrides/core_arraycore_csharp.mbt"],
-      "implementedCoreBuiltins": [],
-      "mode": "GeneratedAdapter",
-      "runtimeFeatures": ["ArrayView"],
-      "semanticTestFamily": "array-views"
-    },
-    {
-      "symbol": "Array::last",
-      "inputs": ["moonbit/builtin/overrides/core_arraycore_csharp.mbt"],
-      "implementedCoreBuiltins": [],
-      "mode": "GeneratedAdapter",
-      "runtimeFeatures": ["ArrayView"],
-      "semanticTestFamily": "array-views"
-    },
-    {
-      "symbol": "Array::buffer",
-      "inputs": ["moonbit/builtin/overrides/core_arraycore_csharp.mbt"],
-      "implementedCoreBuiltins": [],
-      "mode": "FrameworkCall",
-      "runtimeFeatures": ["ArrayView"],
-      "semanticTestFamily": "array-views"
-    },
-    {
-      "symbol": "Array::unsafe_set",
-      "inputs": ["moonbit/builtin/overrides/core_arraycore_csharp.mbt"],
-      "implementedCoreBuiltins": [],
-      "mode": "FrameworkCall",
-      "runtimeFeatures": ["ArrayView"],
-      "semanticTestFamily": "array-views"
-    },
-    {
-      "symbol": "Array::unsafe_get",
-      "inputs": ["moonbit/builtin/overrides/core_arraycore_csharp.mbt"],
-      "implementedCoreBuiltins": [],
-      "mode": "FrameworkCall",
-      "runtimeFeatures": ["ArrayView"],
-      "semanticTestFamily": "array-views"
-    },
-    {
-      "symbol": "Array::push",
-      "inputs": ["moonbit/builtin/overrides/core_arraycore_csharp.mbt"],
-      "implementedCoreBuiltins": [],
-      "mode": "FrameworkCall",
-      "runtimeFeatures": ["ArrayView"],
-      "semanticTestFamily": "array-views"
-    },
-    {
-      "symbol": "Array::sort_by",
-      "inputs": ["moonbit/builtin/overrides/core_arraycore_csharp.mbt"],
-      "implementedCoreBuiltins": [],
-      "mode": "FrameworkCall",
-      "runtimeFeatures": ["ArrayView"],
-      "semanticTestFamily": "array-sort"
-    },
-    {
-      "symbol": "Array::view",
-      "inputs": ["moonbit/builtin/overrides/core_arrayview_csharp.mbt"],
-      "implementedCoreBuiltins": [],
-      "mode": "GeneratedAdapter",
-      "runtimeFeatures": ["ArrayView"],
-      "semanticTestFamily": "array-views"
-    },
-    {
-      "symbol": "FixedArray::view",
-      "inputs": ["moonbit/builtin/overrides/core_arrayview_csharp.mbt"],
-      "implementedCoreBuiltins": [],
-      "mode": "GeneratedAdapter",
-      "runtimeFeatures": ["ArrayView"],
-      "semanticTestFamily": "array-views"
-    },
-    {
-      "symbol": "ArrayView::view",
-      "inputs": ["moonbit/builtin/overrides/core_arrayview_csharp.mbt"],
-      "implementedCoreBuiltins": [],
-      "mode": "GeneratedAdapter",
-      "runtimeFeatures": ["ArrayView"],
-      "semanticTestFamily": "array-views"
-    },
-    {
-      "symbol": "ArrayView::to_owned",
-      "inputs": ["moonbit/builtin/overrides/core_arrayview_csharp.mbt"],
-      "implementedCoreBuiltins": [],
-      "mode": "GeneratedAdapter",
-      "runtimeFeatures": ["ArrayView"],
-      "semanticTestFamily": "array-views"
-    },
-    {
-      "symbol": "Array::mut_view",
-      "inputs": ["moonbit/builtin/overrides/core_arrayview_csharp.mbt"],
-      "implementedCoreBuiltins": [],
-      "mode": "GeneratedAdapter",
-      "runtimeFeatures": ["ArrayView"],
-      "semanticTestFamily": "array-views"
-    },
-    {
-      "symbol": "FixedArray::mut_view",
-      "inputs": ["moonbit/builtin/overrides/core_arrayview_csharp.mbt"],
-      "implementedCoreBuiltins": [],
-      "mode": "GeneratedAdapter",
-      "runtimeFeatures": ["ArrayView"],
-      "semanticTestFamily": "array-views"
-    },
-    {
-      "symbol": "MutArrayView::view",
-      "inputs": ["moonbit/builtin/overrides/core_arrayview_csharp.mbt"],
-      "implementedCoreBuiltins": [],
-      "mode": "GeneratedAdapter",
-      "runtimeFeatures": ["ArrayView"],
-      "semanticTestFamily": "array-views"
-    },
-    {
-      "symbol": "MutArrayView::mut_view",
-      "inputs": ["moonbit/builtin/overrides/core_arrayview_csharp.mbt"],
-      "implementedCoreBuiltins": [],
-      "mode": "GeneratedAdapter",
-      "runtimeFeatures": ["ArrayView"],
-      "semanticTestFamily": "array-views"
-    },
-    {
-      "symbol": "MutArrayView::to_owned",
-      "inputs": ["moonbit/builtin/overrides/core_arrayview_csharp.mbt"],
-      "implementedCoreBuiltins": [],
-      "mode": "GeneratedAdapter",
-      "runtimeFeatures": ["ArrayView"],
-      "semanticTestFamily": "array-views"
-    },
-    {
-      "symbol": "Double::from_int",
-      "inputs": ["moonbit/builtin/overrides/core_double.mbt"],
-      "implementedCoreBuiltins": [],
-      "mode": "FrameworkCall",
-      "runtimeFeatures": [],
-      "semanticTestFamily": "float-numeric"
-    },
-    {
-      "symbol": "Double::trunc",
-      "inputs": ["moonbit/builtin/overrides/core_builtin_double_round_csharp.mbt"],
-      "implementedCoreBuiltins": [],
-      "mode": "FrameworkCall",
-      "runtimeFeatures": [],
-      "semanticTestFamily": "float-numeric"
-    },
-    {
-      "symbol": "Double::ceil",
-      "inputs": ["moonbit/builtin/overrides/core_builtin_double_round_csharp.mbt"],
-      "implementedCoreBuiltins": [],
-      "mode": "FrameworkCall",
-      "runtimeFeatures": [],
-      "semanticTestFamily": "float-numeric"
-    },
-    {
-      "symbol": "Double::floor",
-      "inputs": ["moonbit/builtin/overrides/core_builtin_double_round_csharp.mbt"],
-      "implementedCoreBuiltins": [],
-      "mode": "FrameworkCall",
-      "runtimeFeatures": [],
-      "semanticTestFamily": "float-numeric"
-    },
-    {
-      "symbol": "Double::round",
-      "inputs": ["moonbit/builtin/overrides/core_builtin_double_round_csharp.mbt"],
-      "implementedCoreBuiltins": [],
-      "mode": "TranspileCore",
-      "runtimeFeatures": [],
-      "semanticTestFamily": "float-numeric"
-    },
-    {
-      "symbol": "Double::hash_combine",
-      "inputs": [
-        "moonbitlang/core/builtin/double.mbt",
-        "moonbitlang/core/builtin/hasher.mbt",
-        "moonbitlang/core/builtin/intrinsics.mbt",
-        "moonbitlang/core/builtin/traits.mbt"
-      ],
-      "implementedCoreBuiltins": [],
-      "mode": "TranspileCore",
-      "runtimeFeatures": [],
-      "semanticTestFamily": "map-mutation"
-    },
-    {
-      "symbol": "Float::hash_combine",
-      "inputs": [
-        "moonbitlang/core/float/methods.mbt",
-        "moonbitlang/core/builtin/hasher.mbt",
-        "moonbitlang/core/builtin/intrinsics.mbt",
-        "moonbitlang/core/builtin/traits.mbt"
-      ],
-      "implementedCoreBuiltins": [],
-      "mode": "TranspileCore",
-      "runtimeFeatures": [],
-      "semanticTestFamily": "map-mutation"
-    },
-    {
-      "symbol": "Float::trunc",
-      "inputs": ["moonbit/builtin/overrides/core_float_round_csharp.mbt"],
-      "implementedCoreBuiltins": [],
-      "mode": "FrameworkCall",
-      "runtimeFeatures": [],
-      "semanticTestFamily": "float-numeric"
-    },
-    {
-      "symbol": "Float::ceil",
-      "inputs": ["moonbit/builtin/overrides/core_float_round_csharp.mbt"],
-      "implementedCoreBuiltins": [],
-      "mode": "FrameworkCall",
-      "runtimeFeatures": [],
-      "semanticTestFamily": "float-numeric"
-    },
-    {
-      "symbol": "Float::floor",
-      "inputs": ["moonbit/builtin/overrides/core_float_round_csharp.mbt"],
-      "implementedCoreBuiltins": [],
-      "mode": "FrameworkCall",
-      "runtimeFeatures": [],
-      "semanticTestFamily": "float-numeric"
-    },
-    {
-      "symbol": "Float::round",
-      "inputs": ["moonbit/builtin/overrides/core_float_round_csharp.mbt"],
-      "implementedCoreBuiltins": [],
-      "mode": "TranspileCore",
-      "runtimeFeatures": [],
-      "semanticTestFamily": "float-numeric"
-    },
-    {
-      "symbol": "Int16::hash_combine",
-      "inputs": [
-        "moonbitlang/core/int16/int16.mbt",
-        "moonbitlang/core/builtin/hasher.mbt",
-        "moonbitlang/core/builtin/intrinsics.mbt",
-        "moonbitlang/core/builtin/traits.mbt"
-      ],
-      "implementedCoreBuiltins": [],
-      "mode": "TranspileCore",
-      "runtimeFeatures": [],
-      "semanticTestFamily": "map-mutation"
-    },
-    {
-      "symbol": "Int64::hash_combine",
-      "inputs": [
-        "moonbitlang/core/builtin/int64.mbt",
-        "moonbitlang/core/builtin/hasher.mbt",
-        "moonbitlang/core/builtin/intrinsics.mbt",
-        "moonbitlang/core/builtin/traits.mbt"
-      ],
-      "implementedCoreBuiltins": [],
-      "mode": "TranspileCore",
-      "runtimeFeatures": [],
-      "semanticTestFamily": "map-mutation"
-    },
-    {
-      "symbol": "UInt16::hash_combine",
-      "inputs": [
-        "moonbitlang/core/builtin/uint16_char.mbt",
-        "moonbitlang/core/builtin/hasher.mbt",
-        "moonbitlang/core/builtin/intrinsics.mbt",
-        "moonbitlang/core/builtin/traits.mbt"
-      ],
-      "implementedCoreBuiltins": [],
-      "mode": "TranspileCore",
-      "runtimeFeatures": [],
-      "semanticTestFamily": "map-mutation"
-    },
-    {
-      "symbol": "String::split",
-      "inputs": ["moonbit/builtin/overrides/core_iterable.mbt"],
-      "implementedCoreBuiltins": [],
-      "mode": "GeneratedAdapter",
-      "runtimeFeatures": [],
-      "semanticTestFamily": "unicode-string"
-    },
-    {
-      "symbol": "Int::to_string",
-      "inputs": ["moonbit/builtin/overrides/core_builtin_to_string_csharp.mbt"],
-      "implementedCoreBuiltins": [],
-      "mode": "FrameworkCall",
-      "runtimeFeatures": [],
-      "semanticTestFamily": "unicode-string"
-    },
-    {
-      "symbol": "StringView::split",
-      "inputs": ["moonbit/builtin/overrides/core_iterable.mbt"],
-      "implementedCoreBuiltins": [],
-      "mode": "GeneratedAdapter",
-      "runtimeFeatures": ["StringView"],
-      "semanticTestFamily": "unicode-string"
-    },
-    {
-      "symbol": "string_view_find_at",
-      "inputs": ["moonbit/builtin/overrides/core_iterable.mbt"],
-      "implementedCoreBuiltins": [],
-      "mode": "GeneratedAdapter",
-      "runtimeFeatures": ["StringView"],
-      "semanticTestFamily": "unicode-string"
-    },
-    {
-      "symbol": "StringView::iter",
-      "inputs": ["moonbit/builtin/overrides/core_iterable.mbt"],
-      "implementedCoreBuiltins": [],
-      "mode": "GeneratedAdapter",
-      "runtimeFeatures": ["StringView"],
-      "semanticTestFamily": "unicode-string"
-    },
-    {
-      "symbol": "StringView::to_owned",
-      "inputs": ["moonbit/builtin/overrides/core_stringview_csharp.mbt"],
-      "implementedCoreBuiltins": [],
-      "mode": "FrameworkCall",
-      "runtimeFeatures": ["StringView"],
-      "semanticTestFamily": "unicode-string"
-    },
-    {
-      "symbol": "StringView::sub",
-      "inputs": ["moonbit/builtin/overrides/core_stringview_csharp.mbt"],
-      "implementedCoreBuiltins": [],
-      "mode": "FrameworkCall",
-      "runtimeFeatures": ["StringView"],
-      "semanticTestFamily": "unicode-string"
-    },
-    {
-      "symbol": "StringView::data",
-      "inputs": ["moonbit/builtin/overrides/core_stringview_csharp.mbt"],
-      "implementedCoreBuiltins": [],
-      "mode": "GeneratedAdapter",
-      "runtimeFeatures": ["StringView"],
-      "semanticTestFamily": "unicode-string"
-    },
-    {
-      "symbol": "StringView::start_offset",
-      "inputs": ["moonbit/builtin/overrides/core_stringview_csharp.mbt"],
-      "implementedCoreBuiltins": [],
-      "mode": "GeneratedAdapter",
-      "runtimeFeatures": ["StringView"],
-      "semanticTestFamily": "unicode-string"
-    },
-    {
-      "symbol": "Iter::any",
-      "inputs": ["moonbit/builtin/overrides/core_iterable.mbt"],
-      "implementedCoreBuiltins": [],
-      "mode": "GeneratedAdapter",
-      "runtimeFeatures": ["Iter"],
-      "semanticTestFamily": "iterators"
-    },
-    {
-      "symbol": "Iter::map",
-      "inputs": ["moonbit/builtin/overrides/core_iterable.mbt"],
-      "implementedCoreBuiltins": [],
-      "mode": "GeneratedAdapter",
-      "runtimeFeatures": ["Iter"],
-      "semanticTestFamily": "iterators"
-    },
-    {
-      "symbol": "Iter::size_hint",
-      "inputs": ["moonbit/builtin/overrides/core_iterable.mbt"],
-      "implementedCoreBuiltins": [],
-      "mode": "GeneratedAdapter",
-      "runtimeFeatures": ["Iter"],
-      "semanticTestFamily": "iterators"
-    },
-    {
-      "symbol": "Iter::to_array",
-      "inputs": ["moonbit/builtin/overrides/core_iterable.mbt"],
-      "implementedCoreBuiltins": [],
-      "mode": "GeneratedAdapter",
-      "runtimeFeatures": ["Iter"],
-      "semanticTestFamily": "iterators"
-    },
-    {
-      "symbol": "String::unsafe_substring",
-      "inputs": ["moonbit/builtin/overrides/core_builtin_string_methods_csharp.mbt"],
-      "implementedCoreBuiltins": [],
-      "mode": "FrameworkCall",
-      "runtimeFeatures": [],
-      "semanticTestFamily": "unicode-string"
-    },
-    {
-      "symbol": "String::make",
-      "inputs": ["moonbit/builtin/overrides/core_builtin_string_methods_csharp.mbt"],
-      "implementedCoreBuiltins": [],
-      "mode": "FrameworkCall",
-      "runtimeFeatures": [],
-      "semanticTestFamily": "unicode-string"
-    },
-    {
-      "symbol": "String::repeat",
-      "inputs": ["moonbit/builtin/overrides/core_builtin_string_methods_csharp.mbt"],
-      "implementedCoreBuiltins": [],
-      "mode": "FrameworkCall",
-      "runtimeFeatures": [],
-      "semanticTestFamily": "unicode-string"
-    },
-    {
-      "symbol": "String::get_char",
-      "inputs": ["moonbit/builtin/overrides/core_builtin_string_methods_csharp.mbt"],
-      "implementedCoreBuiltins": [],
-      "mode": "FrameworkCall",
-      "runtimeFeatures": [],
-      "semanticTestFamily": "unicode-string"
-    },
-    {
-      "symbol": "String::trim",
-      "inputs": ["moonbit/builtin/overrides/core_builtin_string_methods_csharp.mbt"],
-      "implementedCoreBuiltins": [],
-      "mode": "FrameworkCall",
-      "runtimeFeatures": ["StringView"],
-      "semanticTestFamily": "unicode-string"
-    },
-    {
-      "symbol": "StringView::trim",
-      "inputs": ["moonbit/builtin/overrides/core_builtin_string_methods_csharp.mbt"],
-      "implementedCoreBuiltins": [],
-      "mode": "FrameworkCall",
-      "runtimeFeatures": ["StringView"],
-      "semanticTestFamily": "unicode-string"
-    },
-    {
-      "symbol": "StringView::trim_start",
-      "inputs": ["moonbit/builtin/overrides/core_builtin_string_methods_csharp.mbt"],
-      "implementedCoreBuiltins": [],
-      "mode": "FrameworkCall",
-      "runtimeFeatures": ["StringView"],
-      "semanticTestFamily": "unicode-string"
-    },
-    {
-      "symbol": "StringView::trim_end",
-      "inputs": ["moonbit/builtin/overrides/core_builtin_string_methods_csharp.mbt"],
-      "implementedCoreBuiltins": [],
-      "mode": "FrameworkCall",
-      "runtimeFeatures": ["StringView"],
-      "semanticTestFamily": "unicode-string"
-    },
-    {
-      "symbol": "StringView::repeat",
-      "inputs": ["moonbit/builtin/overrides/core_builtin_string_methods_csharp.mbt"],
-      "implementedCoreBuiltins": [],
-      "mode": "FrameworkCall",
-      "runtimeFeatures": ["StringView"],
-      "semanticTestFamily": "unicode-string"
-    },
-    {
-      "symbol": "String::trim_start",
-      "inputs": ["moonbit/builtin/overrides/core_builtin_string_methods_csharp.mbt"],
-      "implementedCoreBuiltins": [],
-      "mode": "FrameworkCall",
-      "runtimeFeatures": ["StringView"],
-      "semanticTestFamily": "unicode-string"
-    },
-    {
-      "symbol": "String::trim_end",
-      "inputs": ["moonbit/builtin/overrides/core_builtin_string_methods_csharp.mbt"],
-      "implementedCoreBuiltins": [],
-      "mode": "FrameworkCall",
-      "runtimeFeatures": ["StringView"],
-      "semanticTestFamily": "unicode-string"
-    },
-    {
-      "symbol": "Byte::to_hex",
-      "inputs": ["moonbit/builtin/overrides/core_builtin_string_methods_csharp.mbt"],
-      "implementedCoreBuiltins": [],
-      "mode": "FrameworkCall",
-      "runtimeFeatures": [],
-      "semanticTestFamily": "unicode-string"
-    },
-    {
-      "symbol": "Int::unsafe_to_char",
-      "inputs": ["moonbit/builtin/overrides/core_intrinsics_csharp.mbt"],
-      "implementedCoreBuiltins": [],
-      "mode": "FrameworkCall",
-      "runtimeFeatures": [],
-      "semanticTestFamily": "unicode-string"
-    },
-    {
-      "symbol": "UInt16::is_leading_surrogate",
-      "inputs": ["moonbit/builtin/overrides/core_intrinsics_csharp.mbt"],
-      "implementedCoreBuiltins": [],
-      "mode": "FrameworkCall",
-      "runtimeFeatures": [],
-      "semanticTestFamily": "unicode-string"
-    },
-    {
-      "symbol": "UInt16::is_trailing_surrogate",
-      "inputs": ["moonbit/builtin/overrides/core_intrinsics_csharp.mbt"],
-      "implementedCoreBuiltins": [],
-      "mode": "FrameworkCall",
-      "runtimeFeatures": [],
-      "semanticTestFamily": "unicode-string"
-    },
-    {
-      "symbol": "UInt16::unsafe_to_char",
-      "inputs": ["moonbit/builtin/overrides/core_intrinsics_csharp.mbt"],
-      "implementedCoreBuiltins": [],
-      "mode": "FrameworkCall",
-      "runtimeFeatures": [],
-      "semanticTestFamily": "unicode-string"
-    },
-    {
-      "symbol": "String::to_array",
-      "inputs": ["moonbit/builtin/overrides/core_builtin_string_methods_csharp.mbt"],
-      "implementedCoreBuiltins": [],
-      "mode": "FrameworkCall",
-      "runtimeFeatures": ["ArrayView"],
-      "semanticTestFamily": "unicode-string"
-    },
-    {
-      "symbol": "Array::join",
-      "inputs": ["moonbit/builtin/overrides/core_builtin_string_methods_csharp.mbt"],
-      "implementedCoreBuiltins": [],
-      "mode": "FrameworkCall",
-      "runtimeFeatures": ["ArrayView"],
-      "semanticTestFamily": "unicode-string"
-    },
-    {
-      "symbol": "StringBuilder::to_string",
-      "inputs": ["moonbit/builtin/overrides/core_stringbuilder_csharp.mbt"],
-      "implementedCoreBuiltins": [],
-      "mode": "FrameworkCall",
-      "runtimeFeatures": ["StringBuilder"],
-      "semanticTestFamily": "string-builder"
-    },
-    {
-      "symbol": "StringBuilder::is_empty",
-      "inputs": ["moonbit/builtin/overrides/core_stringbuilder_csharp.mbt"],
-      "implementedCoreBuiltins": [],
-      "mode": "FrameworkCall",
-      "runtimeFeatures": ["StringBuilder"],
-      "semanticTestFamily": "string-builder"
-    },
-    {
-      "symbol": "Option::unwrap",
-      "inputs": ["moonbit/builtin/overrides/core_option_csharp.mbt"],
-      "implementedCoreBuiltins": [],
-      "mode": "FrameworkCall",
-      "runtimeFeatures": [],
-      "semanticTestFamily": "option"
-    },
-    {
-      "symbol": "Option::unwrap_or",
-      "inputs": ["moonbit/builtin/overrides/core_option_csharp.mbt"],
-      "implementedCoreBuiltins": [],
-      "mode": "GeneratedAdapter",
-      "runtimeFeatures": [],
-      "semanticTestFamily": "option"
-    },
-    {
-      "symbol": "args",
-      "inputs": ["moonbit/builtin/overrides/core_env_env_csharp.mbt"],
-      "implementedCoreBuiltins": [],
-      "mode": "FrameworkCall",
-      "runtimeFeatures": [],
-      "semanticTestFamily": "env-runtime"
-    },
-    {
-      "symbol": "now",
-      "inputs": ["moonbit/builtin/overrides/core_env_env_csharp.mbt"],
-      "implementedCoreBuiltins": [],
-      "mode": "FrameworkCall",
-      "runtimeFeatures": [],
-      "semanticTestFamily": "env-runtime"
-    },
-    {
-      "symbol": "current_dir",
-      "inputs": ["moonbit/builtin/overrides/core_env_env_csharp.mbt"],
-      "implementedCoreBuiltins": [],
-      "mode": "FrameworkCall",
-      "runtimeFeatures": [],
-      "semanticTestFamily": "env-runtime"
-    },
-    {
-      "symbol": "get_env_var",
-      "inputs": ["moonbit/builtin/overrides/core_env_env_csharp.mbt"],
-      "implementedCoreBuiltins": [],
-      "mode": "FrameworkCall",
-      "runtimeFeatures": [],
-      "semanticTestFamily": "env-runtime"
-    },
-    {
-      "symbol": "set_env_var",
-      "inputs": ["moonbit/builtin/overrides/core_env_env_csharp.mbt"],
-      "implementedCoreBuiltins": [],
-      "mode": "FrameworkCall",
-      "runtimeFeatures": [],
-      "semanticTestFamily": "env-runtime"
-    },
-    {
-      "symbol": "unset_env_var",
-      "inputs": ["moonbit/builtin/overrides/core_env_env_csharp.mbt"],
-      "implementedCoreBuiltins": [],
-      "mode": "FrameworkCall",
-      "runtimeFeatures": [],
-      "semanticTestFamily": "env-runtime"
-    },
-    {
-      "symbol": "String::escape",
-      "inputs": [
-        "moonbitlang/core/builtin/show.mbt",
-        "moonbitlang/core/builtin/char.mbt",
-        "moonbit/builtin/overrides/core_intrinsics_csharp.mbt",
-        "moonbit/builtin/overrides/core_stringbuilder_csharp.mbt",
-        "moonbitlang/core/builtin/traits.mbt"
-      ],
-      "implementedCoreBuiltins": [],
-      "mode": "TranspileCore",
-      "runtimeFeatures": ["StringBuilder"],
-      "semanticTestFamily": "string"
-    }
-  ]
+    "version": "moonbit2csharp-core-implementation-metadata-v1",
+    "sourceIndexInputs": [
+        "moonbitlang/core",
+        "moonbit/overrides/core_iterable.mbt",
+        "moonbit/overrides/core_arrayview_csharp.mbt"
+    ],
+    "nodes": [
+        {
+            "symbol": "Failure",
+            "inputs": [
+                "moonbit/overrides/core_error_types.mbt",
+                "moonbitlang/core/builtin/traits.mbt"
+            ],
+            "implementedCoreBuiltins": [],
+            "mode": "TranspileCore",
+            "runtimeFeatures": [],
+            "semanticTestFamily": "error-types"
+        },
+        {
+            "symbol": "Json",
+            "inputs": [
+                "moonbitlang/core/builtin/json.mbt",
+                "moonbitlang/core/json/json.mbt",
+                "moonbitlang/core/builtin/int.mbt",
+                "moonbitlang/core/builtin/intrinsics.mbt",
+                "moonbitlang/core/builtin/traits.mbt"
+            ],
+            "implementedCoreBuiltins": [
+                "Json"
+            ],
+            "mode": "TranspileCore",
+            "runtimeFeatures": [],
+            "semanticTestFamily": "json-builtin"
+        },
+        {
+            "symbol": "Map",
+            "inputs": [
+                "moonbit/overrides/core_linked_hash_map_csharp.mbt",
+                "moonbitlang/core/builtin/int.mbt",
+                "moonbitlang/core/builtin/intrinsics.mbt",
+                "moonbitlang/core/builtin/hasher.mbt",
+                "moonbitlang/core/builtin/traits.mbt"
+            ],
+            "implementedCoreBuiltins": [
+                "Map"
+            ],
+            "mode": "TranspileCore",
+            "runtimeFeatures": [],
+            "semanticTestFamily": "map-mutation"
+        },
+        {
+            "symbol": "Map::Map",
+            "inputs": [
+                "moonbit/overrides/core_linked_hash_map_csharp.mbt",
+                "moonbitlang/core/builtin/int.mbt",
+                "moonbitlang/core/builtin/intrinsics.mbt",
+                "moonbitlang/core/builtin/hasher.mbt",
+                "moonbitlang/core/builtin/traits.mbt"
+            ],
+            "implementedCoreBuiltins": [
+                "Map"
+            ],
+            "mode": "TranspileCore",
+            "runtimeFeatures": [],
+            "semanticTestFamily": "map-mutation"
+        },
+        {
+            "symbol": "Unit::hash_combine",
+            "inputs": [
+                "moonbitlang/core/builtin/unit.mbt",
+                "moonbitlang/core/builtin/hasher.mbt",
+                "moonbitlang/core/builtin/traits.mbt"
+            ],
+            "implementedCoreBuiltins": [],
+            "mode": "FrameworkCall",
+            "runtimeFeatures": [],
+            "semanticTestFamily": "map-mutation"
+        },
+        {
+            "symbol": "Bool::hash_combine",
+            "inputs": [
+                "moonbitlang/core/builtin/bool.mbt",
+                "moonbitlang/core/builtin/hasher.mbt",
+                "moonbitlang/core/builtin/intrinsics.mbt",
+                "moonbitlang/core/builtin/traits.mbt"
+            ],
+            "implementedCoreBuiltins": [],
+            "mode": "FrameworkCall",
+            "runtimeFeatures": [],
+            "semanticTestFamily": "map-mutation"
+        },
+        {
+            "symbol": "Byte::hash_combine",
+            "inputs": [
+                "moonbitlang/core/builtin/byte.mbt",
+                "moonbitlang/core/builtin/hasher.mbt",
+                "moonbitlang/core/builtin/intrinsics.mbt",
+                "moonbitlang/core/builtin/traits.mbt"
+            ],
+            "implementedCoreBuiltins": [],
+            "mode": "TranspileCore",
+            "runtimeFeatures": [],
+            "semanticTestFamily": "map-mutation"
+        },
+        {
+            "symbol": "Char::hash_combine",
+            "inputs": [
+                "moonbit/overrides/core_builtin_char_hash_csharp.mbt",
+                "moonbitlang/core/builtin/hasher.mbt",
+                "moonbitlang/core/builtin/intrinsics.mbt",
+                "moonbitlang/core/builtin/traits.mbt"
+            ],
+            "implementedCoreBuiltins": [],
+            "mode": "TranspileCore",
+            "runtimeFeatures": [],
+            "semanticTestFamily": "map-mutation"
+        },
+        {
+            "symbol": "Iter",
+            "inputs": [
+                "moonbit/overrides/core_iterable.mbt"
+            ],
+            "implementedCoreBuiltins": [],
+            "mode": "GeneratedAdapter",
+            "runtimeFeatures": [],
+            "semanticTestFamily": "iterators"
+        },
+        {
+            "symbol": "Iter::next",
+            "inputs": [
+                "moonbit/overrides/core_iterable.mbt"
+            ],
+            "implementedCoreBuiltins": [],
+            "mode": "GeneratedAdapter",
+            "runtimeFeatures": [],
+            "semanticTestFamily": "iterators"
+        },
+        {
+            "symbol": "Iter::new",
+            "inputs": [
+                "moonbit/overrides/core_iterable.mbt"
+            ],
+            "implementedCoreBuiltins": [],
+            "mode": "GeneratedAdapter",
+            "runtimeFeatures": [],
+            "semanticTestFamily": "iterators"
+        },
+        {
+            "symbol": "Ref::Ref",
+            "inputs": [
+                "moonbitlang/core/ref/ref.mbt"
+            ],
+            "implementedCoreBuiltins": [],
+            "mode": "TranspileCore",
+            "runtimeFeatures": [
+                "Ref"
+            ],
+            "semanticTestFamily": "ref"
+        },
+        {
+            "symbol": "ArrayView::iter",
+            "inputs": [
+                "moonbit/overrides/core_iterable.mbt"
+            ],
+            "implementedCoreBuiltins": [],
+            "mode": "GeneratedAdapter",
+            "runtimeFeatures": [],
+            "semanticTestFamily": "iterators"
+        },
+        {
+            "symbol": "Array::new",
+            "inputs": [
+                "moonbit/overrides/core_arraycore_csharp.mbt"
+            ],
+            "implementedCoreBuiltins": [],
+            "mode": "FrameworkCall",
+            "runtimeFeatures": [
+                "ArrayView"
+            ],
+            "semanticTestFamily": "array-views"
+        },
+        {
+            "symbol": "Array::make",
+            "inputs": [
+                "moonbit/overrides/core_arraycore_csharp.mbt"
+            ],
+            "implementedCoreBuiltins": [],
+            "mode": "GeneratedAdapter",
+            "runtimeFeatures": [
+                "ArrayView"
+            ],
+            "semanticTestFamily": "array-views"
+        },
+        {
+            "symbol": "Array::make_uninit",
+            "inputs": [
+                "moonbit/overrides/core_arraycore_csharp.mbt"
+            ],
+            "implementedCoreBuiltins": [],
+            "mode": "FrameworkCall",
+            "runtimeFeatures": [
+                "ArrayView"
+            ],
+            "semanticTestFamily": "array-views"
+        },
+        {
+            "symbol": "Array::length",
+            "inputs": [
+                "moonbit/overrides/core_arraycore_csharp.mbt"
+            ],
+            "implementedCoreBuiltins": [],
+            "mode": "FrameworkCall",
+            "runtimeFeatures": [
+                "ArrayView"
+            ],
+            "semanticTestFamily": "array-views"
+        },
+        {
+            "symbol": "Array::is_empty",
+            "inputs": [
+                "moonbit/overrides/core_arraycore_csharp.mbt"
+            ],
+            "implementedCoreBuiltins": [],
+            "mode": "FrameworkCall",
+            "runtimeFeatures": [
+                "ArrayView"
+            ],
+            "semanticTestFamily": "array-views"
+        },
+        {
+            "symbol": "Array::filter",
+            "inputs": [
+                "moonbit/overrides/core_builtin_array_methods_csharp.mbt"
+            ],
+            "implementedCoreBuiltins": [],
+            "mode": "FrameworkCall",
+            "runtimeFeatures": [
+                "ArrayView"
+            ],
+            "semanticTestFamily": "array-methods"
+        },
+        {
+            "symbol": "Array::remove",
+            "inputs": [
+                "moonbit/overrides/core_builtin_array_methods_csharp.mbt"
+            ],
+            "implementedCoreBuiltins": [],
+            "mode": "FrameworkCall",
+            "runtimeFeatures": [
+                "ArrayView"
+            ],
+            "semanticTestFamily": "array-methods"
+        },
+        {
+            "symbol": "Array::append",
+            "inputs": [
+                "moonbit/overrides/core_builtin_array_methods_csharp.mbt"
+            ],
+            "implementedCoreBuiltins": [],
+            "mode": "FrameworkCall",
+            "runtimeFeatures": [
+                "ArrayView"
+            ],
+            "semanticTestFamily": "array-methods"
+        },
+        {
+            "symbol": "Array::all",
+            "inputs": [
+                "moonbit/overrides/core_builtin_array_methods_csharp.mbt"
+            ],
+            "implementedCoreBuiltins": [],
+            "mode": "FrameworkCall",
+            "runtimeFeatures": [
+                "ArrayView"
+            ],
+            "semanticTestFamily": "array-methods"
+        },
+        {
+            "symbol": "Array::map",
+            "inputs": [
+                "moonbit/overrides/core_builtin_array_methods_csharp.mbt"
+            ],
+            "implementedCoreBuiltins": [],
+            "mode": "FrameworkCall",
+            "runtimeFeatures": [
+                "ArrayView"
+            ],
+            "semanticTestFamily": "array-methods"
+        },
+        {
+            "symbol": "Array::get",
+            "inputs": [
+                "moonbit/overrides/core_arraycore_csharp.mbt"
+            ],
+            "implementedCoreBuiltins": [],
+            "mode": "GeneratedAdapter",
+            "runtimeFeatures": [
+                "ArrayView"
+            ],
+            "semanticTestFamily": "array-views"
+        },
+        {
+            "symbol": "Array::last",
+            "inputs": [
+                "moonbit/overrides/core_arraycore_csharp.mbt"
+            ],
+            "implementedCoreBuiltins": [],
+            "mode": "GeneratedAdapter",
+            "runtimeFeatures": [
+                "ArrayView"
+            ],
+            "semanticTestFamily": "array-views"
+        },
+        {
+            "symbol": "Array::buffer",
+            "inputs": [
+                "moonbit/overrides/core_arraycore_csharp.mbt"
+            ],
+            "implementedCoreBuiltins": [],
+            "mode": "FrameworkCall",
+            "runtimeFeatures": [
+                "ArrayView"
+            ],
+            "semanticTestFamily": "array-views"
+        },
+        {
+            "symbol": "Array::unsafe_set",
+            "inputs": [
+                "moonbit/overrides/core_arraycore_csharp.mbt"
+            ],
+            "implementedCoreBuiltins": [],
+            "mode": "FrameworkCall",
+            "runtimeFeatures": [
+                "ArrayView"
+            ],
+            "semanticTestFamily": "array-views"
+        },
+        {
+            "symbol": "Array::unsafe_get",
+            "inputs": [
+                "moonbit/overrides/core_arraycore_csharp.mbt"
+            ],
+            "implementedCoreBuiltins": [],
+            "mode": "FrameworkCall",
+            "runtimeFeatures": [
+                "ArrayView"
+            ],
+            "semanticTestFamily": "array-views"
+        },
+        {
+            "symbol": "Array::push",
+            "inputs": [
+                "moonbit/overrides/core_arraycore_csharp.mbt"
+            ],
+            "implementedCoreBuiltins": [],
+            "mode": "FrameworkCall",
+            "runtimeFeatures": [
+                "ArrayView"
+            ],
+            "semanticTestFamily": "array-views"
+        },
+        {
+            "symbol": "Array::sort_by",
+            "inputs": [
+                "moonbit/overrides/core_arraycore_csharp.mbt"
+            ],
+            "implementedCoreBuiltins": [],
+            "mode": "FrameworkCall",
+            "runtimeFeatures": [
+                "ArrayView"
+            ],
+            "semanticTestFamily": "array-sort"
+        },
+        {
+            "symbol": "Array::view",
+            "inputs": [
+                "moonbit/overrides/core_arrayview_csharp.mbt"
+            ],
+            "implementedCoreBuiltins": [],
+            "mode": "GeneratedAdapter",
+            "runtimeFeatures": [
+                "ArrayView"
+            ],
+            "semanticTestFamily": "array-views"
+        },
+        {
+            "symbol": "FixedArray::view",
+            "inputs": [
+                "moonbit/overrides/core_arrayview_csharp.mbt"
+            ],
+            "implementedCoreBuiltins": [],
+            "mode": "GeneratedAdapter",
+            "runtimeFeatures": [
+                "ArrayView"
+            ],
+            "semanticTestFamily": "array-views"
+        },
+        {
+            "symbol": "ArrayView::view",
+            "inputs": [
+                "moonbit/overrides/core_arrayview_csharp.mbt"
+            ],
+            "implementedCoreBuiltins": [],
+            "mode": "GeneratedAdapter",
+            "runtimeFeatures": [
+                "ArrayView"
+            ],
+            "semanticTestFamily": "array-views"
+        },
+        {
+            "symbol": "ArrayView::to_owned",
+            "inputs": [
+                "moonbit/overrides/core_arrayview_csharp.mbt"
+            ],
+            "implementedCoreBuiltins": [],
+            "mode": "GeneratedAdapter",
+            "runtimeFeatures": [
+                "ArrayView"
+            ],
+            "semanticTestFamily": "array-views"
+        },
+        {
+            "symbol": "Array::mut_view",
+            "inputs": [
+                "moonbit/overrides/core_arrayview_csharp.mbt"
+            ],
+            "implementedCoreBuiltins": [],
+            "mode": "GeneratedAdapter",
+            "runtimeFeatures": [
+                "ArrayView"
+            ],
+            "semanticTestFamily": "array-views"
+        },
+        {
+            "symbol": "FixedArray::mut_view",
+            "inputs": [
+                "moonbit/overrides/core_arrayview_csharp.mbt"
+            ],
+            "implementedCoreBuiltins": [],
+            "mode": "GeneratedAdapter",
+            "runtimeFeatures": [
+                "ArrayView"
+            ],
+            "semanticTestFamily": "array-views"
+        },
+        {
+            "symbol": "MutArrayView::view",
+            "inputs": [
+                "moonbit/overrides/core_arrayview_csharp.mbt"
+            ],
+            "implementedCoreBuiltins": [],
+            "mode": "GeneratedAdapter",
+            "runtimeFeatures": [
+                "ArrayView"
+            ],
+            "semanticTestFamily": "array-views"
+        },
+        {
+            "symbol": "MutArrayView::mut_view",
+            "inputs": [
+                "moonbit/overrides/core_arrayview_csharp.mbt"
+            ],
+            "implementedCoreBuiltins": [],
+            "mode": "GeneratedAdapter",
+            "runtimeFeatures": [
+                "ArrayView"
+            ],
+            "semanticTestFamily": "array-views"
+        },
+        {
+            "symbol": "MutArrayView::to_owned",
+            "inputs": [
+                "moonbit/overrides/core_arrayview_csharp.mbt"
+            ],
+            "implementedCoreBuiltins": [],
+            "mode": "GeneratedAdapter",
+            "runtimeFeatures": [
+                "ArrayView"
+            ],
+            "semanticTestFamily": "array-views"
+        },
+        {
+            "symbol": "Double::from_int",
+            "inputs": [
+                "moonbit/overrides/core_double.mbt"
+            ],
+            "implementedCoreBuiltins": [],
+            "mode": "FrameworkCall",
+            "runtimeFeatures": [],
+            "semanticTestFamily": "float-numeric"
+        },
+        {
+            "symbol": "Double::trunc",
+            "inputs": [
+                "moonbit/overrides/core_builtin_double_round_csharp.mbt"
+            ],
+            "implementedCoreBuiltins": [],
+            "mode": "FrameworkCall",
+            "runtimeFeatures": [],
+            "semanticTestFamily": "float-numeric"
+        },
+        {
+            "symbol": "Double::ceil",
+            "inputs": [
+                "moonbit/overrides/core_builtin_double_round_csharp.mbt"
+            ],
+            "implementedCoreBuiltins": [],
+            "mode": "FrameworkCall",
+            "runtimeFeatures": [],
+            "semanticTestFamily": "float-numeric"
+        },
+        {
+            "symbol": "Double::floor",
+            "inputs": [
+                "moonbit/overrides/core_builtin_double_round_csharp.mbt"
+            ],
+            "implementedCoreBuiltins": [],
+            "mode": "FrameworkCall",
+            "runtimeFeatures": [],
+            "semanticTestFamily": "float-numeric"
+        },
+        {
+            "symbol": "Double::round",
+            "inputs": [
+                "moonbit/overrides/core_builtin_double_round_csharp.mbt"
+            ],
+            "implementedCoreBuiltins": [],
+            "mode": "TranspileCore",
+            "runtimeFeatures": [],
+            "semanticTestFamily": "float-numeric"
+        },
+        {
+            "symbol": "Double::hash_combine",
+            "inputs": [
+                "moonbitlang/core/builtin/double.mbt",
+                "moonbitlang/core/builtin/hasher.mbt",
+                "moonbitlang/core/builtin/intrinsics.mbt",
+                "moonbitlang/core/builtin/traits.mbt"
+            ],
+            "implementedCoreBuiltins": [],
+            "mode": "TranspileCore",
+            "runtimeFeatures": [],
+            "semanticTestFamily": "map-mutation"
+        },
+        {
+            "symbol": "Float::hash_combine",
+            "inputs": [
+                "moonbitlang/core/float/methods.mbt",
+                "moonbitlang/core/builtin/hasher.mbt",
+                "moonbitlang/core/builtin/intrinsics.mbt",
+                "moonbitlang/core/builtin/traits.mbt"
+            ],
+            "implementedCoreBuiltins": [],
+            "mode": "TranspileCore",
+            "runtimeFeatures": [],
+            "semanticTestFamily": "map-mutation"
+        },
+        {
+            "symbol": "Float::trunc",
+            "inputs": [
+                "moonbit/overrides/core_float_round_csharp.mbt"
+            ],
+            "implementedCoreBuiltins": [],
+            "mode": "FrameworkCall",
+            "runtimeFeatures": [],
+            "semanticTestFamily": "float-numeric"
+        },
+        {
+            "symbol": "Float::ceil",
+            "inputs": [
+                "moonbit/overrides/core_float_round_csharp.mbt"
+            ],
+            "implementedCoreBuiltins": [],
+            "mode": "FrameworkCall",
+            "runtimeFeatures": [],
+            "semanticTestFamily": "float-numeric"
+        },
+        {
+            "symbol": "Float::floor",
+            "inputs": [
+                "moonbit/overrides/core_float_round_csharp.mbt"
+            ],
+            "implementedCoreBuiltins": [],
+            "mode": "FrameworkCall",
+            "runtimeFeatures": [],
+            "semanticTestFamily": "float-numeric"
+        },
+        {
+            "symbol": "Float::round",
+            "inputs": [
+                "moonbit/overrides/core_float_round_csharp.mbt"
+            ],
+            "implementedCoreBuiltins": [],
+            "mode": "TranspileCore",
+            "runtimeFeatures": [],
+            "semanticTestFamily": "float-numeric"
+        },
+        {
+            "symbol": "Int16::hash_combine",
+            "inputs": [
+                "moonbitlang/core/int16/int16.mbt",
+                "moonbitlang/core/builtin/hasher.mbt",
+                "moonbitlang/core/builtin/intrinsics.mbt",
+                "moonbitlang/core/builtin/traits.mbt"
+            ],
+            "implementedCoreBuiltins": [],
+            "mode": "TranspileCore",
+            "runtimeFeatures": [],
+            "semanticTestFamily": "map-mutation"
+        },
+        {
+            "symbol": "Int64::hash_combine",
+            "inputs": [
+                "moonbitlang/core/builtin/int64.mbt",
+                "moonbitlang/core/builtin/hasher.mbt",
+                "moonbitlang/core/builtin/intrinsics.mbt",
+                "moonbitlang/core/builtin/traits.mbt"
+            ],
+            "implementedCoreBuiltins": [],
+            "mode": "TranspileCore",
+            "runtimeFeatures": [],
+            "semanticTestFamily": "map-mutation"
+        },
+        {
+            "symbol": "UInt16::hash_combine",
+            "inputs": [
+                "moonbitlang/core/builtin/uint16_char.mbt",
+                "moonbitlang/core/builtin/hasher.mbt",
+                "moonbitlang/core/builtin/intrinsics.mbt",
+                "moonbitlang/core/builtin/traits.mbt"
+            ],
+            "implementedCoreBuiltins": [],
+            "mode": "TranspileCore",
+            "runtimeFeatures": [],
+            "semanticTestFamily": "map-mutation"
+        },
+        {
+            "symbol": "String::split",
+            "inputs": [
+                "moonbit/overrides/core_iterable.mbt"
+            ],
+            "implementedCoreBuiltins": [],
+            "mode": "GeneratedAdapter",
+            "runtimeFeatures": [],
+            "semanticTestFamily": "unicode-string"
+        },
+        {
+            "symbol": "Int::to_string",
+            "inputs": [
+                "moonbit/overrides/core_builtin_to_string_csharp.mbt"
+            ],
+            "implementedCoreBuiltins": [],
+            "mode": "FrameworkCall",
+            "runtimeFeatures": [],
+            "semanticTestFamily": "unicode-string"
+        },
+        {
+            "symbol": "StringView::split",
+            "inputs": [
+                "moonbit/overrides/core_iterable.mbt"
+            ],
+            "implementedCoreBuiltins": [],
+            "mode": "GeneratedAdapter",
+            "runtimeFeatures": [
+                "StringView"
+            ],
+            "semanticTestFamily": "unicode-string"
+        },
+        {
+            "symbol": "string_view_find_at",
+            "inputs": [
+                "moonbit/overrides/core_iterable.mbt"
+            ],
+            "implementedCoreBuiltins": [],
+            "mode": "GeneratedAdapter",
+            "runtimeFeatures": [
+                "StringView"
+            ],
+            "semanticTestFamily": "unicode-string"
+        },
+        {
+            "symbol": "StringView::iter",
+            "inputs": [
+                "moonbit/overrides/core_iterable.mbt"
+            ],
+            "implementedCoreBuiltins": [],
+            "mode": "GeneratedAdapter",
+            "runtimeFeatures": [
+                "StringView"
+            ],
+            "semanticTestFamily": "unicode-string"
+        },
+        {
+            "symbol": "StringView::to_owned",
+            "inputs": [
+                "moonbit/overrides/core_stringview_csharp.mbt"
+            ],
+            "implementedCoreBuiltins": [],
+            "mode": "FrameworkCall",
+            "runtimeFeatures": [
+                "StringView"
+            ],
+            "semanticTestFamily": "unicode-string"
+        },
+        {
+            "symbol": "StringView::sub",
+            "inputs": [
+                "moonbit/overrides/core_stringview_csharp.mbt"
+            ],
+            "implementedCoreBuiltins": [],
+            "mode": "FrameworkCall",
+            "runtimeFeatures": [
+                "StringView"
+            ],
+            "semanticTestFamily": "unicode-string"
+        },
+        {
+            "symbol": "StringView::data",
+            "inputs": [
+                "moonbit/overrides/core_stringview_csharp.mbt"
+            ],
+            "implementedCoreBuiltins": [],
+            "mode": "GeneratedAdapter",
+            "runtimeFeatures": [
+                "StringView"
+            ],
+            "semanticTestFamily": "unicode-string"
+        },
+        {
+            "symbol": "StringView::start_offset",
+            "inputs": [
+                "moonbit/overrides/core_stringview_csharp.mbt"
+            ],
+            "implementedCoreBuiltins": [],
+            "mode": "GeneratedAdapter",
+            "runtimeFeatures": [
+                "StringView"
+            ],
+            "semanticTestFamily": "unicode-string"
+        },
+        {
+            "symbol": "Iter::any",
+            "inputs": [
+                "moonbit/overrides/core_iterable.mbt"
+            ],
+            "implementedCoreBuiltins": [],
+            "mode": "GeneratedAdapter",
+            "runtimeFeatures": [
+                "Iter"
+            ],
+            "semanticTestFamily": "iterators"
+        },
+        {
+            "symbol": "Iter::map",
+            "inputs": [
+                "moonbit/overrides/core_iterable.mbt"
+            ],
+            "implementedCoreBuiltins": [],
+            "mode": "GeneratedAdapter",
+            "runtimeFeatures": [
+                "Iter"
+            ],
+            "semanticTestFamily": "iterators"
+        },
+        {
+            "symbol": "Iter::size_hint",
+            "inputs": [
+                "moonbit/overrides/core_iterable.mbt"
+            ],
+            "implementedCoreBuiltins": [],
+            "mode": "GeneratedAdapter",
+            "runtimeFeatures": [
+                "Iter"
+            ],
+            "semanticTestFamily": "iterators"
+        },
+        {
+            "symbol": "Iter::to_array",
+            "inputs": [
+                "moonbit/overrides/core_iterable.mbt"
+            ],
+            "implementedCoreBuiltins": [],
+            "mode": "GeneratedAdapter",
+            "runtimeFeatures": [
+                "Iter"
+            ],
+            "semanticTestFamily": "iterators"
+        },
+        {
+            "symbol": "String::unsafe_substring",
+            "inputs": [
+                "moonbit/overrides/core_builtin_string_methods_csharp.mbt"
+            ],
+            "implementedCoreBuiltins": [],
+            "mode": "FrameworkCall",
+            "runtimeFeatures": [],
+            "semanticTestFamily": "unicode-string"
+        },
+        {
+            "symbol": "String::make",
+            "inputs": [
+                "moonbit/overrides/core_builtin_string_methods_csharp.mbt"
+            ],
+            "implementedCoreBuiltins": [],
+            "mode": "FrameworkCall",
+            "runtimeFeatures": [],
+            "semanticTestFamily": "unicode-string"
+        },
+        {
+            "symbol": "String::repeat",
+            "inputs": [
+                "moonbit/overrides/core_builtin_string_methods_csharp.mbt"
+            ],
+            "implementedCoreBuiltins": [],
+            "mode": "FrameworkCall",
+            "runtimeFeatures": [],
+            "semanticTestFamily": "unicode-string"
+        },
+        {
+            "symbol": "String::get_char",
+            "inputs": [
+                "moonbit/overrides/core_builtin_string_methods_csharp.mbt"
+            ],
+            "implementedCoreBuiltins": [],
+            "mode": "FrameworkCall",
+            "runtimeFeatures": [],
+            "semanticTestFamily": "unicode-string"
+        },
+        {
+            "symbol": "String::trim",
+            "inputs": [
+                "moonbit/overrides/core_builtin_string_methods_csharp.mbt"
+            ],
+            "implementedCoreBuiltins": [],
+            "mode": "FrameworkCall",
+            "runtimeFeatures": [
+                "StringView"
+            ],
+            "semanticTestFamily": "unicode-string"
+        },
+        {
+            "symbol": "StringView::trim",
+            "inputs": [
+                "moonbit/overrides/core_builtin_string_methods_csharp.mbt"
+            ],
+            "implementedCoreBuiltins": [],
+            "mode": "FrameworkCall",
+            "runtimeFeatures": [
+                "StringView"
+            ],
+            "semanticTestFamily": "unicode-string"
+        },
+        {
+            "symbol": "StringView::trim_start",
+            "inputs": [
+                "moonbit/overrides/core_builtin_string_methods_csharp.mbt"
+            ],
+            "implementedCoreBuiltins": [],
+            "mode": "FrameworkCall",
+            "runtimeFeatures": [
+                "StringView"
+            ],
+            "semanticTestFamily": "unicode-string"
+        },
+        {
+            "symbol": "StringView::trim_end",
+            "inputs": [
+                "moonbit/overrides/core_builtin_string_methods_csharp.mbt"
+            ],
+            "implementedCoreBuiltins": [],
+            "mode": "FrameworkCall",
+            "runtimeFeatures": [
+                "StringView"
+            ],
+            "semanticTestFamily": "unicode-string"
+        },
+        {
+            "symbol": "StringView::repeat",
+            "inputs": [
+                "moonbit/overrides/core_builtin_string_methods_csharp.mbt"
+            ],
+            "implementedCoreBuiltins": [],
+            "mode": "FrameworkCall",
+            "runtimeFeatures": [
+                "StringView"
+            ],
+            "semanticTestFamily": "unicode-string"
+        },
+        {
+            "symbol": "String::trim_start",
+            "inputs": [
+                "moonbit/overrides/core_builtin_string_methods_csharp.mbt"
+            ],
+            "implementedCoreBuiltins": [],
+            "mode": "FrameworkCall",
+            "runtimeFeatures": [
+                "StringView"
+            ],
+            "semanticTestFamily": "unicode-string"
+        },
+        {
+            "symbol": "String::trim_end",
+            "inputs": [
+                "moonbit/overrides/core_builtin_string_methods_csharp.mbt"
+            ],
+            "implementedCoreBuiltins": [],
+            "mode": "FrameworkCall",
+            "runtimeFeatures": [
+                "StringView"
+            ],
+            "semanticTestFamily": "unicode-string"
+        },
+        {
+            "symbol": "Byte::to_hex",
+            "inputs": [
+                "moonbit/overrides/core_builtin_string_methods_csharp.mbt"
+            ],
+            "implementedCoreBuiltins": [],
+            "mode": "FrameworkCall",
+            "runtimeFeatures": [],
+            "semanticTestFamily": "unicode-string"
+        },
+        {
+            "symbol": "Int::unsafe_to_char",
+            "inputs": [
+                "moonbit/overrides/core_intrinsics_csharp.mbt"
+            ],
+            "implementedCoreBuiltins": [],
+            "mode": "FrameworkCall",
+            "runtimeFeatures": [],
+            "semanticTestFamily": "unicode-string"
+        },
+        {
+            "symbol": "UInt16::is_leading_surrogate",
+            "inputs": [
+                "moonbit/overrides/core_intrinsics_csharp.mbt"
+            ],
+            "implementedCoreBuiltins": [],
+            "mode": "FrameworkCall",
+            "runtimeFeatures": [],
+            "semanticTestFamily": "unicode-string"
+        },
+        {
+            "symbol": "UInt16::is_trailing_surrogate",
+            "inputs": [
+                "moonbit/overrides/core_intrinsics_csharp.mbt"
+            ],
+            "implementedCoreBuiltins": [],
+            "mode": "FrameworkCall",
+            "runtimeFeatures": [],
+            "semanticTestFamily": "unicode-string"
+        },
+        {
+            "symbol": "UInt16::unsafe_to_char",
+            "inputs": [
+                "moonbit/overrides/core_intrinsics_csharp.mbt"
+            ],
+            "implementedCoreBuiltins": [],
+            "mode": "FrameworkCall",
+            "runtimeFeatures": [],
+            "semanticTestFamily": "unicode-string"
+        },
+        {
+            "symbol": "String::to_array",
+            "inputs": [
+                "moonbit/overrides/core_builtin_string_methods_csharp.mbt"
+            ],
+            "implementedCoreBuiltins": [],
+            "mode": "FrameworkCall",
+            "runtimeFeatures": [
+                "ArrayView"
+            ],
+            "semanticTestFamily": "unicode-string"
+        },
+        {
+            "symbol": "Array::join",
+            "inputs": [
+                "moonbit/overrides/core_builtin_string_methods_csharp.mbt"
+            ],
+            "implementedCoreBuiltins": [],
+            "mode": "FrameworkCall",
+            "runtimeFeatures": [
+                "ArrayView"
+            ],
+            "semanticTestFamily": "unicode-string"
+        },
+        {
+            "symbol": "StringBuilder::to_string",
+            "inputs": [
+                "moonbit/overrides/core_stringbuilder_csharp.mbt"
+            ],
+            "implementedCoreBuiltins": [],
+            "mode": "FrameworkCall",
+            "runtimeFeatures": [
+                "StringBuilder"
+            ],
+            "semanticTestFamily": "string-builder"
+        },
+        {
+            "symbol": "StringBuilder::is_empty",
+            "inputs": [
+                "moonbit/overrides/core_stringbuilder_csharp.mbt"
+            ],
+            "implementedCoreBuiltins": [],
+            "mode": "FrameworkCall",
+            "runtimeFeatures": [
+                "StringBuilder"
+            ],
+            "semanticTestFamily": "string-builder"
+        },
+        {
+            "symbol": "Option::unwrap",
+            "inputs": [
+                "moonbit/overrides/core_option_csharp.mbt"
+            ],
+            "implementedCoreBuiltins": [],
+            "mode": "FrameworkCall",
+            "runtimeFeatures": [],
+            "semanticTestFamily": "option"
+        },
+        {
+            "symbol": "Option::unwrap_or",
+            "inputs": [
+                "moonbit/overrides/core_option_csharp.mbt"
+            ],
+            "implementedCoreBuiltins": [],
+            "mode": "GeneratedAdapter",
+            "runtimeFeatures": [],
+            "semanticTestFamily": "option"
+        },
+        {
+            "symbol": "args",
+            "inputs": [
+                "moonbit/overrides/core_env_env_csharp.mbt"
+            ],
+            "implementedCoreBuiltins": [],
+            "mode": "FrameworkCall",
+            "runtimeFeatures": [],
+            "semanticTestFamily": "env-runtime"
+        },
+        {
+            "symbol": "now",
+            "inputs": [
+                "moonbit/overrides/core_env_env_csharp.mbt"
+            ],
+            "implementedCoreBuiltins": [],
+            "mode": "FrameworkCall",
+            "runtimeFeatures": [],
+            "semanticTestFamily": "env-runtime"
+        },
+        {
+            "symbol": "current_dir",
+            "inputs": [
+                "moonbit/overrides/core_env_env_csharp.mbt"
+            ],
+            "implementedCoreBuiltins": [],
+            "mode": "FrameworkCall",
+            "runtimeFeatures": [],
+            "semanticTestFamily": "env-runtime"
+        },
+        {
+            "symbol": "get_env_var",
+            "inputs": [
+                "moonbit/overrides/core_env_env_csharp.mbt"
+            ],
+            "implementedCoreBuiltins": [],
+            "mode": "FrameworkCall",
+            "runtimeFeatures": [],
+            "semanticTestFamily": "env-runtime"
+        },
+        {
+            "symbol": "set_env_var",
+            "inputs": [
+                "moonbit/overrides/core_env_env_csharp.mbt"
+            ],
+            "implementedCoreBuiltins": [],
+            "mode": "FrameworkCall",
+            "runtimeFeatures": [],
+            "semanticTestFamily": "env-runtime"
+        },
+        {
+            "symbol": "unset_env_var",
+            "inputs": [
+                "moonbit/overrides/core_env_env_csharp.mbt"
+            ],
+            "implementedCoreBuiltins": [],
+            "mode": "FrameworkCall",
+            "runtimeFeatures": [],
+            "semanticTestFamily": "env-runtime"
+        },
+        {
+            "symbol": "String::escape",
+            "inputs": [
+                "moonbitlang/core/builtin/show.mbt",
+                "moonbitlang/core/builtin/char.mbt",
+                "moonbit/overrides/core_intrinsics_csharp.mbt",
+                "moonbit/overrides/core_stringbuilder_csharp.mbt",
+                "moonbitlang/core/builtin/traits.mbt"
+            ],
+            "implementedCoreBuiltins": [],
+            "mode": "TranspileCore",
+            "runtimeFeatures": [
+                "StringBuilder"
+            ],
+            "semanticTestFamily": "string"
+        }
+    ]
 }

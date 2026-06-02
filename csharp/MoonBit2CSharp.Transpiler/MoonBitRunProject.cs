@@ -325,8 +325,8 @@ public static class MoonBitRunProject
             var relative in new[]
             {
                 Path.Combine("moonbitlang", "core", "builtin"),
-                Path.Combine("moonbit", "builtin", "overrides"),
-                Path.Combine("moonbit", "src", "vnext_core_csharp"),
+                Path.Combine("moonbit", "overrides"),
+                Path.Combine("moonbit", "overrides"),
             }
         )
         {

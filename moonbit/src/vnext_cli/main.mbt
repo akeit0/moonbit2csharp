@@ -179,18 +179,18 @@ fn default_core_declaration_sources() -> Array[@package.PackageSource] {
       "../moonbitlang/core/builtin/intrinsics.mbt", "../moonbitlang/core/builtin/console.mbt",
       "../moonbitlang/core/builtin/failure.mbt", "../moonbitlang/core/builtin/string.mbt",
       "../moonbitlang/core/builtin/char.mbt", "../moonbitlang/core/builtin/json.mbt",
-      "../moonbitlang/core/builtin/uint16_char.mbt", "builtin/overrides/core_arraycore_csharp.mbt",
-      "builtin/overrides/core_arrayview_csharp.mbt", "builtin/overrides/core_arrayview_intrinsics.mbt",
-      "builtin/overrides/core_autoloc_csharp.mbt", "builtin/overrides/core_builtin_array_methods_csharp.mbt",
-      "builtin/overrides/core_builtin_char_hash_csharp.mbt", "builtin/overrides/core_builtin_double_round_csharp.mbt",
-      "builtin/overrides/core_builtin_string_methods_csharp.mbt", "builtin/overrides/core_builtin_to_string_csharp.mbt",
-      "builtin/overrides/core_bytesview_csharp.mbt", "builtin/overrides/core_double.mbt",
-      "builtin/overrides/core_env_env_csharp.mbt", "builtin/overrides/core_float_round_csharp.mbt",
-      "builtin/overrides/core_intrinsics_csharp.mbt", "builtin/overrides/core_iterable.mbt",
-      "builtin/overrides/core_linked_hash_map_csharp.mbt", "builtin/overrides/core_option_csharp.mbt",
-      "builtin/overrides/core_stringbuilder_csharp.mbt", "builtin/overrides/core_stringview_csharp.mbt",
-      "builtin/overrides/core_traits_csharp.mbt", "builtin/overrides/core_uint64_intrinsics_csharp.mbt",
-      "builtin/overrides/core_uint64_operator_intrinsics_csharp.mbt",
+      "../moonbitlang/core/builtin/uint16_char.mbt", "overrides/core_arraycore_csharp.mbt",
+      "overrides/core_arrayview_csharp.mbt", "overrides/core_arrayview_intrinsics.mbt",
+      "overrides/core_autoloc_csharp.mbt", "overrides/core_builtin_array_methods_csharp.mbt",
+      "overrides/core_builtin_char_hash_csharp.mbt", "overrides/core_builtin_double_round_csharp.mbt",
+      "overrides/core_builtin_string_methods_csharp.mbt", "overrides/core_builtin_to_string_csharp.mbt",
+      "overrides/core_bytesview_csharp.mbt", "overrides/core_double.mbt",
+      "overrides/core_env_env_csharp.mbt", "overrides/core_float_round_csharp.mbt",
+      "overrides/core_intrinsics_csharp.mbt", "overrides/core_iterable.mbt",
+      "overrides/core_linked_hash_map_csharp.mbt", "overrides/core_option_csharp.mbt",
+      "overrides/core_stringbuilder_csharp.mbt", "overrides/core_stringview_csharp.mbt",
+      "overrides/core_traits_csharp.mbt", "overrides/core_uint64_intrinsics_csharp.mbt",
+      "overrides/core_uint64_operator_intrinsics_csharp.mbt",
     ] {
     result.push({ import_ref, file_path: path, source: read_text_file(path) })
   }
@@ -221,8 +221,8 @@ fn default_core_declaration_sources() -> Array[@package.PackageSource] {
   }
   result.push({
     import_ref: ref_import_ref,
-    file_path: "builtin/overrides/core_ref_csharp.mbt",
-    source: read_text_file("builtin/overrides/core_ref_csharp.mbt"),
+    file_path: "overrides/core_ref_csharp.mbt",
+    source: read_text_file("overrides/core_ref_csharp.mbt"),
   })
   let prelude_import_ref : @binding.ImportRef = {
     alias_name: "prelude",
@@ -231,8 +231,8 @@ fn default_core_declaration_sources() -> Array[@package.PackageSource] {
   }
   result.push({
     import_ref: prelude_import_ref,
-    file_path: "builtin/overrides/core_prelude_csharp.mbt",
-    source: read_text_file("builtin/overrides/core_prelude_csharp.mbt"),
+    file_path: "overrides/core_prelude_csharp.mbt",
+    source: read_text_file("overrides/core_prelude_csharp.mbt"),
   })
   result
 }
